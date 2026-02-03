@@ -1,7 +1,7 @@
 
 import { supabase, profile, openOverlay, showToast, loadProfileData, closeOverlay } from "./index.tsx";
 
-(window as any).openPaymentView = async () => {
+export const openPaymentView = async () => {
     if(!profile) return showToast("Tizimga kiring");
     const placeholder = document.getElementById('paymentPlaceholder');
     if(!placeholder) return;
@@ -71,6 +71,8 @@ import { supabase, profile, openOverlay, showToast, loadProfileData, closeOverla
     `;
 };
 
+(window as any).openPaymentView = openPaymentView;
+
 (window as any).selectTopUp = (amount: number) => {
     const el = document.getElementById('topUpAmount') as HTMLInputElement;
     if(el) el.value = amount.toString();
@@ -87,8 +89,6 @@ import { supabase, profile, openOverlay, showToast, loadProfileData, closeOverla
     btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> TO\'LOV YARATILMOQDA...';
 
     try {
-        // Edge Function'ni chaqiramiz
-        // Muhim: clever-api sizning Supabase loyihangizda deploy qilingan bo'lishi kerak
         const { data, error } = await supabase.functions.invoke('clever-api', {
             body: { 
                 action: 'create', 
@@ -99,10 +99,8 @@ import { supabase, profile, openOverlay, showToast, loadProfileData, closeOverla
 
         if (error) throw error;
 
-        // Agar TsPay muvaffaqiyatli havola qaytarsa
         if (data?.status === 'success' && data?.transaction?.url) {
             showToast("To'lov sahifasiga o'tilmoqda...");
-            // Foydalanuvchini TsPay checkout sahifasiga yo'naltiramiz
             window.location.href = data.transaction.url;
         } else {
             throw new Error(data?.message || "To'lov tizimida xatolik yuz berdi");
@@ -112,7 +110,6 @@ import { supabase, profile, openOverlay, showToast, loadProfileData, closeOverla
         console.error("Payment Error:", e);
         showToast("Xatolik: " + (e.message || "Ulanib bo'lmadi"));
         btn.disabled = false;
-        // Fix: Use double quotes to handle single quote in the Uzbek word "O'TISH" correctly within innerHTML
         btn.innerHTML = "TO'LOVGA O'TISH <i class=\"fas fa-external-link-alt\"></i>";
     }
 };

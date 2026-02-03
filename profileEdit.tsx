@@ -3,7 +3,7 @@ import { supabase, profile, showToast, openOverlay, loadProfileData, closeOverla
 
 export const BAGDOD_MAHALLALARI = ["Tuman Markazi", "Guliston shahri", "Markaz", "Guliston", "Istiqlol", "Bog'dod", "Samarqand", "Tinchlik", "Navoiy", "Paxtaobod", "Zafar", "Nurafshon", "Do'stlik", "Ahillik", "Obod", "Farovon", "Yangi hayot"];
 
-(window as any).openProfileEdit = () => {
+export const openProfileEdit = () => {
     if(!profile) return showToast("Profil yuklanmagan");
     const placeholder = document.getElementById('profileEditPlaceholder');
     if(!placeholder) return;
@@ -58,6 +58,8 @@ export const BAGDOD_MAHALLALARI = ["Tuman Markazi", "Guliston shahri", "Markaz",
     `;
     openOverlay('profileEditOverlay');
 };
+
+(window as any).openProfileEdit = openProfileEdit;
 
 (window as any).saveProfileChanges = async () => {
     const btn = document.getElementById('btnSaveProfile') as HTMLButtonElement;

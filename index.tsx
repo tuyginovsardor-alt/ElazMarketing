@@ -25,6 +25,7 @@ export function showToast(msg: string) {
         setTimeout(() => { if(t) t.style.display = 'none'; }, 3000);
     }
 }
+(window as any).showToast = showToast;
 
 export function openOverlay(id: string) {
     const el = document.getElementById(id);
@@ -34,6 +35,7 @@ export function openOverlay(id: string) {
         window.history.pushState({ overlay: id }, "", "");
     }
 }
+(window as any).openOverlay = openOverlay;
 
 export function closeOverlay(id: string) {
     const el = document.getElementById(id);
@@ -42,6 +44,7 @@ export function closeOverlay(id: string) {
         if(currentOverlayId === id) currentOverlayId = null;
     }
 }
+(window as any).closeOverlay = closeOverlay;
 
 window.onpopstate = (event) => {
     const overlays = document.querySelectorAll('.overlay');
@@ -92,7 +95,6 @@ export const addToCart = async (id: number, qty = 1) => {
 export async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
     
-    // Har doim appContainer ko'rinishini ta'minlash
     const app = document.getElementById('appContainer');
     const admin = document.getElementById('adminPanel');
     if(app) app.style.display = 'flex';
@@ -105,12 +107,10 @@ export async function checkAuth() {
         if (!profile?.district) {
             import("./location.tsx").then(m => m.openLocationSetup());
         } else {
-            // Role-based logic
             if(profile.role === 'courier') {
                 showView('courier');
                 import("./courierDashboard.tsx").then(m => m.renderCourierDashboard());
             } else {
-                // Adminlar ham Market ko'rinishiga kiradi, lekin profildan panelga o'ta oladi
                 showView('home');
                 renderHomeView();
             }
@@ -154,9 +154,9 @@ export const handleSignOut = async () => {
     await supabase.auth.signOut();
     window.location.reload();
 };
+(window as any).handleSignOut = handleSignOut;
 
 export function showView(viewId: string) {
-    // Admin paneldan chiqish (agar ochiq bo'lsa)
     const app = document.getElementById('appContainer');
     const admin = document.getElementById('adminPanel');
     if(app) app.style.display = 'flex';
@@ -172,6 +172,7 @@ export function showView(viewId: string) {
     if(header) header.style.display = showNavHeader ? 'flex' : 'none';
     if(nav) nav.style.display = showNavHeader ? 'flex' : 'none';
 }
+(window as any).showView = showView;
 
 (window as any).navTo = (view: string) => {
     showView(view);

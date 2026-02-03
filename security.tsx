@@ -1,7 +1,7 @@
 
 import { supabase, showToast, openOverlay, closeOverlay } from "./index.tsx";
 
-(window as any).openProfileSecurity = () => {
+export const openProfileSecurity = () => {
     const placeholder = document.getElementById('profileSecurityPlaceholder');
     if(!placeholder) return;
     
@@ -28,6 +28,8 @@ import { supabase, showToast, openOverlay, closeOverlay } from "./index.tsx";
     `;
     openOverlay('profileSecurityOverlay');
 };
+
+(window as any).openProfileSecurity = openProfileSecurity;
 
 (window as any).updateUserPassword = async () => {
     const p1 = (document.getElementById('newPass') as HTMLInputElement).value;

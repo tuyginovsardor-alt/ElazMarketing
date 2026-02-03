@@ -58,7 +58,7 @@ export async function renderProfileView(data) {
                 </div>
             </div>
 
-            <!-- STATS CARDS (RASMDAGIDEK) -->
+            <!-- STATS CARDS -->
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:25px;">
                 <div style="background:#22c55e; color:white; padding:22px; border-radius:28px; box-shadow: 0 10px 30px rgba(34,197,94,0.18);">
                     <p style="font-size:0.7rem; font-weight:800; opacity:0.8; letter-spacing:1px; text-transform:uppercase;">BALANS</p>
@@ -72,19 +72,19 @@ export async function renderProfileView(data) {
 
             <!-- MENU LIST -->
             <div class="card" style="padding:10px; border-radius:30px; border:1px solid #f1f5f9; margin-bottom:25px; overflow:hidden; background:white; box-shadow:var(--shadow-sm);">
-                <div class="menu-item" onclick="import('./profileEdit.tsx').then(m => (window as any).openProfileEdit())" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                <div class="menu-item" onclick="import('./profileEdit.tsx').then(m => m.openProfileEdit())" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
                     <div style="width:44px; height:44px; background:#f0fdf4; border-radius:14px; display:flex; align-items:center; justify-content:center; color:var(--primary);"><i class="fas fa-user-edit" style="font-size:1.1rem;"></i></div>
                     <div style="flex:1; font-weight:800; font-size:1rem; color:var(--text);">Ma'lumotlarni tahrirlash</div>
                     <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
                 </div>
                 
-                <div class="menu-item" onclick="import('./payment.tsx').then(m => (window as any).openPaymentView())" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                <div class="menu-item" onclick="import('./payment.tsx').then(m => m.openPaymentView())" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
                     <div style="width:44px; height:44px; background:#eff6ff; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#3b82f6;"><i class="fas fa-wallet" style="font-size:1.1rem;"></i></div>
                     <div style="flex:1; font-weight:800; font-size:1rem; color:var(--text);">Hamyon va To'lovlar</div>
                     <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
                 </div>
 
-                <div class="menu-item" onclick="import('./security.tsx').then(m => (window as any).openProfileSecurity())" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                <div class="menu-item" onclick="import('./security.tsx').then(m => m.openProfileSecurity())" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
                     <div style="width:44px; height:44px; background:#f5f3ff; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#8b5cf6;"><i class="fas fa-shield-alt" style="font-size:1.1rem;"></i></div>
                     <div style="flex:1; font-weight:800; font-size:1rem; color:var(--text);">Xavfsizlik</div>
                     <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
