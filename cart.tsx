@@ -101,7 +101,7 @@ export const removeFromCart = async (pId: number) => {
     placeholder.innerHTML = `
         <div style="padding-bottom:50px;">
             <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px; position:sticky; top:0; background:white; z-index:10; padding:10px 0;">
-                <i class="fas fa-arrow-left" onclick="closeOverlay('checkoutOverlay')" style="font-size:1.4rem; cursor:pointer; color:var(--text);"></i>
+                <i class="fas fa-arrow-left" onclick="closeOverlay('checkoutOverlay')" style="font-size:1.4rem; cursor:pointer; color:var(--text); padding:10px 0;"></i>
                 <h2 style="font-weight:900; font-size:1.4rem;">Rasmiylashtirish</h2>
             </div>
             
@@ -157,7 +157,7 @@ export const removeFromCart = async (pId: number) => {
             </div>
             
             <button class="btn btn-primary" id="btnPlaceOrder" style="width:100%; height:65px; margin-top:30px; border-radius:22px; font-size:1.2rem; box-shadow:0 10px 25px rgba(34,197,94,0.3);" onclick="placeOrderFinal()">
-                BUYURTMANI TASDIQLASH <i class="fas fa-check-double"></i>
+                BUYURTMANI YUBORISH <i class="fas fa-check-double"></i>
             </button>
         </div>
     `;
@@ -242,23 +242,21 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
         total_price: subtotalAmount,
         latitude: selectedPos.lat,
         longitude: selectedPos.lng,
-        status: 'pending',
+        status: 'confirmed', // Mijoz buyurtma berganda avtomatik tasdiqlangan holatda bo'ladi
         phone_number: profile.phone,
         address_text: `${selectedArea}, ${profile.district || ''}`,
         delivery_cost: Math.round(deliveryCost),
-        // Izohni address_text'ga yoki alohida column bo'lsa o'shanga qo'shamiz
-        // Hozircha address_text'ga qo'shib qo'yamiz kuryer ko'rishi uchun
         notes: comment 
     });
 
     if(!error) {
         await supabase.from('cart_items').delete().eq('user_id', user?.id);
-        showToast("Buyurtma qabul qilindi! 🚀");
+        showToast("Buyurtma yuborildi! Kuryerlar hozir ko'rishadi 🚀");
         closeOverlay('checkoutOverlay');
         (window as any).navTo('orders');
     } else {
         showToast("Xato: " + error.message);
         btn.disabled = false;
-        btn.innerText = "BUYURTMANI TASDIQLASH";
+        btn.innerText = "BUYURTMANI YUBORISH";
     }
 };

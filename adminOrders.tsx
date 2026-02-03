@@ -18,16 +18,15 @@ export async function renderAdminOrders() {
         <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:20px; padding:10px;">
             ${orders.map(o => `
                 <div class="card" style="padding:20px; border-radius:24px; background:white; border:1px solid #f1f5f9; box-shadow:var(--shadow-sm); position:relative; overflow:hidden;">
-                    ${o.status === 'pending' ? '<div style="position:absolute; top:0; left:0; width:4px; height:100%; background:var(--danger);"></div>' : ''}
-                    ${o.status === 'confirmed' ? '<div style="position:absolute; top:0; left:0; width:4px; height:100%; background:var(--primary);"></div>' : ''}
+                    <div style="position:absolute; top:0; left:0; width:4px; height:100%; background:${o.status === 'delivered' ? 'var(--primary)' : (o.status === 'cancelled' ? 'var(--danger)' : '#3b82f6')};"></div>
 
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                         <div>
                             <b style="font-size:1.1rem;">#ORD-${o.id}</b>
                             <div style="font-size:0.7rem; color:var(--gray); font-weight:700;">${new Date(o.created_at).toLocaleString()}</div>
                         </div>
-                        <span style="padding:5px 12px; border-radius:10px; background:${o.status === 'pending' ? '#fef2f2' : (o.status === 'confirmed' ? '#f0fdf4' : '#f1f5f9')}; font-size:0.7rem; font-weight:900; text-transform:uppercase; color:${o.status === 'pending' ? '#ef4444' : (o.status === 'confirmed' ? 'var(--primary)' : 'var(--gray)')};">
-                            ${o.status === 'pending' ? 'YANGI' : (o.status === 'confirmed' ? 'TASDIQLANGAN' : o.status)}
+                        <span style="padding:5px 12px; border-radius:10px; background:#f1f5f9; font-size:0.7rem; font-weight:900; text-transform:uppercase; color:var(--gray);">
+                            ${o.status.toUpperCase()}
                         </span>
                     </div>
                     
@@ -42,12 +41,6 @@ export async function renderAdminOrders() {
                     </div>
 
                     <div style="display:flex; gap:10px;">
-                        ${o.status === 'pending' ? `
-                            <button class="btn btn-primary" style="flex:1; height:45px; font-size:0.8rem; background:var(--primary);" onclick="confirmOrderByAdmin(${o.id})">
-                                <i class="fas fa-check-circle"></i> TASDIQLASH
-                            </button>
-                        ` : ''}
-                        
                         ${o.latitude ? `
                             <a href="https://www.google.com/maps?q=${o.latitude},${o.longitude}" target="_blank" class="btn btn-outline" style="width:50px; height:45px; padding:0; border-radius:12px; display:flex; align-items:center; justify-content:center;">
                                 <i class="fas fa-location-arrow" style="color:var(--primary);"></i>
@@ -63,14 +56,6 @@ export async function renderAdminOrders() {
         </div>
     `;
 }
-
-(window as any).confirmOrderByAdmin = async (id: number) => {
-    const { error } = await supabase.from('orders').update({ status: 'confirmed' }).eq('id', id);
-    if(!error) {
-        showToast("Buyurtma tasdiqlandi! Kuryerlar uni ko'rishlari mumkin.");
-        renderAdminOrders();
-    }
-};
 
 (window as any).cancelOrderByAdmin = async (id: number) => {
     if(!confirm("Buyurtmani bekor qilasizmi?")) return;

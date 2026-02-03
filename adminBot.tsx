@@ -7,7 +7,6 @@ let lastUpdateId = 0;
 let orderListener: any = null;
 const WEBSITE_URL = window.location.origin;
 
-// Bot sessiyalari (Ariza to'ldirish bosqichlari uchun)
 const botSessions: Record<number, { step: string, data: any }> = {};
 
 export async function renderAdminBot() {
@@ -19,10 +18,10 @@ export async function renderAdminBot() {
             <div style="display:flex; flex-direction:column; gap:20px;">
                 <div class="card" style="border-radius:24px; padding:20px; background:white; border:none; box-shadow:var(--shadow-sm);">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                        <h3 style="font-weight:900;">Bot Tokenlari</h3>
-                        <button class="btn btn-primary" style="height:32px; font-size:0.7rem; width:auto; padding:0 15px;" onclick="openAddBotModal()">QO'SHISH</button>
+                        <h3 style="font-weight:900;">Bot Sozlamalari</h3>
+                        <button class="btn btn-primary" style="height:32px; font-size:0.7rem; width:auto; padding:0 15px;" onclick="startGlobalBot()">BOTNI YOQISH</button>
                     </div>
-                    <div id="botConfigsList"></div>
+                    <p style="font-size:0.75rem; color:var(--gray);">Token: <code id="activeTokenDisplay">...</code></p>
                 </div>
 
                 <div class="card" style="border-radius:24px; padding:20px; background:var(--dark); color:white;">
@@ -30,55 +29,40 @@ export async function renderAdminBot() {
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                         <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:12px;">
                             <div style="font-size:0.6rem; opacity:0.6;">HOLAT</div>
-                            <div id="botEngineStatus" style="font-size:0.8rem; font-weight:900; color:${isPolling ? 'var(--primary)' : 'var(--danger)'};">${isPolling ? 'RUNNING' : 'STOPPED'}</div>
+                            <div id="botEngineStatus" style="font-size:0.8rem; font-weight:900; color:var(--primary);">ACTIVE</div>
                         </div>
                         <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:12px;">
-                            <div style="font-size:0.6rem; opacity:0.6;">SESSIONS</div>
-                            <div style="font-size:0.8rem; font-weight:900;">${Object.keys(botSessions).length} active</div>
+                            <div style="font-size:0.6rem; opacity:0.6;">POLLING</div>
+                            <div id="pollingStatus" style="font-size:0.8rem; font-weight:900;">...</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div style="display:flex; flex-direction:column; gap:20px;">
-                <div class="card" style="background:#020617; color:#10b981; font-family:'Fira Code', monospace; padding:20px; border-radius:24px; flex:1; display:flex; flex-direction:column; box-shadow:0 15px 35px rgba(0,0,0,0.3); border:1px solid #1e293b; overflow:hidden;">
-                    <div id="botLogsContainer" style="flex:1; overflow-y:auto; font-size:0.75rem; line-height:1.6;">
-                        <div style="color:#64748b;">[${new Date().toLocaleTimeString()}] Engine initialized.</div>
-                    </div>
+            <div class="card" style="background:#020617; color:#10b981; font-family:'Fira Code', monospace; padding:20px; border-radius:24px; display:flex; flex-direction:column; box-shadow:0 15px 35px rgba(0,0,0,0.3); border:1px solid #1e293b; overflow:hidden;">
+                <div id="botLogsContainer" style="flex:1; overflow-y:auto; font-size:0.75rem; line-height:1.6; height:400px;">
+                    <div style="color:#64748b;">[${new Date().toLocaleTimeString()}] Bot engine tayyor.</div>
                 </div>
             </div>
         </div>
     `;
 
-    loadBotConfigs();
-}
-
-async function loadBotConfigs() {
-    const listEl = document.getElementById('botConfigsList');
-    if(!listEl) return;
-    const { data: configs } = await supabase.from('bot_configs').select('*');
-    if(!configs) return;
-    listEl.innerHTML = configs.map(c => `
-        <div style="padding:12px; border-radius:14px; background:#f8fafc; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-weight:700; font-size:0.85rem;">${c.bot_name}</div>
-            <button class="btn" style="width:32px; height:32px; background:${isPolling && activeBotToken === c.token ? 'var(--danger)' : 'var(--primary)'}; color:white; padding:0;" onclick="runThisBot('${c.token}', '${c.bot_name}')">
-                <i class="fas ${isPolling && activeBotToken === c.token ? 'fa-stop' : 'fa-play'}"></i>
-            </button>
-        </div>
-    `).join('');
-}
-
-(window as any).runThisBot = async (token: string, name: string) => {
-    if(isPolling && activeBotToken === token) {
-        isPolling = false;
-        activeBotToken = '';
-    } else {
-        isPolling = true;
-        activeBotToken = token;
-        startPollingLoop();
-        setupOrderListener();
+    // Avtomatik tokenni olish
+    const { data } = await supabase.from('app_settings').select('value').eq('key', 'bot_config').single();
+    if(data?.value?.token) {
+        activeBotToken = data.value.token;
+        document.getElementById('activeTokenDisplay')!.innerText = activeBotToken.substring(0,10) + '...';
     }
-    renderAdminBot();
+}
+
+(window as any).startGlobalBot = () => {
+    if(!activeBotToken) return showToast("Bot tokeni sozlamalarda ko'rsatilmagan!");
+    if(isPolling) return showToast("Bot allaqachon ishlamoqda");
+    isPolling = true;
+    document.getElementById('pollingStatus')!.innerText = "RUNNING";
+    startPollingLoop();
+    setupOrderListener();
+    showToast("Bot polling ishga tushdi! 🤖");
 };
 
 async function startPollingLoop() {
@@ -92,106 +76,92 @@ async function startPollingLoop() {
                     lastUpdateId = u.update_id + 1;
                 }
             }
-        } catch(e) {}
+        } catch(e) { console.error("Polling error", e); }
         await new Promise(res => setTimeout(res, 1000));
     }
 }
 
 async function handleBotUpdate(update: any) {
-    const msg = update.message || update.callback_query?.message;
-    if(!msg) return;
-    const chatId = msg.chat.id;
-    const text = update.message?.text;
-    const data = update.callback_query?.data;
+    const msg = update.message;
+    const callback = update.callback_query;
+    
+    const chatId = msg ? msg.chat.id : callback.message.chat.id;
+    const text = msg?.text;
+    const data = callback?.data;
 
     const mainKeyboard = {
-        keyboard: [[{ text: "👤 Profil" }, { text: "🛒 Savatim" }], [{ text: "🌏 Saytni ochish" }], [{ text: "🛵 Kuryerlikka ariza" }]],
+        keyboard: [[{ text: "🟢 Ishga tushish" }, { text: "🔴 Dam olish" }], [{ text: "👤 Profil" }, { text: "📦 Buyurtmalarim" }]],
         resize_keyboard: true
     };
 
-    // 1. Kuryerlik arizasi logic (Step-by-step)
-    if (text === "🛵 Kuryerlikka ariza") {
-        const { data: p } = await supabase.from('profiles').select('role, is_approved').eq('telegram_id', chatId).maybeSingle();
-        if (p?.role === 'courier') return sendMessage(chatId, "✅ Siz allaqachon kuryersiz!");
+    // --- 1. Buyurtmani qabul qilish (Callback) ---
+    if (data && data.startsWith('accept_')) {
+        const orderId = data.split('_')[1];
+        addBotLog('SYS', `Order ${orderId} accept request from ${chatId}`);
         
-        botSessions[chatId] = { step: 'ask_transport', data: {} };
-        sendMessage(chatId, "🛵 <b>Kuryerlikka ariza berish</b>\n\nTransport turini tanlang:", {
-            inline_keyboard: [[{ text: "🚶 Piyoda", callback_data: "apply_walking" }, { text: "🚲 Velo", callback_data: "apply_bicycle" }, { text: "🚗 Mashina", callback_data: "apply_car" }]]
-        });
-        return;
-    }
+        // Kuryerni topish
+        const { data: courier } = await supabase.from('profiles').select('id, full_name').eq('telegram_id', chatId).single();
+        if(!courier) return answerCallback(callback.id, "Profilingiz topilmadi!");
 
-    if (data && data.startsWith('apply_')) {
-        const transport = data.split('_')[1];
-        botSessions[chatId].data.transport = transport;
-        botSessions[chatId].step = 'ask_zone';
-        sendMessage(chatId, `Siz tanladingiz: <b>${transport}</b>\n\nEndi xizmat ko'rsatish hududingizni tanlang:`, {
-            inline_keyboard: [[{ text: "📍 Tuman Markazi", callback_data: "zone_markaz" }], [{ text: "🏙️ Guliston shahri", callback_data: "zone_guliston" }]]
-        });
-        return;
-    }
+        // Buyurtmani band qilish
+        const { data: order } = await supabase.from('orders').select('status, courier_id').eq('id', orderId).single();
+        if(order && order.courier_id) return answerCallback(callback.id, "Bu buyurtma allaqachon olingan!");
 
-    if (data && data.startsWith('zone_')) {
-        const zone = data.split('_')[1];
-        botSessions[chatId].data.zone = zone;
-        
-        // Arizani bazaga saqlash
-        const { data: uProfile } = await supabase.from('profiles').select('id, first_name, last_name, phone').eq('telegram_id', chatId).maybeSingle();
-        if (!uProfile) return sendMessage(chatId, "❌ Avval saytda ro'yxatdan o'ting!");
+        const { error } = await supabase.from('orders').update({ 
+            courier_id: courier.id, 
+            status: 'delivering' 
+        }).eq('id', orderId);
 
-        await supabase.from('courier_applications').insert({
-            user_id: uProfile.id,
-            full_name: `${uProfile.first_name} ${uProfile.last_name || ''}`,
-            transport_type: botSessions[chatId].data.transport,
-            phone: uProfile.phone,
-            status: 'pending'
-        });
-
-        delete botSessions[chatId];
-        sendMessage(chatId, "✅ <b>Arizangiz qabul qilindi!</b>\n\nAdminlar ko'rib chiqib sizni kuryerlar ro'yxatiga qo'shishadi. Tasdiqlangach sizga xabar yuboramiz.");
-        return;
-    }
-
-    // 2. Savatim logic (Bot ichida ro'yxat)
-    if (text === "🛒 Savatim") {
-        const { data: u } = await supabase.from('profiles').select('id').eq('telegram_id', chatId).maybeSingle();
-        if (!u) return sendMessage(chatId, "❌ Profil bog'lanmagan.");
-
-        const { data: items } = await supabase.from('cart_items').select('quantity, products(name, price)').eq('user_id', u.id);
-        if (!items || items.length === 0) return sendMessage(chatId, "🛒 Savatchangiz hozircha bo'sh.");
-
-        let cartText = "🛒 <b>SAVATCHANGIZ:</b>\n\n";
-        let total = 0;
-        items.forEach((item: any, i) => {
-            const sum = item.quantity * item.products.price;
-            total += sum;
-            cartText += `${i+1}. ${item.products.name} x ${item.quantity} = ${sum.toLocaleString()} so'm\n`;
-        });
-        cartText += `\n<b>JAMI: ${total.toLocaleString()} so'm</b>\n\nRasmiylashtirish uchun saytga o'ting: ${WEBSITE_URL}/?view=cart`;
-        sendMessage(chatId, cartText);
-        return;
-    }
-
-    // 3. Profil va Statistika
-    if (text === "👤 Profil") {
-        const { data: p } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
-        if (!p) return sendMessage(chatId, "❌ Profil topilmadi.");
-
-        let profileText = `👤 <b>PROFILINGIZ:</b>\n\nIsm: ${p.first_name}\nBalans: ${p.balance.toLocaleString()} so'm\n`;
-        
-        if (p.role === 'courier') {
-            const { count } = await supabase.from('orders').select('*', { count: 'exact', head: true }).eq('courier_id', p.id).eq('status', 'delivered');
-            profileText += `Rol: 🛵 KURYER\nBajarilgan buyurtmalar: 📦 ${count || 0} ta\nHolat: ${p.active_status ? '🟢 Onlayn' : '🔴 Oflayn'}`;
+        if(!error) {
+            sendMessage(chatId, `✅ <b>Buyurtma #ORD-${orderId} qabul qilindi!</b>\n\nManzil sari yo'lga chiqing. Yetkazib bo'lgach "YETKAZDIM" tugmasini bosing.`, {
+                inline_keyboard: [[{ text: "🏁 YETKAZDIM", callback_data: `finish_${orderId}` }]]
+            });
+            answerCallback(callback.id, "Muvaffaqiyatli!");
         } else {
-            profileText += `Rol: 👤 Mijoz`;
+            answerCallback(callback.id, "Xatolik yuz berdi");
         }
-        
-        sendMessage(chatId, profileText, mainKeyboard);
         return;
     }
 
+    // --- 2. Buyurtmani yakunlash (Callback) ---
+    if (data && data.startsWith('finish_')) {
+        const orderId = data.split('_')[1];
+        const { data: order } = await supabase.from('orders').select('delivery_cost').eq('id', orderId).single();
+        
+        const { error } = await supabase.from('orders').update({ status: 'delivered' }).eq('id', orderId);
+        if(!error) {
+            // Balansni yangilash
+            const { data: courier } = await supabase.from('profiles').select('id, balance').eq('telegram_id', chatId).single();
+            await supabase.from('profiles').update({ balance: (courier.balance || 0) + (order.delivery_cost || 5000) }).eq('id', courier.id);
+            
+            sendMessage(chatId, `🎉 <b>Barakalla!</b>\n\nBuyurtma #ORD-${orderId} yakunlandi. Daromad: ${order.delivery_cost.toLocaleString()} so'm hamyoningizga qo'shildi.`);
+            answerCallback(callback.id, "Yakunlandi!");
+        }
+        return;
+    }
+
+    // --- 3. Statusni o'zgartirish ---
+    if (text === "🟢 Ishga tushish") {
+        const { error } = await supabase.from('profiles').update({ active_status: true, telegram_id: chatId }).eq('telegram_id', chatId);
+        if(!error) sendMessage(chatId, "🟢 Siz <b>ONLAYN</b> holatdasiz. Buyurtmalar kutavering!", mainKeyboard);
+        else sendMessage(chatId, "❌ Profil bog'lanmagan. Ilovada ro'yxatdan o'ting.");
+        return;
+    }
+
+    if (text === "🔴 Dam olish") {
+        await supabase.from('profiles').update({ active_status: false }).eq('telegram_id', chatId);
+        sendMessage(chatId, "🔴 Siz <b>OFFLINE</b> holatdasiz.", mainKeyboard);
+        return;
+    }
+
+    // --- 4. Start ---
     if (text === '/start') {
-        sendMessage(chatId, `🏢 <b>ELAZ MARKET Rasmiy Boti</b>\n\nXush kelibsiz! Kerakli bo'limni tanlang:`, mainKeyboard);
+        const { data: p } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
+        if(p) {
+            sendMessage(chatId, `Assalomu alaykum, <b>${p.first_name}</b>!\n\nHolatingiz: ${p.active_status ? '🟢 Onlayn' : '🔴 Oflayn'}`, mainKeyboard);
+        } else {
+            sendMessage(chatId, "Assalomu alaykum! Ilovadagi <b>Telegram ID</b>ingizni ushbu botga bog'lash uchun profilingizga kiring.");
+        }
     }
 }
 
@@ -202,6 +172,7 @@ async function sendMessage(chatId: number, text: string, replyMarkup: any = {}) 
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', reply_markup: replyMarkup })
         });
+        addBotLog('OUT', `To ${chatId}: ${text.substring(0,30)}...`);
     } catch(e) {}
 }
 
@@ -215,26 +186,36 @@ async function answerCallback(id: string, text: string) {
 
 function setupOrderListener() {
     if(orderListener) supabase.removeChannel(orderListener);
-    orderListener = supabase.channel('orders')
-        .on('postgres_changes', { event: 'UPDATE', table: 'orders', filter: 'status=eq.confirmed' }, payload => {
-            if(!payload.new.courier_id) notifyCouriers(payload.new);
+    
+    // ENDI: Yangi buyurtma yaratilganda (INSERT) va statusi confirmed bo'lganda ishlaydi
+    orderListener = supabase.channel('order_notifications')
+        .on('postgres_changes', { event: 'INSERT', table: 'orders' }, payload => {
+            if(payload.new.status === 'confirmed') {
+                notifyCouriers(payload.new);
+            }
         })
         .subscribe();
 }
 
 async function notifyCouriers(order: any) {
     const { data: couriers } = await supabase.from('profiles').select('telegram_id').eq('role', 'courier').eq('active_status', true);
-    if(!couriers) return;
-    const msgText = `📦 <b>YANGI BUYURTMA! #${order.id}</b>\n💰 Summa: ${order.total_price.toLocaleString()} so'm\n📍 Manzil: ${order.address_text}`;
+    if(!couriers || couriers.length === 0) {
+        addBotLog('WARN', "Onlayn kuryerlar topilmadi.");
+        return;
+    }
+
+    const msgText = `📦 <b>YANGI BUYURTMA! #ORD-${order.id}</b>\n\n💰 Summa: ${order.total_price.toLocaleString()} so'm\n📍 Manzil: ${order.address_text}\n🚲 Yetkazish haqi: <b>${order.delivery_cost.toLocaleString()} so'm</b>`;
     const keyboard = { inline_keyboard: [[{ text: "✅ QABUL QILISH", callback_data: `accept_${order.id}` }]] };
+    
     for(const c of couriers) {
         if(c.telegram_id) sendMessage(c.telegram_id, msgText, keyboard);
     }
+    addBotLog('SYS', `Notification sent to ${couriers.length} couriers.`);
 }
 
 function addBotLog(type: string, msg: string) {
     const logEl = document.getElementById('botLogsContainer');
     if(!logEl) return;
-    logEl.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+    logEl.innerHTML += `<div><span style="color:#94a3b8;">[${new Date().toLocaleTimeString()}]</span> <b style="color:${type === 'SYS' ? '#10b981' : '#f43f5e'}">${type}:</b> ${msg}</div>`;
     logEl.scrollTop = logEl.scrollHeight;
 }
