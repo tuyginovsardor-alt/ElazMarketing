@@ -91,16 +91,26 @@ export const addToCart = async (id: number, qty = 1) => {
 
 export async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
+    
+    // Har doim appContainer ko'rinishini ta'minlash
+    const app = document.getElementById('appContainer');
+    const admin = document.getElementById('adminPanel');
+    if(app) app.style.display = 'flex';
+    if(admin) admin.style.display = 'none';
+
     if (session?.user) {
         user = session.user;
         await loadProfileData();
+        
         if (!profile?.district) {
             import("./location.tsx").then(m => m.openLocationSetup());
         } else {
+            // Role-based logic
             if(profile.role === 'courier') {
                 showView('courier');
                 import("./courierDashboard.tsx").then(m => m.renderCourierDashboard());
             } else {
+                // Adminlar ham Market ko'rinishiga kiradi, lekin profildan panelga o'ta oladi
                 showView('home');
                 renderHomeView();
             }
@@ -146,6 +156,12 @@ export const handleSignOut = async () => {
 };
 
 export function showView(viewId: string) {
+    // Admin paneldan chiqish (agar ochiq bo'lsa)
+    const app = document.getElementById('appContainer');
+    const admin = document.getElementById('adminPanel');
+    if(app) app.style.display = 'flex';
+    if(admin) admin.style.display = 'none';
+
     document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
     const target = document.getElementById(viewId + 'View') || document.getElementById('homeView');
     if(target) target.classList.add('active');
@@ -183,8 +199,12 @@ export function showView(viewId: string) {
 };
 
 (window as any).exitAdminPanel = () => {
-    document.getElementById('adminPanel')!.style.display = 'none';
-    document.getElementById('appContainer')!.style.display = 'flex';
+    const panel = document.getElementById('adminPanel');
+    const app = document.getElementById('appContainer');
+    if(panel && app) {
+        panel.style.display = 'none';
+        app.style.display = 'flex';
+    }
     (window as any).navTo('profile');
 };
 
