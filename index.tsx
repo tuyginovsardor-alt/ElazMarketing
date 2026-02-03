@@ -1,0 +1,191 @@
+
+import { renderAuthView } from "./auth.tsx";
+import { renderProfileView } from "./profile.tsx";
+import { renderHomeView } from "./home.tsx";
+import { renderCartView } from "./cart.tsx";
+import { renderOrdersView } from "./ordersView.tsx";
+import { renderSavedView } from "./savedView.tsx";
+import { renderWelcomeView } from "./welcome.tsx";
+
+const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || "";
+const SUPABASE_KEY = (import.meta as any).env?.VITE_SUPABASE_KEY || "";
+
+// @ts-ignore
+export const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+export let user = null;
+export let profile = null;
+let currentOverlayId = null;
+
+export function showToast(msg: string) {
+    const t = document.getElementById('toast');
+    if(t) {
+        t.innerText = msg;
+        t.style.display = 'block';
+        setTimeout(() => { if(t) t.style.display = 'none'; }, 3000);
+    }
+}
+
+export function openOverlay(id: string) {
+    const el = document.getElementById(id);
+    if(el) {
+        el.style.display = 'block';
+        currentOverlayId = id;
+        window.history.pushState({ overlay: id }, "", "");
+    }
+}
+
+export function closeOverlay(id: string) {
+    const el = document.getElementById(id);
+    if(el) {
+        el.style.display = 'none';
+        if(currentOverlayId === id) currentOverlayId = null;
+    }
+}
+
+window.onpopstate = (event) => {
+    const overlays = document.querySelectorAll('.overlay');
+    overlays.forEach(ov => {
+        (ov as HTMLElement).style.display = 'none';
+    });
+    currentOverlayId = null;
+};
+
+// Mahsulot batafsil oynasini ochish
+(window as any).openProductDetails = async (id: number) => {
+    const { data: prod } = await supabase.from('products').select('*').eq('id', id).single();
+    if (prod) {
+        const { renderProductDetails } = await import("./productDetails.tsx");
+        renderProductDetails(prod);
+    }
+};
+
+(window as any).toggleLike = async (id: number, el: HTMLElement) => {
+    if(!user) return showToast("Tizimga kiring");
+    const isLiked = el.classList.contains('fas');
+    if(isLiked) {
+        await supabase.from('wishlist').delete().eq('user_id', user.id).eq('product_id', id);
+        el.classList.replace('fas', 'far'); el.style.color = '#cbd5e1';
+    } else {
+        await supabase.from('wishlist').insert({ user_id: user.id, product_id: id });
+        el.classList.replace('far', 'fas'); el.style.color = '#f43f5e';
+        showToast("Tanlanganlarga qo'shildi ❤️");
+    }
+};
+
+export const addToCart = async (id: number, qty = 1) => {
+    if(!user) return showToast("Tizimga kiring");
+    
+    // Avval savatda bor-yo'qligini tekshirish
+    const { data: existing } = await supabase.from('cart_items').select('*').eq('user_id', user.id).eq('product_id', id).maybeSingle();
+    
+    if(existing) {
+        const { error } = await supabase.from('cart_items').update({ quantity: existing.quantity + qty }).eq('id', existing.id);
+        if(!error) showToast("Savatdagi miqdor yangilandi! 🛒");
+    } else {
+        const { error } = await supabase.from('cart_items').insert([{ user_id: user.id, product_id: id, quantity: qty }]);
+        if(!error) showToast("Savatga qo'shildi! 🛒");
+    }
+};
+(window as any).addToCart = addToCart;
+
+export async function checkAuth() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+        user = session.user;
+        await loadProfileData();
+        if (!profile?.district) {
+            import("./location.tsx").then(m => m.openLocationSetup());
+        } else {
+            if(profile.role === 'courier') {
+                showView('courier');
+                import("./courierDashboard.tsx").then(m => m.renderCourierDashboard());
+            } else {
+                showView('home');
+                renderHomeView();
+            }
+        }
+    } else {
+        user = null; profile = null;
+        if(!localStorage.getItem('welcomeShown')) {
+            showView('welcome');
+            renderWelcomeView(() => {
+                localStorage.setItem('welcomeShown', 'true');
+                showView('auth');
+                renderAuthView('login');
+            });
+        } else {
+            showView('auth');
+            renderAuthView('login');
+        }
+    }
+}
+
+export async function loadProfileData() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if(!session?.user) return;
+    user = session.user;
+    try {
+        let { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+        if (!data && !error) {
+            data = (await supabase.from('profiles').insert([{ 
+                id: user.id, email: user.email, 
+                first_name: user.user_metadata?.first_name || user.email?.split('@')[0],
+                role: 'user', balance: 0, is_subscribed: true
+            }]).select().single()).data;
+        }
+        profile = data;
+        const rb = document.getElementById('roleBadge');
+        if(rb && profile) rb.innerHTML = `<span style="background:var(--primary-light); color:var(--primary); padding:6px 14px; border-radius:14px; font-size:0.65rem; font-weight:900; text-transform:uppercase; border:1px solid var(--primary);">${profile.role}</span>`;
+    } catch (e) { console.error(e); }
+}
+
+export const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    window.location.reload();
+};
+
+export function showView(viewId: string) {
+    document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
+    const target = document.getElementById(viewId + 'View') || document.getElementById('homeView');
+    if(target) target.classList.add('active');
+    
+    const header = document.getElementById('appHeader');
+    const nav = document.getElementById('bottomNav');
+    const showNavHeader = ['home', 'cart', 'profile', 'orders', 'saved', 'courier'].includes(viewId);
+    if(header) header.style.display = showNavHeader ? 'flex' : 'none';
+    if(nav) nav.style.display = showNavHeader ? 'flex' : 'none';
+}
+
+(window as any).navTo = (view: string) => {
+    showView(view);
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const idx = {home:0, saved:1, cart:2, orders:3, profile:4, courier: 3}[view];
+    if(idx !== undefined) document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
+    
+    if(view === 'home') renderHomeView();
+    if(view === 'saved') renderSavedView();
+    if(view === 'cart') renderCartView();
+    if(view === 'orders') renderOrdersView();
+    if(view === 'profile') renderProfileView(profile);
+    if(view === 'courier') import("./courierDashboard.tsx").then(m => m.renderCourierDashboard());
+};
+
+(window as any).enterAdminPanel = () => {
+    if(!profile || (profile.role !== 'admin' && profile.role !== 'staff')) return showToast("Ruxsat yo'q");
+    const panel = document.getElementById('adminPanel');
+    const app = document.getElementById('appContainer');
+    if(panel && app) { 
+        panel.style.display = 'flex'; 
+        app.style.display = 'none'; 
+        import("./admin.tsx").then(m => (window as any).switchAdminTab('dash')); 
+    }
+};
+
+(window as any).exitAdminPanel = () => {
+    document.getElementById('adminPanel')!.style.display = 'none';
+    document.getElementById('appContainer')!.style.display = 'flex';
+    (window as any).navTo('profile');
+};
+
+window.onload = () => { checkAuth(); };

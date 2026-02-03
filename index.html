@@ -1,0 +1,165 @@
+
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ELAZ MARKET - Bag'dod tumani</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap');
+
+        :root {
+            --primary: #22c55e;
+            --primary-dark: #16a34a;
+            --primary-light: #f0fdf4;
+            --bg: #f8fafc;
+            --text: #0f172a;
+            --gray: #64748b;
+            --white: #ffffff;
+            --danger: #ef4444;
+            --dark: #1e293b;
+            --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.03);
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
+            --gradient: linear-gradient(135deg, #22c55e, #10b981);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+
+        #appContainer {
+            max-width: 450px; margin: 0 auto; background: var(--white); height: 100vh;
+            position: relative; box-shadow: 0 0 100px rgba(0,0,0,0.1);
+            display: flex; flex-direction: column; overflow: hidden; z-index: 10;
+        }
+
+        #adminPanel {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #f1f5f9; z-index: 5000; flex-direction: row;
+        }
+
+        .view-section { display: none; flex: 1; padding: 1.2rem; animation: fadeIn 0.4s ease-out; overflow-y: auto; }
+        .view-section.active { display: flex; flex-direction: column; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .btn { height: 56px; border-radius: 18px; border: none; font-weight: 700; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: all 0.3s; }
+        .btn-primary { background: var(--gradient); color: white; box-shadow: 0 8px 20px rgba(34, 197, 94, 0.25); }
+        .btn-outline { background: white; border: 2.5px solid #f1f5f9; color: var(--text); }
+
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 14px; z-index: 9999; font-weight: 700; display: none; box-shadow: var(--shadow-lg); font-size: 0.9rem; }
+
+        .bottom-nav { background: white; display: none; justify-content: space-around; padding: 12px 5px 30px; border-top: 1px solid #f1f5f9; position: sticky; bottom: 0; width: 100%; z-index: 100; box-shadow: 0 -5px 15px rgba(0,0,0,0.02); }
+        .nav-item { color: #94a3b8; text-align: center; font-size: 0.7rem; font-weight: 800; flex: 1; cursor: pointer; transition: 0.3s; }
+        .nav-item i { font-size: 1.75rem; display: block; margin-bottom: 6px; }
+        .nav-item.active { color: var(--primary); }
+
+        .overlay { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 450px; height: 100%; background: white; z-index: 6000; display: none; padding: 20px; overflow-y: auto; animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        input, select, textarea { width: 100%; padding: 15px 18px; border-radius: 16px; border: 2.5px solid #f1f5f9; background: #f8fafc; margin-bottom: 12px; font-weight: 700; outline: none; }
+
+        #deliveryMap { width: 100%; height: 250px; border-radius: 20px; margin-bottom: 20px; border: 2px solid #f1f5f9; z-index: 1; }
+
+        .admin-sidebar { width: 280px; background: var(--dark); color: white; display: flex; flex-direction: column; padding: 30px 20px; }
+        .admin-main { flex: 1; overflow-y: auto; padding: 40px; }
+        .admin-nav-item { padding: 16px 20px; border-radius: 14px; cursor: pointer; display: flex; align-items: center; gap: 15px; margin-bottom: 8px; transition: 0.3s; font-weight: 700; color: #94a3b8; }
+        .admin-nav-item.active { background: var(--primary); color: white; }
+        .admin-table { width: 100%; border-collapse: collapse; background: white; border-radius: 20px; overflow: hidden; }
+        .admin-table th { background: #f8fafc; padding: 18px 20px; text-align: left; font-size: 0.75rem; color: var(--gray); }
+        .admin-table td { padding: 18px 20px; border-bottom: 1px solid #f1f5f9; }
+
+        .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(26px); }
+
+        .menu-item:active { background: #f8fafc; transform: scale(0.98); }
+
+        @media (max-width: 450px) {
+            #appContainer { max-width: 100%; }
+            #adminPanel { flex-direction: column; }
+            .admin-sidebar { width: 100%; height: auto; padding: 10px; flex-direction: row; overflow-x: auto; }
+            .admin-main { padding: 20px; }
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.93.3",
+    "path": "https://esm.sh/path@^0.12.7",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "url": "https://esm.sh/url@^0.11.4"
+  }
+}
+</script>
+</head>
+<body>
+    <div id="toast" class="toast"></div>
+    <div id="appContainer">
+        <section id="welcomeView" class="view-section" style="padding:0;"></section>
+        <section id="authView" class="view-section"></section>
+        <header id="appHeader" style="display:none; padding:1.2rem 1.5rem; background:white; border-bottom:1px solid #f1f5f9; justify-content:space-between; align-items:center;">
+            <div style="font-weight:900; font-size:1.4rem; color:var(--text); display:flex; align-items:center; gap:10px;">
+                <div style="width:42px; height:42px; background:var(--gradient); border-radius:12px; display:flex; align-items:center; justify-content:center; color:white;"><i class="fas fa-shopping-bag"></i></div>
+                ELAZ<span style="color:var(--primary)">MARKET</span>
+            </div>
+            <div id="roleBadge"></div>
+        </header>
+        <section id="homeView" class="view-section"></section>
+        <section id="savedView" class="view-section"></section>
+        <section id="cartView" class="view-section"></section>
+        <section id="ordersView" class="view-section"></section>
+        <section id="profileView" class="view-section"></section>
+        <nav id="bottomNav" class="bottom-nav">
+            <div class="nav-item active" onclick="navTo('home')"><i class="fas fa-layer-group"></i>Market</div>
+            <div class="nav-item" onclick="navTo('saved')"><i class="far fa-heart"></i>Sevimlilar</div>
+            <div class="nav-item" onclick="navTo('cart')"><i class="fas fa-shopping-basket"></i>Savat</div>
+            <div class="nav-item" onclick="navTo('orders')"><i class="fas fa-receipt"></i>Tarix</div>
+            <div class="nav-item" onclick="navTo('profile')"><i class="far fa-user-circle"></i>Profil</div>
+        </nav>
+    </div>
+    <div id="adminPanel">
+        <aside class="admin-sidebar">
+            <div style="font-weight:900; font-size:1.5rem; margin-bottom:40px;"><i class="fas fa-user-shield"></i> CORE</div>
+            <nav style="flex:1;">
+                <div class="admin-nav-item active" onclick="switchAdminTab('dash')"><i class="fas fa-chart-pie"></i> Analitika</div>
+                <div class="admin-nav-item" onclick="switchAdminTab('inv')"><i class="fas fa-box"></i> Sklad</div>
+                <div class="admin-nav-item" onclick="switchAdminTab('orders')"><i class="fas fa-truck"></i> Buyurtmalar</div>
+                <div class="admin-nav-item" onclick="switchAdminTab('users')"><i class="fas fa-users"></i> Mijozlar</div>
+                <div class="admin-nav-item" onclick="switchAdminTab('bot')"><i class="fas fa-robot"></i> Bot Tizimi</div>
+                <div class="admin-nav-item" onclick="switchAdminTab('marketing')"><i class="fas fa-bullhorn"></i> Marketing</div>
+                <div class="admin-nav-item" onclick="switchAdminTab('settings')"><i class="fas fa-cog"></i> Sozlamalar</div>
+            </nav>
+            <button class="btn btn-outline" style="background:transparent; color:white; border-color:rgba(255,255,255,0.1);" onclick="exitAdminPanel()">CHIQISH</button>
+        </aside>
+        <main class="admin-main">
+            <h1 id="adminTabTitle" style="margin-bottom:30px; font-weight:900;">Panel</h1>
+            <div id="admin_tab_dash"></div>
+            <div id="admin_tab_inv" style="display:none;"></div>
+            <div id="admin_tab_orders" style="display:none;"></div>
+            <div id="admin_tab_users" style="display:none;"></div>
+            <div id="admin_tab_bot" style="display:none;"></div>
+            <div id="admin_tab_marketing" style="display:none;"></div>
+            <div id="admin_tab_settings" style="display:none;"></div>
+        </main>
+    </div>
+    <div id="locationOverlay" class="overlay"><div id="locationFormContainer"></div></div>
+    <div id="checkoutOverlay" class="overlay"><div id="checkoutPlaceholder"></div></div>
+    <div id="profileEditOverlay" class="overlay"><div id="profileEditPlaceholder"></div></div>
+    <div id="productEditorOverlay" class="overlay"><div id="productEditorPlaceholder"></div></div>
+    <div id="profileSecurityOverlay" class="overlay"><div id="profileSecurityPlaceholder"></div></div>
+    <div id="paymentOverlay" class="overlay"><div id="paymentPlaceholder"></div></div>
+    <script src="index.tsx" type="module"></script>
+</body>
+</html>

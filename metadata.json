@@ -1,0 +1,8 @@
+{
+  "description": "Marketing platformasi - Foydalanuvchi, Hodim va Admin rollari bilan.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ],
+  "name": "Copy of ELAZ MARKET"
+}

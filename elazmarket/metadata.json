@@ -1,0 +1,7 @@
+{
+  "name": "ELAZ MARKET Courier Admin & Bot Logic",
+  "description": "A professional management dashboard and Telegram bot logic provider for ELAZ MARKET couriers, featuring real-time order tracking, courier management, and automated dispatch simulation.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
