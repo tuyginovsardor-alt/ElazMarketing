@@ -165,24 +165,29 @@ async function handleBotUpdate(update: any) {
     }
 
     if(text === '/start') {
-        sendMessage(chatId, `🏢 <b>ELAZ MARKET Rasmiy Boti</b>\n\nXaridlar va kuryerlik tizimiga xush kelibsiz! Quyidagi menyudan foydalaning:`, mainKeyboard);
+        const { data: p } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
+        if(p && p.role === 'courier') {
+            sendMessage(chatId, `🏢 <b>ELAZ MARKET Kuryer Boti</b>\n\nSiz onlayn holatda bo'lsangiz, buyurtmalar kelishini kuting.\nProfilingiz: ${WEBSITE_URL}/?view=profile`, mainKeyboard);
+        } else {
+            sendMessage(chatId, `🏢 <b>ELAZ MARKET Rasmiy Boti</b>\n\nXaridlar va kuryerlik tizimiga xush kelibsiz! Quyidagi menyudan foydalaning:`, mainKeyboard);
+        }
     } 
     else if(text === "👤 Profil") {
         const { data: p } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
         if(p) {
-            sendMessage(chatId, `👤 <b>PROFILINGIZ:</b>\n\nIsm: ${p.first_name}\nRol: ${p.role.toUpperCase()}\nBalans: ${p.balance.toLocaleString()} so'm\nHolat: ${p.is_approved ? '✅ Tasdiqlangan' : '⏳ Kutilmoqda'}`);
+            sendMessage(chatId, `👤 <b>PROFILINGIZ:</b>\n\nIsm: ${p.first_name}\nRol: ${p.role.toUpperCase()}\nBalans: ${p.balance.toLocaleString()} so'm\nHolat: ${p.is_approved ? '✅ Tasdiqlangan' : '⏳ Kutilmoqda'}\n\nSaytda ko'rish: ${WEBSITE_URL}/?view=profile`);
         } else {
-            sendMessage(chatId, `❌ Profilingiz topilmadi. Avval saytdan ro'yxatdan o'ting va Telegram ID ni bog'lang: ${WEBSITE_URL}/profile`);
+            sendMessage(chatId, `❌ Profilingiz topilmadi. Avval saytdan ro'yxatdan o'ting va Telegram ID ni bog'lang: ${WEBSITE_URL}/?apply=true`);
         }
     }
     else if(text === "🛒 Savatim") {
-        sendMessage(chatId, `🛒 Savatchangizni ko'rish uchun saytga o'ting:\n${WEBSITE_URL}/cart`);
+        sendMessage(chatId, `🛒 Savatchangizni ko'rish uchun saytga o'ting:\n${WEBSITE_URL}/?view=cart`);
     }
     else if(text === "🌏 Saytni ochish") {
         sendMessage(chatId, `🌐 ELAZ MARKET asosiy sahifasi:\n${WEBSITE_URL}`);
     }
     else if(text === "🛵 Kuryerlikka ariza") {
-        sendMessage(chatId, `🛵 Kuryer bo'lib ishlash uchun arizani sayt orqali yuboring:\n${WEBSITE_URL}/profile`);
+        sendMessage(chatId, `🛵 Kuryer bo'lib ishlash uchun arizani sayt orqali yuboring:\n${WEBSITE_URL}/?apply=true`);
     }
 }
 

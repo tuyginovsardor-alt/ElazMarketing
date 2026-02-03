@@ -93,6 +93,10 @@ export const addToCart = async (id: number, qty = 1) => {
 (window as any).addToCart = addToCart;
 
 export async function checkAuth() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const applyMode = urlParams.get('apply') === 'true';
+    const viewMode = urlParams.get('view');
+
     const { data: { session } } = await supabase.auth.getSession();
     
     const app = document.getElementById('appContainer');
@@ -104,7 +108,16 @@ export async function checkAuth() {
         user = session.user;
         await loadProfileData();
         
-        if (!profile?.district) {
+        if (applyMode) {
+            // Agar apply=true bo'lsa va login qilgan bo'lsa, ariza shaklini ochamiz
+            const { openCourierRegistrationForm } = await import("./courierRegistration.tsx");
+            openCourierRegistrationForm();
+            // Parametrni tozalash
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (viewMode) {
+            (window as any).navTo(viewMode);
+            window.history.replaceState({}, document.title, window.location.pathname);
+        } else if (!profile?.district) {
             import("./location.tsx").then(m => m.openLocationSetup());
         } else {
             if(profile.role === 'courier') {
@@ -117,7 +130,12 @@ export async function checkAuth() {
         }
     } else {
         user = null; profile = null;
-        if(!localStorage.getItem('welcomeShown')) {
+        if (applyMode) {
+            // Apply mode bo'lsa lekin login qilmagan bo'lsa, registratsiyaga yo'naltirish
+            showView('auth');
+            renderAuthView('register');
+            showToast("Arizani to'ldirish uchun avval ro'yxatdan o'ting");
+        } else if(!localStorage.getItem('welcomeShown')) {
             showView('welcome');
             renderWelcomeView(() => {
                 localStorage.setItem('welcomeShown', 'true');
