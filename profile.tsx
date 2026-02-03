@@ -13,6 +13,7 @@ export async function renderProfileView(data) {
     const email = user.email;
     const avatar = data?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + email;
     const isAdmin = data?.role === 'admin' || data?.role === 'staff';
+    const isCourier = data?.role === 'courier';
     const referralCode = data?.id?.substring(0, 8).toUpperCase() || "ELAZ-USER";
 
     const { count: ordersCount } = await supabase.from('orders').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
@@ -95,11 +96,25 @@ export async function renderProfileView(data) {
                     <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
                 </div>
                 
+                <div class="menu-item" onclick="handleMenuClick('security')" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                    <div style="width:44px; height:44px; background:#fff1f2; border-radius:14px; display:flex; align-items:center; justify-content:center; color:var(--danger);"><i class="fas fa-shield-alt" style="font-size:1.1rem;"></i></div>
+                    <div style="flex:1; font-weight:800; font-size:1rem; color:var(--text);">Xavfsizlik</div>
+                    <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
+                </div>
+
                 <div class="menu-item" onclick="handleMenuClick('payment')" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
                     <div style="width:44px; height:44px; background:#eff6ff; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#3b82f6;"><i class="fas fa-wallet" style="font-size:1.1rem;"></i></div>
                     <div style="flex:1; font-weight:800; font-size:1rem; color:var(--text);">Hamyon va To'lovlar</div>
                     <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
                 </div>
+
+                ${!isCourier ? `
+                <div class="menu-item" onclick="handleMenuClick('courierApply')" style="display:flex; align-items:center; gap:18px; padding:20px; cursor:pointer;">
+                    <div style="width:44px; height:44px; background:#fefce8; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#eab308;"><i class="fas fa-motorcycle" style="font-size:1.1rem;"></i></div>
+                    <div style="flex:1; font-weight:800; font-size:1rem; color:var(--text);">Kuryerlikka ariza berish</div>
+                    <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
+                </div>
+                ` : ''}
             </div>
 
             <button class="btn btn-outline" style="width:100%; color:var(--danger); border:2px solid #fee2e2; background:#fffcfc; height:65px; border-radius:24px; font-weight:900;" onclick="handleSignOut()">
@@ -114,14 +129,44 @@ export async function renderProfileView(data) {
     showToast("Kod nusxalandi! Do'stlaringizga yuboring 🚀");
 };
 
+(window as any).uploadAvatar = async (input: HTMLInputElement) => {
+    const file = input.files?.[0];
+    if(!file || !user) return;
+    
+    showToast("Avatar yuklanmoqda...");
+    const fileName = `avatars/${user.id}-${Date.now()}.jpg`;
+    
+    try {
+        const { error: uploadError } = await supabase.storage.from('products').upload(fileName, file);
+        if(uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(fileName);
+        
+        const { error: updateError } = await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
+        if(updateError) throw updateError;
+
+        showToast("Avatar yangilandi! ✨");
+        await loadProfileData();
+        renderProfileView(profile);
+    } catch (e: any) {
+        showToast("Yuklashda xato: " + e.message);
+    }
+};
+
 (window as any).handleMenuClick = async (type: string) => {
     try {
         if(type === 'profileEdit') {
             const m = await import("./profileEdit.tsx");
             m.openProfileEdit();
+        } else if(type === 'security') {
+            const m = await import("./security.tsx");
+            m.openProfileSecurity();
         } else if(type === 'payment') {
             const m = await import("./payment.tsx");
             m.openPaymentView();
+        } else if(type === 'courierApply') {
+            const m = await import("./courierRegistration.tsx");
+            m.openCourierRegistrationForm();
         }
     } catch (e) {
         console.error("Menu Error:", e);
