@@ -34,7 +34,7 @@ export async function renderAdminBot() {
                         </div>
                         <div style="background:rgba(255,255,255,0.05); padding:10px; border-radius:12px;">
                             <div style="font-size:0.6rem; opacity:0.6;">AKTIV BOT</div>
-                            <div id="activeBotName" style="font-size:0.8rem; font-weight:900;">-</div>
+                            <div id="activeBotName" style="font-size:0.8rem; font-weight:900;">${activeBotToken ? 'ACTIVE' : '-'}</div>
                         </div>
                     </div>
                 </div>
@@ -51,19 +51,19 @@ export async function renderAdminBot() {
                         <button class="btn" style="height:32px; font-size:0.65rem; background:#1e293b; color:white; width:auto; padding:0 15px;" onclick="clearBotLogs()">CLEAR</button>
                     </div>
                     <div id="botLogsContainer" style="flex:1; overflow-y:auto; font-size:0.75rem; line-height:1.6; padding-right:10px;">
-                        <div style="color:#64748b;">[${new Date().toLocaleTimeString()}] System ready.</div>
+                        <div style="color:#64748b;">[${new Date().toLocaleTimeString()}] Engine initialized. Waiting for task...</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Bot qo'shish modal (overlay) -->
+        <!-- Bot qo'shish modal -->
         <div id="botConfigOverlay" class="overlay" style="z-index:9000;">
             <div style="max-width:400px; margin: 100px auto; padding:30px; background:white; border-radius:28px; box-shadow:var(--shadow-lg);">
                 <h3 style="font-weight:900; margin-bottom:20px;">Yangi Bot Qo'shish</h3>
-                <label>Bot nomi (Masalan: Asosiy Bot)</label>
+                <label>Bot nomi</label>
                 <input type="text" id="new_bot_name" placeholder="Asosiy Bot">
-                <label>Bot Tokeni (API Key)</label>
+                <label>Bot Tokeni</label>
                 <input type="text" id="new_bot_token" placeholder="8286953925:AAFv...">
                 <div style="display:flex; gap:10px; margin-top:20px;">
                     <button class="btn btn-primary" style="flex:1;" onclick="saveBotConfig()">SAQLASH</button>
@@ -79,19 +79,16 @@ export async function renderAdminBot() {
 async function loadBotConfigs() {
     const listEl = document.getElementById('botConfigsList');
     if(!listEl) return;
-
     const { data: configs } = await supabase.from('bot_configs').select('*').order('created_at', { ascending: false });
-
     if(!configs || configs.length === 0) {
         listEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--gray); font-size:0.8rem;">Tokenlar topilmadi.</div>';
         return;
     }
-
     listEl.innerHTML = configs.map(c => `
         <div style="padding:15px; border-radius:18px; border:1px solid #f1f5f9; background:#f8fafc; display:flex; justify-content:space-between; align-items:center;">
             <div>
                 <div style="font-weight:900; font-size:0.85rem; color:var(--text);">${c.bot_name}</div>
-                <div style="font-size:0.65rem; color:var(--gray); overflow:hidden; text-overflow:ellipsis; width:150px;">${c.token.substring(0, 15)}...</div>
+                <div style="font-size:0.65rem; color:var(--gray);">${c.token.substring(0, 15)}...</div>
             </div>
             <div style="display:flex; gap:8px;">
                 <button class="btn" style="width:32px; height:32px; background:${isPolling && activeBotToken === c.token ? 'var(--danger)' : 'var(--primary)'}; color:white; padding:0; border-radius:8px;" onclick="runThisBot('${c.token}', '${c.bot_name}')">
@@ -103,55 +100,19 @@ async function loadBotConfigs() {
     `).join('');
 }
 
-(window as any).openAddBotModal = () => {
-    document.getElementById('botConfigOverlay')!.style.display = 'block';
-};
-
-(window as any).saveBotConfig = async () => {
-    const name = (document.getElementById('new_bot_name') as HTMLInputElement).value.trim();
-    const token = (document.getElementById('new_bot_token') as HTMLInputElement).value.trim();
-
-    if(!name || !token) return showToast("Barcha maydonlarni to'ldiring");
-
-    const { error } = await supabase.from('bot_configs').insert([{ bot_name: name, token: token }]);
-    
-    if(!error) {
-        showToast("Bot konfiguratsiyasi saqlandi!");
-        document.getElementById('botConfigOverlay')!.style.display = 'none';
-        loadBotConfigs();
-    } else {
-        showToast("Xato: " + error.message);
-    }
-};
-
-(window as any).deleteBotConfig = async (id: string) => {
-    if(!confirm("Ushbu botni o'chirmoqchimisiz?")) return;
-    const { error } = await supabase.from('bot_configs').delete().eq('id', id);
-    if(!error) {
-        if(isPolling) (window as any).runThisBot('', ''); // Stop if running
-        loadBotConfigs();
-    }
-};
-
 (window as any).runThisBot = async (token: string, name: string) => {
     if(isPolling && activeBotToken === token) {
-        // Stop currently running bot
         isPolling = false;
         activeBotToken = '';
-        addBotLog('sys', `Bot ${name} stopped.`);
-        if(orderListener) supabase.removeChannel(orderListener);
+        addBotLog('sys', `Bot ${name} engine stopped.`);
     } else {
-        // Start bot
-        isPolling = false; // Reset existing
-        await new Promise(r => setTimeout(r, 500));
+        isPolling = false;
+        await new Promise(r => setTimeout(r, 300));
         activeBotToken = token;
         isPolling = true;
-        addBotLog('sys', `Starting bot: ${name}...`);
+        addBotLog('sys', `Bot engine started: ${name}`);
         startPollingLoop();
         setupOrderListener();
-        
-        const nameEl = document.getElementById('activeBotName');
-        if(nameEl) nameEl.innerText = name;
     }
     renderAdminBot();
 };
@@ -168,48 +129,10 @@ async function startPollingLoop() {
                 }
             }
         } catch(e) { 
-            addBotLog('sys', 'Polling Error. Retrying...');
             await new Promise(res => setTimeout(res, 5000)); 
         }
         await new Promise(res => setTimeout(res, 1000));
     }
-}
-
-function setupOrderListener() {
-    orderListener = supabase.channel('order-notifications')
-        .on('postgres_changes', { event: 'UPDATE', table: 'orders', filter: 'status=eq.confirmed' }, payload => {
-            const order = payload.new;
-            if(!order.courier_id) notifyOnlineCouriers(order);
-        })
-        .subscribe();
-}
-
-async function notifyOnlineCouriers(order: any) {
-    const { data: couriers } = await supabase.from('profiles').select('telegram_id, full_name').eq('role', 'courier').eq('active_status', true).not('telegram_id', 'is', null);
-    
-    if(!couriers || couriers.length === 0) return;
-
-    // Buyurtma mahsulotlarini olish (agar orders jadvalida products JSON bo'lsa)
-    const items = order.items_text || "Ma'lumot yo'q";
-
-    const messageText = `
-📦 <b>YANGI BUYURTMA! #ORD-${order.id}</b>
-
-📍 <b>Manzil:</b> ${order.address_text}
-🛍 <b>Mahsulotlar:</b> ${items}
-💰 <b>Summa:</b> ${order.total_price.toLocaleString()} so'm
-🚚 <b>Dostavka:</b> ${order.delivery_cost.toLocaleString()} so'm
-📝 <b>Izoh:</b> ${order.notes || 'Yo\'q'}
-
-<i>Qabul qilish uchun pastdagi tugmani bosing:</i>
-    `;
-
-    for(const courier of couriers) {
-        await sendMessage(courier.telegram_id, messageText, {
-            inline_keyboard: [[{ text: "✅ BUYURTMANI QABUL QILISH", callback_data: `accept_${order.id}` }]]
-        });
-    }
-    addBotLog('sys', `${couriers.length} kurerga xabar yuborildi.`);
 }
 
 async function handleBotUpdate(update: any) {
@@ -219,26 +142,47 @@ async function handleBotUpdate(update: any) {
     const text = update.message?.text;
     const data = update.callback_query?.data;
 
+    const mainKeyboard = {
+        keyboard: [
+            [{ text: "👤 Profil" }, { text: "🛒 Savatim" }],
+            [{ text: "🌏 Saytni ochish" }],
+            [{ text: "🛵 Kuryerlikka ariza" }]
+        ],
+        resize_keyboard: true
+    };
+
     if(data && data.startsWith('accept_')) {
         const orderId = data.split('_')[1];
         const { data: profile } = await supabase.from('profiles').select('id, full_name').eq('telegram_id', chatId).maybeSingle();
-        
         if(!profile) return answerCallback(update.callback_query.id, "Profilingiz ulanmagan!");
-
-        const { data: order } = await supabase.from('orders').select('courier_id, status').eq('id', orderId).single();
-        if(order.courier_id) return answerCallback(update.callback_query.id, "Kechirasiz, boshqa kurer qabul qilib bo'lgan.");
-
-        const { error } = await supabase.from('orders').update({ courier_id: profile.id, status: 'delivering' }).eq('id', orderId);
+        const { data: order } = await supabase.from('orders').select('courier_id').eq('id', orderId).single();
+        if(order?.courier_id) return answerCallback(update.callback_query.id, "Boshqa kuryer qabul qilib bo'ldi.");
         
-        if(!error) {
-            answerCallback(update.callback_query.id, "Qabul qilindi! Omad!");
-            sendMessage(chatId, `✅ <b>#ORD-${orderId} buyurtmasi sizga biriktirildi.</b>\nMijoz manzili: ${WEBSITE_URL}/orders`);
-            addBotLog('sys', `${profile.full_name} buyurtmani qabul qildi.`);
-        }
+        await supabase.from('orders').update({ courier_id: profile.id, status: 'delivering' }).eq('id', orderId);
+        answerCallback(update.callback_query.id, "Qabul qilindi!");
+        sendMessage(chatId, `✅ <b>Buyurtma #ORD-${orderId} sizga biriktirildi.</b>\nManzil: ${WEBSITE_URL}/orders`);
+        addBotLog('sys', `${profile.full_name} accepted order #${orderId}`);
     }
 
     if(text === '/start') {
-        sendMessage(chatId, `🏢 <b>ELAZ MARKET Kuryer Bot</b>\n\nSiz onlayn holatda bo'lsangiz, buyurtmalar kelishini kuting.\nProfilingiz: ${WEBSITE_URL}/profile`);
+        sendMessage(chatId, `🏢 <b>ELAZ MARKET Rasmiy Boti</b>\n\nXaridlar va kuryerlik tizimiga xush kelibsiz! Quyidagi menyudan foydalaning:`, mainKeyboard);
+    } 
+    else if(text === "👤 Profil") {
+        const { data: p } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
+        if(p) {
+            sendMessage(chatId, `👤 <b>PROFILINGIZ:</b>\n\nIsm: ${p.first_name}\nRol: ${p.role.toUpperCase()}\nBalans: ${p.balance.toLocaleString()} so'm\nHolat: ${p.is_approved ? '✅ Tasdiqlangan' : '⏳ Kutilmoqda'}`);
+        } else {
+            sendMessage(chatId, `❌ Profilingiz topilmadi. Avval saytdan ro'yxatdan o'ting va Telegram ID ni bog'lang: ${WEBSITE_URL}/profile`);
+        }
+    }
+    else if(text === "🛒 Savatim") {
+        sendMessage(chatId, `🛒 Savatchangizni ko'rish uchun saytga o'ting:\n${WEBSITE_URL}/cart`);
+    }
+    else if(text === "🌏 Saytni ochish") {
+        sendMessage(chatId, `🌐 ELAZ MARKET asosiy sahifasi:\n${WEBSITE_URL}`);
+    }
+    else if(text === "🛵 Kuryerlikka ariza") {
+        sendMessage(chatId, `🛵 Kuryer bo'lib ishlash uchun arizani sayt orqali yuboring:\n${WEBSITE_URL}/profile`);
     }
 }
 
@@ -249,7 +193,7 @@ async function sendMessage(chatId: number, text: string, replyMarkup: any = {}) 
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', reply_markup: replyMarkup })
         });
-        addBotLog('out', `To ${chatId}: Sent.`);
+        addBotLog('out', `Msg to ${chatId}`);
     } catch(e) {}
 }
 
@@ -270,6 +214,32 @@ function addBotLog(type: 'in' | 'out' | 'sys' | 'err', msg: string) {
     logEl.scrollTop = logEl.scrollHeight;
 }
 
-(window as any).clearBotLogs = () => {
-    document.getElementById('botLogsContainer')!.innerHTML = '';
+function setupOrderListener() {
+    if(orderListener) supabase.removeChannel(orderListener);
+    orderListener = supabase.channel('orders')
+        .on('postgres_changes', { event: 'UPDATE', table: 'orders', filter: 'status=eq.confirmed' }, payload => {
+            if(!payload.new.courier_id) notifyCouriers(payload.new);
+        })
+        .subscribe();
+}
+
+async function notifyCouriers(order: any) {
+    const { data: couriers } = await supabase.from('profiles').select('telegram_id').eq('role', 'courier').eq('active_status', true);
+    if(!couriers) return;
+    const msgText = `📦 <b>YANGI BUYURTMA! #${order.id}</b>\n💰 Summa: ${order.total_price.toLocaleString()} so'm\n📍 Manzil: ${order.address_text}`;
+    const keyboard = { inline_keyboard: [[{ text: "✅ QABUL QILISH", callback_data: `accept_${order.id}` }]] };
+    for(const c of couriers) {
+        if(c.telegram_id) sendMessage(c.telegram_id, msgText, keyboard);
+    }
+}
+
+(window as any).saveBotConfig = async () => {
+    const name = (document.getElementById('new_bot_name') as HTMLInputElement).value.trim();
+    const token = (document.getElementById('new_bot_token') as HTMLInputElement).value.trim();
+    if(!name || !token) return showToast("To'ldiring");
+    await supabase.from('bot_configs').insert([{ bot_name: name, token }]);
+    document.getElementById('botConfigOverlay')!.style.display = 'none';
+    loadBotConfigs();
 };
+
+(window as any).clearBotLogs = () => { document.getElementById('botLogsContainer')!.innerHTML = ''; };
