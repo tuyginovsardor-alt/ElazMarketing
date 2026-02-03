@@ -94,7 +94,6 @@ async function loadCourierRequests() {
     const content = document.getElementById('adminUsersContent')!;
     content.innerHTML = '<div style="text-align:center; padding:3rem;"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
     
-    // profiles bilan join'ni olib tashladik, chunki bu xatoga sabab bo'lishi mumkin
     const { data: reqs, error } = await supabase.from('courier_applications').select('*').eq('status', 'pending');
 
     if(error) {
@@ -113,7 +112,7 @@ async function loadCourierRequests() {
                 <div class="card" style="border-radius:24px; padding:25px; border:1px solid #f1f5f9; background:white;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
                         <div>
-                            <h3 style="font-weight:900; font-size:1.1rem;">${r.full_name || 'Ismsiz foydalanuvchi'}</h3>
+                            <h3 style="font-weight:900; font-size:1.1rem;">${r.full_name || 'Ismsiz'}</h3>
                             <div style="font-size:0.75rem; color:var(--gray); font-weight:700;">Ariza ID: ${r.id.substring(0,8)}</div>
                         </div>
                         <div style="background:var(--primary-light); color:var(--primary); padding:5px 10px; border-radius:10px; font-size:0.65rem; font-weight:900;">${(r.transport_type || 'walking').toUpperCase()}</div>
@@ -122,7 +121,7 @@ async function loadCourierRequests() {
                         <i class="fas fa-phone" style="color:var(--primary); margin-right:8px;"></i> ${r.phone || 'Raqam yo\'q'}
                     </div>
                     <div style="display:flex; gap:10px;">
-                        <button class="btn btn-primary" style="flex:1; height:45px; font-size:0.75rem;" onclick="approveCourierApp('${r.id}', '${r.user_id}', '${r.transport_type}')">TASDIQLASH</button>
+                        <button class="btn btn-primary" id="btnApprove_${r.id}" style="flex:1; height:45px; font-size:0.75rem;" onclick="approveCourierApp('${r.id}', '${r.user_id}', '${r.transport_type}')">TASDIQLASH</button>
                         <button class="btn btn-outline" style="flex:1; height:45px; font-size:0.75rem; color:var(--danger); border-color:#fee2e2;" onclick="rejectCourierApp('${r.id}')">RAD ETISH</button>
                     </div>
                 </div>
@@ -134,15 +133,43 @@ async function loadCourierRequests() {
 (window as any).approveCourierApp = async (appId: string, userId: string, transport: string) => {
     if(!confirm("Ushbu foydalanuvchini kuryerlikka tasdiqlaysizmi?")) return;
     
-    const { error: profileError } = await supabase.from('profiles').update({ role: 'courier', is_approved: true, transport_type: transport }).eq('id', userId);
-    const { error: appError } = await supabase.from('courier_applications').update({ status: 'approved' }).eq('id', appId);
-    
-    if(!profileError && !appError) {
+    const btn = document.getElementById(`btnApprove_${appId}`) as HTMLButtonElement;
+    if(btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
+    try {
+        // 1. Profilni yangilash
+        const { error: profileError } = await supabase.from('profiles').update({ 
+            role: 'courier', 
+            is_approved: true, 
+            transport_type: transport 
+        }).eq('id', userId);
+
+        if (profileError) {
+            // Agar ustunlar topilmasa, sodda update qilib ko'ramiz
+            if(profileError.message.includes("column")) {
+                throw new Error("Bazaga profiles uchun ustunlar qo'shilmagan. SQL Editor'da kodni RUN qiling.");
+            }
+            throw profileError;
+        }
+
+        // 2. Arizani yangilash
+        const { error: appError } = await supabase.from('courier_applications').update({ status: 'approved' }).eq('id', appId);
+        if (appError) throw appError;
+
         showToast("Kuryer muvaffaqiyatli tasdiqlandi! 🛵");
         loadCourierRequests();
         updateReqCount();
-    } else {
-        showToast("Tasdiqlashda xatolik yuz berdi");
+        
+    } catch (e: any) {
+        console.error("Approve Error:", e);
+        showToast("Xato: " + e.message);
+        if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = 'TASDIQLASH';
+        }
     }
 };
 
