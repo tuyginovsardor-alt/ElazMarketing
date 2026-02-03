@@ -1,5 +1,5 @@
 
-import { supabase, user } from "./index.tsx";
+import { supabase, user, showToast } from "./index.tsx";
 
 export async function renderOrdersView() {
     const container = document.getElementById('ordersView');
@@ -38,7 +38,6 @@ export async function renderOrdersView() {
                     <i class="fas fa-clipboard-list"></i>
                 </div>
                 <h3 style="font-weight: 800; color: var(--text);">Buyurtmalar yo'q</h3>
-                <p style="color: var(--gray); font-size: 0.9rem; margin-top: 0.5rem;">Sizda hali hech qanday buyurtma mavjud emas.</p>
                 <button class="btn btn-primary" style="margin-top: 2rem; width: 100%;" onclick="navTo('home')">XARID BOSHLASH</button>
             </div>
         `;
@@ -46,20 +45,38 @@ export async function renderOrdersView() {
     }
 
     list.innerHTML = orders.map(o => `
-        <div class="card" style="margin-bottom:0; border:1px solid #f1f5f9; box-shadow:0 4px 15px rgba(0,0,0,0.01);">
+        <div class="card" style="margin-bottom:0; border:1px solid #f1f5f9; padding:20px; border-radius:24px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <span style="font-size:0.75rem; color:var(--gray); font-weight:800;">ID: #${o.id.toString().slice(-6)}</span>
-                <span class="badge badge-${o.status}">${o.status === 'delivered' ? 'Yetkazilgan' : o.status === 'pending' ? 'Kutilmoqda' : 'Bekor qilingan'}</span>
+                <span style="font-size:0.75rem; color:var(--gray); font-weight:800;">#ORD-${o.id.toString().substring(0,6)}</span>
+                <span style="padding:4px 10px; border-radius:8px; font-size:0.65rem; font-weight:900; text-transform:uppercase; background:${o.status === 'delivered' ? '#f0fdf4' : '#fff7ed'}; color:${o.status === 'delivered' ? '#16a34a' : '#ea580c'};">
+                    ${o.status === 'delivered' ? 'Yetkazilgan' : 'Jarayonda'}
+                </span>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <p style="font-size:0.85rem; font-weight:600; color:var(--gray);">${new Date(o.created_at).toLocaleDateString()}</p>
-                    <h4 style="font-weight:900; font-size:1.1rem; color:var(--text); margin-top:4px;">${o.total_price.toLocaleString()} UZS</h4>
+            
+            <div style="margin-bottom:15px;">
+                <p style="font-size:0.85rem; font-weight:600; color:var(--gray);">${new Date(o.created_at).toLocaleDateString()}</p>
+                <h4 style="font-weight:900; font-size:1.2rem; color:var(--text); margin-top:4px;">${o.total_price.toLocaleString()} UZS</h4>
+            </div>
+
+            ${o.status === 'delivered' && !o.rating ? `
+                <div style="border-top: 1px dashed #e2e8f0; padding-top: 15px; text-align: center;">
+                    <p style="font-size: 0.75rem; font-weight: 800; color: var(--gray); margin-bottom: 10px;">XIZMATNI BAHOLANG:</p>
+                    <div style="display: flex; justify-content: center; gap: 10px; font-size: 1.5rem; color: #eab308;">
+                        ${[1, 2, 3, 4, 5].map(star => `<i class="far fa-star" onclick="rateOrder(${o.id}, ${star})" style="cursor:pointer;"></i>`).join('')}
+                    </div>
                 </div>
-                <button class="btn btn-outline" style="width:40px; height:40px; padding:0; border-radius:12px; font-size:0.8rem;" onclick="showToast('Batafsil ma\\'lumot yaqin orada...')">
-                    <i class="fas fa-eye"></i>
-                </button>
-            </div>
+            ` : o.rating ? `
+                <div style="border-top: 1px dashed #e2e8f0; padding-top: 10px; text-align: center; color: #eab308;">
+                    ${Array.from({length: o.rating}).map(() => `<i class="fas fa-star" style="font-size:0.8rem;"></i>`).join('')}
+                    <span style="font-size: 0.7rem; font-weight: 800; color: var(--gray); margin-left: 5px;">Baholangan</span>
+                </div>
+            ` : ''}
         </div>
     `).join('');
 }
+
+(window as any).rateOrder = async (orderId: number, rating: number) => {
+    showToast("Baholash uchun rahmat! ⭐");
+    const { error } = await supabase.from('orders').update({ rating }).eq('id', orderId);
+    if(!error) renderOrdersView();
+};

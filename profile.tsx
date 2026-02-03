@@ -13,6 +13,7 @@ export async function renderProfileView(data) {
     const email = user.email;
     const avatar = data?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + email;
     const isAdmin = data?.role === 'admin' || data?.role === 'staff';
+    const referralCode = data?.id?.substring(0, 8).toUpperCase() || "ELAZ-USER";
 
     const { count: ordersCount } = await supabase.from('orders').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
 
@@ -54,8 +55,24 @@ export async function renderProfileView(data) {
                     <div style="display:flex; align-items:center; gap:8px; margin-top:8px; color:var(--primary); font-weight:800; font-size:0.9rem;">
                         <i class="fas fa-phone"></i> ${data?.phone || 'Raqam kiritilmagan'}
                     </div>
-                    <p style="font-size:0.75rem; color:var(--gray); font-weight:600; margin-top:5px;"><i class="fas fa-map-marker-alt" style="font-size:0.65rem;"></i> ${data?.district || 'Manzil yo\'q'}</p>
                 </div>
+            </div>
+
+            <!-- REFERRAL CARD -->
+            <div style="background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 25px; border-radius: 30px; margin-bottom: 25px; color: white; position: relative; overflow: hidden; box-shadow: 0 15px 35px rgba(99, 102, 241, 0.25);">
+                <div style="position: relative; z-index: 2;">
+                    <h4 style="font-weight: 900; font-size: 1.1rem; margin-bottom: 5px;">Do'stlarni taklif qiling 🎁</h4>
+                    <p style="font-size: 0.75rem; opacity: 0.85; font-weight: 600; margin-bottom: 15px;">Har bir taklif uchun 5 000 so'm oling!</p>
+                    <div style="display: flex; gap: 10px;">
+                        <div style="flex: 1; background: rgba(255,255,255,0.15); padding: 12px; border-radius: 12px; font-family: monospace; font-weight: 900; text-align: center; border: 1px dashed rgba(255,255,255,0.3); font-size: 1.1rem;">
+                            ${referralCode}
+                        </div>
+                        <button class="btn" style="width: 50px; height: 50px; background: white; color: #6366f1; padding: 0; border: none; border-radius: 12px;" onclick="copyReferralCode('${referralCode}')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+                <i class="fas fa-gift" style="position: absolute; right: -20px; bottom: -20px; font-size: 8rem; opacity: 0.1; transform: rotate(-15deg);"></i>
             </div>
 
             <!-- STATS CARDS -->
@@ -83,27 +100,19 @@ export async function renderProfileView(data) {
                     <div style="flex:1; font-weight:800; font-size:1rem; color:var(--text);">Hamyon va To'lovlar</div>
                     <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
                 </div>
-
-                <div class="menu-item" onclick="handleMenuClick('security')" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
-                    <div style="width:44px; height:44px; background:#f5f3ff; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#8b5cf6;"><i class="fas fa-shield-alt" style="font-size:1.1rem;"></i></div>
-                    <div style="flex:1; font-weight:800; font-size:1rem; color:var(--text);">Xavfsizlik</div>
-                    <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
-                </div>
-
-                <div class="menu-item" onclick="openAppInfo()" style="display:flex; align-items:center; gap:18px; padding:20px; cursor:pointer;">
-                    <div style="width:44px; height:44px; background:#f8fafc; border-radius:14px; display:flex; align-items:center; justify-content:center; color:var(--gray);"><i class="fas fa-info-circle" style="font-size:1.1rem;"></i></div>
-                    <div style="flex:1; font-weight:800; font-size:1rem; color:var(--text);">Ilova haqida</div>
-                    <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
-                </div>
             </div>
 
             <button class="btn btn-outline" style="width:100%; color:var(--danger); border:2px solid #fee2e2; background:#fffcfc; height:65px; border-radius:24px; font-weight:900;" onclick="handleSignOut()">
                 <i class="fas fa-sign-out-alt"></i> CHIQISH
             </button>
         </div>
-        <!-- Ilova haqida overlay index.html da bor, faqat ichini to'ldiramiz agar kerak bo'lsa -->
     `;
 }
+
+(window as any).copyReferralCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    showToast("Kod nusxalandi! Do'stlaringizga yuboring 🚀");
+};
 
 (window as any).handleMenuClick = async (type: string) => {
     try {
@@ -113,14 +122,9 @@ export async function renderProfileView(data) {
         } else if(type === 'payment') {
             const m = await import("./payment.tsx");
             m.openPaymentView();
-        } else if(type === 'security') {
-            const m = await import("./security.tsx");
-            m.openProfileSecurity();
         }
     } catch (e) {
         console.error("Menu Error:", e);
         showToast("Sahifani yuklashda xatolik yuz berdi");
     }
 };
-
-(window as any).openAppInfo = () => openOverlay('appInfoOverlay');
