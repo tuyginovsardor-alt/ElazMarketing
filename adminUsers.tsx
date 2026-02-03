@@ -38,7 +38,8 @@ async function updateReqCount() {
         el.style.color = 'var(--gray)';
     });
     
-    const activeBtn = document.getElementById('btn' + tab.charAt(0).toUpperCase() + tab.slice(1, tab.length-1) + (tab === 'requests' ? 'Req' : 'List')) || document.getElementById('btnUserList');
+    const btnId = tab === 'requests' ? 'btnCourierReq' : (tab === 'couriers' ? 'btnCourierList' : 'btnUserList');
+    const activeBtn = document.getElementById(btnId);
     if(activeBtn) {
         activeBtn.style.background = 'white';
         activeBtn.style.color = 'var(--text)';
@@ -61,7 +62,6 @@ async function loadCourierList() {
     content.innerHTML = '<div style="text-align:center; padding:3rem;"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
     const { data: couriers } = await supabase.from('profiles').select('*').eq('role', 'courier');
     
-    // Har bir kurer uchun buyurtmalar sonini olish
     const couriersWithStats = await Promise.all((couriers || []).map(async (c) => {
         const { count } = await supabase.from('orders').select('*', { count: 'exact', head: true }).eq('courier_id', c.id).eq('status', 'delivered');
         return { ...c, orders_count: count || 0 };
@@ -93,7 +93,14 @@ async function loadCourierList() {
 async function loadCourierRequests() {
     const content = document.getElementById('adminUsersContent')!;
     content.innerHTML = '<div style="text-align:center; padding:3rem;"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
-    const { data: reqs } = await supabase.from('courier_applications').select('*, profiles(first_name, last_name, email)').eq('status', 'pending');
+    
+    // profiles bilan join'ni olib tashladik, chunki bu xatoga sabab bo'lishi mumkin
+    const { data: reqs, error } = await supabase.from('courier_applications').select('*').eq('status', 'pending');
+
+    if(error) {
+        content.innerHTML = `<div style="padding:4rem; text-align:center; color:var(--danger);">Xatolik: ${error.message}</div>`;
+        return;
+    }
 
     if(!reqs || reqs.length === 0) {
         content.innerHTML = '<div style="padding:4rem; text-align:center; color:var(--gray);">Yangi arizalar mavjud emas.</div>';
@@ -106,13 +113,13 @@ async function loadCourierRequests() {
                 <div class="card" style="border-radius:24px; padding:25px; border:1px solid #f1f5f9; background:white;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
                         <div>
-                            <h3 style="font-weight:900; font-size:1.1rem;">${r.full_name}</h3>
-                            <div style="font-size:0.75rem; color:var(--gray); font-weight:700;">${r.profiles?.email}</div>
+                            <h3 style="font-weight:900; font-size:1.1rem;">${r.full_name || 'Ismsiz foydalanuvchi'}</h3>
+                            <div style="font-size:0.75rem; color:var(--gray); font-weight:700;">Ariza ID: ${r.id.substring(0,8)}</div>
                         </div>
-                        <div style="background:var(--primary-light); color:var(--primary); padding:5px 10px; border-radius:10px; font-size:0.65rem; font-weight:900;">${r.transport_type.toUpperCase()}</div>
+                        <div style="background:var(--primary-light); color:var(--primary); padding:5px 10px; border-radius:10px; font-size:0.65rem; font-weight:900;">${(r.transport_type || 'walking').toUpperCase()}</div>
                     </div>
                     <div style="margin-bottom:20px; font-size:0.85rem; color:var(--text); font-weight:700;">
-                        <i class="fas fa-phone" style="color:var(--primary); margin-right:8px;"></i> ${r.phone}
+                        <i class="fas fa-phone" style="color:var(--primary); margin-right:8px;"></i> ${r.phone || 'Raqam yo\'q'}
                     </div>
                     <div style="display:flex; gap:10px;">
                         <button class="btn btn-primary" style="flex:1; height:45px; font-size:0.75rem;" onclick="approveCourierApp('${r.id}', '${r.user_id}', '${r.transport_type}')">TASDIQLASH</button>
@@ -127,15 +134,16 @@ async function loadCourierRequests() {
 (window as any).approveCourierApp = async (appId: string, userId: string, transport: string) => {
     if(!confirm("Ushbu foydalanuvchini kuryerlikka tasdiqlaysizmi?")) return;
     
-    // 1. Profilni yangilash
-    await supabase.from('profiles').update({ role: 'courier', is_approved: true, transport_type: transport }).eq('id', userId);
+    const { error: profileError } = await supabase.from('profiles').update({ role: 'courier', is_approved: true, transport_type: transport }).eq('id', userId);
+    const { error: appError } = await supabase.from('courier_applications').update({ status: 'approved' }).eq('id', appId);
     
-    // 2. Arizani yopish
-    await supabase.from('courier_applications').update({ status: 'approved' }).eq('id', appId);
-    
-    showToast("Kuryer muvaffaqiyatli tasdiqlandi! 🛵");
-    loadCourierRequests();
-    updateReqCount();
+    if(!profileError && !appError) {
+        showToast("Kuryer muvaffaqiyatli tasdiqlandi! 🛵");
+        loadCourierRequests();
+        updateReqCount();
+    } else {
+        showToast("Tasdiqlashda xatolik yuz berdi");
+    }
 };
 
 (window as any).rejectCourierApp = async (appId: string) => {
