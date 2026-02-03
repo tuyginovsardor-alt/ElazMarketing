@@ -72,19 +72,19 @@ export async function renderProfileView(data) {
 
             <!-- MENU LIST -->
             <div class="card" style="padding:10px; border-radius:30px; border:1px solid #f1f5f9; margin-bottom:25px; overflow:hidden; background:white; box-shadow:var(--shadow-sm);">
-                <div class="menu-item" onclick="import('./profileEdit.tsx').then(m => m.openProfileEdit())" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                <div class="menu-item" onclick="handleMenuClick('profileEdit')" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
                     <div style="width:44px; height:44px; background:#f0fdf4; border-radius:14px; display:flex; align-items:center; justify-content:center; color:var(--primary);"><i class="fas fa-user-edit" style="font-size:1.1rem;"></i></div>
                     <div style="flex:1; font-weight:800; font-size:1rem; color:var(--text);">Ma'lumotlarni tahrirlash</div>
                     <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
                 </div>
                 
-                <div class="menu-item" onclick="import('./payment.tsx').then(m => m.openPaymentView())" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                <div class="menu-item" onclick="handleMenuClick('payment')" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
                     <div style="width:44px; height:44px; background:#eff6ff; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#3b82f6;"><i class="fas fa-wallet" style="font-size:1.1rem;"></i></div>
                     <div style="flex:1; font-weight:800; font-size:1rem; color:var(--text);">Hamyon va To'lovlar</div>
                     <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
                 </div>
 
-                <div class="menu-item" onclick="import('./security.tsx').then(m => m.openProfileSecurity())" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                <div class="menu-item" onclick="handleMenuClick('security')" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
                     <div style="width:44px; height:44px; background:#f5f3ff; border-radius:14px; display:flex; align-items:center; justify-content:center; color:#8b5cf6;"><i class="fas fa-shield-alt" style="font-size:1.1rem;"></i></div>
                     <div style="flex:1; font-weight:800; font-size:1rem; color:var(--text);">Xavfsizlik</div>
                     <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
@@ -101,53 +101,26 @@ export async function renderProfileView(data) {
                 <i class="fas fa-sign-out-alt"></i> CHIQISH
             </button>
         </div>
-
-        <div id="appInfoOverlay" class="overlay" style="padding:0; background:white;">
-            <div style="padding:25px; min-height:100vh;">
-                <div style="display:flex; align-items:center; gap:15px; margin-bottom:30px;">
-                    <i class="fas fa-arrow-left" onclick="closeOverlay('appInfoOverlay')" style="font-size:1.4rem; cursor:pointer; color:var(--text); padding:5px;"></i>
-                    <h2 style="font-weight:900; font-size:1.5rem;">Ilova haqida</h2>
-                </div>
-                
-                <div style="text-align:center; margin-bottom:40px;">
-                    <div style="width:95px; height:95px; background:var(--gradient); border-radius:28px; display:inline-flex; align-items:center; justify-content:center; color:white; font-size:2.8rem; box-shadow:0 15px 35px rgba(34,197,94,0.2); margin-bottom:20px;">
-                        <i class="fas fa-shopping-bag"></i>
-                    </div>
-                    <h3 style="font-weight:900; font-size:1.6rem;">ELAZ MARKET</h3>
-                    <p style="color:var(--gray); font-size:0.85rem; font-weight:700;">Versiya 1.0.8 (Pro)</p>
-                </div>
-
-                <div class="card" style="padding:8px; border-radius:28px; border:1px solid #f1f5f9; background:white; box-shadow:var(--shadow-sm);">
-                    <div onclick="openLegalView('offer')" style="display:flex; align-items:center; gap:18px; padding:20px; border-bottom:1px solid #f1f5f9; cursor:pointer;">
-                        <div style="width:42px; height:42px; background:var(--primary-light); color:var(--primary); border-radius:12px; display:flex; align-items:center; justify-content:center;"><i class="fas fa-file-contract"></i></div>
-                        <span style="font-weight:800; flex:1; font-size:1rem; color:var(--text);">Ommaviy oferta</span>
-                        <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
-                    </div>
-                    <div onclick="openLegalView('privacy')" style="display:flex; align-items:center; gap:18px; padding:20px; cursor:pointer;">
-                        <div style="width:42px; height:42px; background:#eff6ff; color:#3b82f6; border-radius:12px; display:flex; align-items:center; justify-content:center;"><i class="fas fa-user-shield"></i></div>
-                        <span style="font-weight:800; flex:1; font-size:1rem; color:var(--text);">Maxfiylik siyosati</span>
-                        <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Ilova haqida overlay index.html da bor, faqat ichini to'ldiramiz agar kerak bo'lsa -->
     `;
 }
 
-(window as any).openAppInfo = () => openOverlay('appInfoOverlay');
-(window as any).openLegalView = (type: string) => {
-    import('./legal.tsx').then(m => m.openLegal(type as any));
+(window as any).handleMenuClick = async (type: string) => {
+    try {
+        if(type === 'profileEdit') {
+            const m = await import("./profileEdit.tsx");
+            m.openProfileEdit();
+        } else if(type === 'payment') {
+            const m = await import("./payment.tsx");
+            m.openPaymentView();
+        } else if(type === 'security') {
+            const m = await import("./security.tsx");
+            m.openProfileSecurity();
+        }
+    } catch (e) {
+        console.error("Menu Error:", e);
+        showToast("Sahifani yuklashda xatolik yuz berdi");
+    }
 };
 
-(window as any).uploadAvatar = async (input: HTMLInputElement) => {
-    const file = input.files?.[0];
-    if(!file || !user) return;
-    showToast("Yuklanmoqda...");
-    const fileName = `avatars/${user.id}-${Date.now()}.jpg`;
-    const { error: uploadError } = await supabase.storage.from('products').upload(fileName, file);
-    if(uploadError) return showToast("Yuklashda xato");
-    const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(fileName);
-    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', user.id);
-    await loadProfileData();
-    renderProfileView(profile);
-};
+(window as any).openAppInfo = () => openOverlay('appInfoOverlay');
