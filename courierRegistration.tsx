@@ -102,6 +102,7 @@ let selectedTransport = 'walking';
     const zones = Array.from(zoneInputs).map((i: any) => i.value);
 
     if(zones.length === 0) return showToast("Kamida bitta hududni tanlang");
+    if(!profile) return showToast("Profil yuklanmagan");
 
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> YUBORILMOQDA...';
@@ -109,6 +110,8 @@ let selectedTransport = 'walking';
     try {
         const { error } = await supabase.from('courier_applications').insert({
             user_id: user.id,
+            full_name: `${profile.first_name} ${profile.last_name || ''}`,
+            phone: profile.phone,
             transport_type: selectedTransport,
             work_zones: zones,
             status: 'pending'
