@@ -152,13 +152,13 @@ export async function loadProfileData() {
         }
         profile = data;
         
-        // Update Bottom Nav Avatar
+        // --- DINAMIK NAV ICON YANGILASH ---
         const navIconContainer = document.getElementById('navProfileIconContainer');
-        if(navIconContainer && profile) {
-            if(profile.avatar_url) {
-                navIconContainer.innerHTML = `<img src="${profile.avatar_url}" class="nav-avatar">`;
+        if (navIconContainer) {
+            if (profile?.avatar_url) {
+                navIconContainer.innerHTML = `<img src="${profile.avatar_url}" class="nav-profile-img">`;
             } else {
-                navIconContainer.innerHTML = `<i class="far fa-user-circle" style="font-size: 1.75rem;"></i>`;
+                navIconContainer.innerHTML = `<i class="far fa-user-circle"></i>`;
             }
         }
 

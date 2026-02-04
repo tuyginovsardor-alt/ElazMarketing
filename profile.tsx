@@ -57,7 +57,7 @@ export async function renderProfileView(data: any) {
 
             <!-- STATS GRID -->
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:25px;">
-                <div class="card" onclick="openPaymentView()" style="padding:22px; border-radius:28px; text-align:center; border:1.5px solid #f1f5f9; background:white;">
+                <div class="card" onclick="openPaymentView()" style="padding:22px; border-radius:28px; text-align:center; border:1.5px solid #f1f5f9; background:white; transition: 0.3s active:scale(0.95);">
                     <div style="width:50px; height:50px; background:var(--primary-light); color:var(--primary); border-radius:16px; display:flex; align-items:center; justify-content:center; margin:0 auto 12px;">
                         <i class="fas fa-wallet" style="font-size:1.4rem;"></i>
                     </div>
@@ -85,7 +85,7 @@ export async function renderProfileView(data: any) {
                     </div>
                 </div>
                 ${!isBotLinked ? `
-                    <button id="btnGenerateBot" class="btn btn-primary" style="height:54px; width:100%; border-radius:18px; font-size:0.9rem;" onclick="generateBotLink()">
+                    <button class="btn btn-primary" id="btnGenerateBot" style="height:54px; width:100%; border-radius:18px; font-size:0.9rem;" onclick="generateBotLink()">
                         ULASHNI BOSHLASH <i class="fas fa-link" style="margin-left:8px;"></i>
                     </button>
                 ` : `
@@ -112,7 +112,7 @@ export async function renderProfileView(data: any) {
                 </div>
             </div>
 
-            <button class="btn btn-outline" style="width:100%; color:var(--danger); border-color:#fee2e2; height:65px; border-radius:24px; font-weight:800; background:white;" onclick="handleSignOut()">
+            <button class="btn btn-outline" style="width:100%; color:var(--danger); border-color:#fee2e2; height:65px; border-radius:24px; font-weight:800; background:white; box-shadow:0 4px 12px rgba(239,68,68,0.05);" onclick="handleSignOut()">
                 HISOBDAN CHIQISH <i class="fas fa-sign-out-alt" style="margin-left:8px;"></i>
             </button>
         </div>
@@ -123,7 +123,7 @@ export async function renderProfileView(data: any) {
     }
 }
 
-// Global UI context
+// Imports for context
 import { openProfileEdit } from "./profileEdit.tsx";
 import { openProfileSecurity } from "./security.tsx";
 import { openPaymentView } from "./payment.tsx";
@@ -176,9 +176,8 @@ async function openPhoneConfirmation() {
     }
 
     try {
-        // 1. Yangi Link Token yaratish
         const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        const expires = new Date(Date.now() + 10 * 60000).toISOString(); // 10 daqiqa
+        const expires = new Date(Date.now() + 10 * 60000).toISOString(); 
 
         const { error: updateError } = await supabase.from('profiles').update({ 
             link_token: token, 
@@ -187,7 +186,7 @@ async function openPhoneConfirmation() {
 
         if (updateError) throw updateError;
 
-        // 2. Faol bot usernameini aniqlash
+        // --- BOT USERNAMEINI DINAMIK ANIQLASH ---
         const { data: config, error: configError } = await supabase.from('bot_configs').select('bot_name').eq('is_active', true).maybeSingle();
         
         if (configError || !config) {
@@ -198,7 +197,7 @@ async function openPhoneConfirmation() {
         const botUsername = config.bot_name.replace('@', '').trim();
         const finalUrl = `https://t.me/${botUsername}?start=v_${token}`;
         
-        showToast("Telegramga yo'naltirilmoqda...");
+        showToast("Telegramga o'tilmoqda...");
         window.open(finalUrl, '_blank');
         
         if(btn) {
