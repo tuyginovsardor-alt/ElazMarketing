@@ -31,7 +31,7 @@ export async function switchAdminTab(tab: string) {
                 <div class="admin-tab" onclick="switchAdminTab('settings')" style="padding:15px 20px; font-weight:800; font-size:0.65rem; cursor:pointer; color:${tab === 'settings' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'settings' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">SOZLAMALAR</div>
             </nav>
 
-            <!-- CONTENT AREA (Yagona ID: adminTabContent) -->
+            <!-- Yagona ID li content maydoni -->
             <div id="adminTabContent" style="flex:1; overflow-y:auto; padding:20px; background:#f8fafc;">
                 <div style="text-align:center; padding:100px 20px;">
                     <i class="fas fa-circle-notch fa-spin fa-2x" style="color:var(--primary); margin-bottom:15px;"></i>
@@ -73,6 +73,6 @@ async function renderTabContent(tab: string) {
             renderAdminSettings();
         }
     } catch (e: any) {
-        content.innerHTML = `<div style="text-align:center; padding:50px; color:var(--danger); font-weight:800;">Tizim xatosi: ${e.message}</div>`;
+        content.innerHTML = `<div style="text-align:center; padding:50px; color:var(--danger); font-weight:800;">Xatolik yuz berdi: ${e.message}</div>`;
     }
 }
