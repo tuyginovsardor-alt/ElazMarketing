@@ -78,8 +78,12 @@ export function openLegal(type: 'offer' | 'privacy') {
                 <i class="fas fa-arrow-left" onclick="closeOverlay('checkoutOverlay')" style="font-size:1.4rem; cursor:pointer; color:var(--text); padding: 10px;"></i>
                 <h2 style="font-weight:900; font-size:1.4rem;">${LEGAL_TEXTS[type].title}</h2>
             </div>
-            ${LEGAL_TEXTS[type].content}
+            <div style="padding:0 5px;">
+                ${LEGAL_TEXTS[type].content}
+            </div>
         </div>
     `;
     openOverlay('checkoutOverlay');
 }
+
+(window as any).openLegal = openLegal;
