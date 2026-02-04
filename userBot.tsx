@@ -2,6 +2,8 @@
 import { supabase } from "./index.tsx";
 import { sendMessage } from "./botAPI.tsx";
 
+const SITE_URL = "https://elaz-marketing.vercel.app";
+
 export const USER_MENU = {
     keyboard: [
         [{ text: "🛒 Savatim" }, { text: "🏢 Saytni ochish" }],
@@ -18,7 +20,7 @@ export async function handleUserMessage(chatId: number, text: string, token: str
         
         if (!items?.length) {
             await sendMessage(chatId, "🛒 <b>Savatingiz bo'sh.</b>\n\nMahsulot qo'shish uchun saytga o'ting.", token, {
-                inline_keyboard: [[{ text: "🛍️ XARID QILISH", url: "https://elaz-marketing.vercel.app" }]]
+                inline_keyboard: [[{ text: "🛍️ XARID QILISH", url: SITE_URL }]]
             });
         } else {
             let list = "🛒 <b>SIZNING SAVATINGIZ:</b>\n\n";
@@ -31,7 +33,7 @@ export async function handleUserMessage(chatId: number, text: string, token: str
             list += `\n💰 <b>JAMI: ${total.toLocaleString()} UZS</b>`;
             
             await sendMessage(chatId, list, token, {
-                inline_keyboard: [[{ text: "💳 RASMIYLASHTIRISH", url: "https://elaz-marketing.vercel.app/view=cart" }]]
+                inline_keyboard: [[{ text: "💳 RASMIYLASHTIRISH", url: `${SITE_URL}?view=cart` }]]
             });
         }
     } 
@@ -39,16 +41,16 @@ export async function handleUserMessage(chatId: number, text: string, token: str
     // 2. SAYTNI OCHISH
     else if (text.includes("Saytni ochish")) {
         await sendMessage(chatId, "🏢 <b>ELAZ MARKET</b>\n\nBag'dod tumanidagi eng qulay savdo platformasiga xush kelibsiz! Buyurtma berish uchun quyidagi tugmani bosing:", token, {
-            inline_keyboard: [[{ text: "🌐 SAYTGA O'TISH", web_app: { url: "https://elaz-marketing.vercel.app" } }]]
+            inline_keyboard: [[{ text: "🌐 SAYTGA O'TISH", web_app: { url: SITE_URL } }]]
         });
     } 
 
-    // 3. KURERLIKKA ARIZA (BOT ORQALI)
+    // 3. KURERLIKKA ARIZA
     else if (text.includes("Kuryer bo'lish")) {
         await sendMessage(chatId, "🛵 <b>KURERLIKKA ARIZA TOPSHIRISH</b>\n\nKurer bo'lish uchun quyidagi ma'lumotlarni yuboring yoki saytdagi formani to'ldiring.", token, {
             inline_keyboard: [
                 [{ text: "📝 BOT ORQALI ARIZA", callback_data: "apply_bot" }],
-                [{ text: "🌐 SAYT ORQALI ARIZA", url: "https://elaz-marketing.vercel.app/apply=true" }]
+                [{ text: "🌐 SAYT ORQALI ARIZA", url: `${SITE_URL}?apply=true` }]
             ]
         });
     }
@@ -71,8 +73,7 @@ export async function handleUserMessage(chatId: number, text: string, token: str
 
 export async function handleUserCallback(callback: any, token: string, profile: any) {
     if (callback.data === "apply_bot") {
-        await sendMessage(callback.from.id, "📝 <b>ARIZA QABUL QILINDI.</b>\n\nSizning profilingiz kurerlikka ko'rib chiqish uchun yuborildi. Tez orada adminlarimiz siz bilan bog'lanishadi.", token);
-        // Bazada kurerlik so'rovini yaratish
+        await sendMessage(callback.from.id, "📝 <b>ARIZA QABUL QILINDI.</b>\n\nSizning profilingiz kurerlikka ko'rib chiqish uchun yuborildi.", token);
         await supabase.from('courier_applications').insert({
             user_id: profile.id,
             full_name: profile.first_name,

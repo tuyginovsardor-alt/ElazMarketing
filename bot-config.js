@@ -22,7 +22,9 @@ export const VITE_SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 export const VITE_SUPABASE_KEY = process.env.VITE_SUPABASE_KEY;
 
 export const supabase = createClient(VITE_SUPABASE_URL || '', VITE_SUPABASE_KEY || '');
-export const SITE_URL = "https://elaz-market.vercel.app";
+
+// ASOSIY SAYT URL MANZILI (Shu yerda o'zgartirilsa hamma joyda o'zgaradi)
+export const SITE_URL = "https://elaz-marketing.vercel.app";
 
 // Dinamik token o'zgaruvchisi
 export let BOT_TOKEN = process.env.BOT_TOKEN;

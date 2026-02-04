@@ -2,6 +2,8 @@
 import { supabase } from "./index.tsx";
 import { sendMessage } from "./botAPI.tsx";
 
+const SITE_URL = "https://elaz-marketing.vercel.app";
+
 // MIJOZ MENYUSI
 export const USER_MENU = {
     keyboard: [
@@ -21,19 +23,17 @@ export const COURIER_MENU = {
 };
 
 export async function handleUserActions(chatId: number, text: string, token: string, profile: any) {
-    const cleanText = text.replace(/[^\w\sа-яА-Я]/gi, '').trim(); // Emojilarsiz tekshirish uchun
-
     if (text.includes("Savatim")) {
         await sendMessage(chatId, "Sizning savatingiz ilovada mavjud. Xaridni davom ettirish uchun saytga o'ting.", token, {
-            inline_keyboard: [[{ text: "🛒 SAVATGA O'TISH", url: "https://elaz-marketing.vercel.app/view=cart" }]]
+            inline_keyboard: [[{ text: "🛒 SAVATGA O'TISH", url: `${SITE_URL}?view=cart` }]]
         });
     } else if (text.includes("Saytni ochish")) {
         await sendMessage(chatId, "<b>ELAZ MARKET</b> rasmiy platformasi:", token, {
-            inline_keyboard: [[{ text: "🌐 SAYTNI OCHISH", url: "https://elaz-marketing.vercel.app" }]]
+            inline_keyboard: [[{ text: "🌐 SAYTNI OCHISH", url: SITE_URL }]]
         });
     } else if (text.includes("Kuryer bo'lish")) {
         await sendMessage(chatId, "Kuryerlikka ariza berish uchun ilovadagi profilingizga o'ting.", token, {
-            inline_keyboard: [[{ text: "🛵 ARIZA BERISH", url: "https://elaz-marketing.vercel.app/view=profile" }]]
+            inline_keyboard: [[{ text: "🛵 ARIZA BERISH", url: `${SITE_URL}?view=profile` }]]
         });
     } else if (text.includes("Profil")) {
         await sendMessage(chatId, `👤 <b>MIJOZ PROFILI</b>\n\nIsm: ${profile.first_name}\nBalans: ${profile.balance.toLocaleString()} UZS\nHudud: ${profile.district || 'Belgilanmagan'}`, token);
