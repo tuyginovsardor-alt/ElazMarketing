@@ -13,25 +13,14 @@ const LEGAL_TEXTS = {
                 <h4 style="color: var(--text); margin-top: 30px; font-weight: 900; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">1. UMUMIY QOIDALAR</h4>
                 <p>1.1. Ushbu Oferta O'zbekiston Respublikasi Fuqarolik kodeksining 367-moddasiga muvofiq ochiq taklif hisoblanadi.</p>
                 <p>1.2. Foydalanuvchi ilovada ro'yxatdan o'tgan yoki buyurtma bergan paytdan boshlab ushbu shartlarni to'liq qabul qilgan hisoblanadi.</p>
-                <p>1.3. Sotuvchi (ELAZ MARKET) istalgan vaqtda shartlarni bir tomonlama o'zgartirish huquqiga ega.</p>
 
                 <h4 style="color: var(--text); margin-top: 30px; font-weight: 900; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">2. BUYURTMA VA TO'LOV SHARTLARI</h4>
-                <p>2.1. Xaridor savat orqali mahsulotlarni tanlaydi va shaxsiy ma'lumotlarini (ism, telefon, manzil) aniq ko'rsatadi.</p>
-                <p>2.2. To'lovlar naqd pul, hamyon balansi yoki elektron to'lov tizimlari orqali amalga oshiriladi.</p>
-                <p>2.3. Buyurtma berilgan vaqtdagi narx yakuniy hisoblanadi va o'zgarmaydi.</p>
+                <p>2.1. Xaridor savat orqali mahsulotlarni tanlaydi va shaxsiy ma'lumotlarini aniq ko'rsatadi.</p>
+                <p>2.2. To'lovlar naqd pul yoki hamyon balansi orqali amalga oshiriladi.</p>
 
                 <h4 style="color: var(--text); margin-top: 30px; font-weight: 900; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">3. YETKAZIB BERISH TARTIBI</h4>
-                <p>3.1. Yetkazib berish Bag'dod tumani va Guliston shahri bo'ylab 30-60 daqiqa ichida amalga oshiriladi.</p>
-                <p>3.2. Fors-major holatlarida (tabiiy ofatlar, yo'l yopilishi) yetkazib berish vaqti biroz kechikishi mumkin.</p>
-                <p>3.3. Xaridor mahsulotni kuryerdan olayotgan vaqtda uning sifati va miqdorini tekshirishi shart.</p>
-
-                <h4 style="color: var(--text); margin-top: 30px; font-weight: 900; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">4. MAHSULOTNI QAYTARISH</h4>
-                <p>4.1. Sifatsiz yoki yaroqlilik muddati o'tgan mahsulot aniqlansa, u kuryer ishtirokida almashtiriladi yoki puli qaytariladi.</p>
-                <p>4.2. Sifatli oziq-ovqat mahsulotlari qabul qilib olingandan so'ng qaytarib olinmaydi.</p>
-
-                <h4 style="color: var(--text); margin-top: 30px; font-weight: 900; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">5. TOMONLARNING JAVOBGARLIGI</h4>
-                <p>5.1. Sotuvchi mahsulotning butunligi va gigiyena talablariga rioya qilinishi uchun javobgar.</p>
-                <p>5.2. Xaridor noto'g'ri telefon raqami yoki manzil ko'rsatganligi sababli yuzaga kelgan muammolar uchun o'zi javobgar.</p>
+                <p>3.1. Yetkazib berish Bag'dod tumani bo'ylab 30-60 daqiqa ichida amalga oshiriladi.</p>
+                <p>3.2. Xaridor mahsulotni kuryerdan olayotgan vaqtda tekshirishi shart.</p>
             </div>
         `
     },
@@ -44,31 +33,39 @@ const LEGAL_TEXTS = {
                 </p>
 
                 <h4 style="color: var(--text); margin-top: 30px; font-weight: 900; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">1. MA'LUMOTLARNI TO'PLASH</h4>
-                <p>1.1. <b>Shaxsiy ma'lumotlar:</b> Ism, familiya, telefon raqami va manzilingiz.</p>
-                <p>1.2. <b>Geolokatsiya:</b> Buyurtmani aniq kuryerga yo'naltirish uchun sizning joylashuvingiz.</p>
-                <p>1.3. <b>Texnik ma'lumotlar:</b> Qurilma turi va ilovadan foydalanish statistikasi.</p>
+                <p>1.1. <b>Shaxsiy ma'lumotlar:</b> Ism, telefon raqami va manzilingiz.</p>
+                <p>1.2. <b>Geolokatsiya:</b> Buyurtmani kuryerga yo'naltirish uchun joylashuvingiz.</p>
 
-                <h4 style="color: var(--text); margin-top: 30px; font-weight: 900; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">2. MA'LUMOTLARDAN FOYDALANISH</h4>
-                <p>2.1. Buyurtmalarni rasmiylashtirish va manzilingizni kuryerga bildirish.</p>
-                <p>2.2. Xizmat sifatini oshirish va sizga maxsus chegirmalar haqida xabar berish.</p>
+                <h4 style="color: var(--text); margin-top: 30px; font-weight: 900; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">2. MA'LUMOTLAR HIMOYA QILISHI</h4>
+                <p>2.1. Barcha ma'lumotlar shifrlash protokollari orqali himoyalangan.</p>
+                <p>2.2. Biz ma'lumotlaringizni uchinchi shaxslarga sotmaymiz.</p>
+            </div>
+        `
+    },
+    rules: {
+        title: "Foydalanish qoidalari",
+        content: `
+            <div style="text-align: justify; font-size: 0.95rem; color: #334155; line-height: 1.8; padding-bottom:50px;">
+                <p style="font-weight: 800; color: var(--text); border-left: 5px solid #f59e0b; padding: 18px; background: #fffbeb; border-radius: 16px; margin-bottom: 30px;">
+                    Platformadan foydalanish jarayonida quyidagi qoidalarga amal qilishingiz so'raladi.
+                </p>
 
-                <h4 style="color: var(--text); margin-top: 30px; font-weight: 900; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">3. MA'LUMOTLAR HIMOYA QILISHI</h4>
-                <p>3.1. Barcha ma'lumotlar SSL shifrlash protokollari orqali himoyalangan.</p>
-                <p>3.2. Biz sizning ma'lumotlaringizni hech qachon uchinchi shaxslarga sotmaymiz.</p>
+                <h4 style="color: var(--text); margin-top: 30px; font-weight: 900; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">1. FOYDALANUVCHI MAJBURIYATLARI</h4>
+                <p>1.1. Ro'yxatdan o'tayotganda haqiqiy ism va telefon raqamini ko'rsatish.</p>
+                <p>1.2. Buyurtma berilgandan so'ng kuryer bilan aloqada bo'lish.</p>
 
-                <h4 style="color: var(--text); margin-top: 30px; font-weight: 900; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">4. FOYDALANUVCHI HUQUQLARI</h4>
-                <p>4.1. Siz istalgan vaqtda shaxsiy ma'lumotlaringizni tahrirlashingiz yoki o'chirishingiz mumkin.</p>
-                <p>4.2. Geolokatsiya ruxsatini istalgan vaqtda rad etish huquqiga egasiz.</p>
+                <h4 style="color: var(--text); margin-top: 30px; font-weight: 900; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">2. TAQIQLANGAN HARAKATLAR</h4>
+                <p>2.1. Yolg'on buyurtmalar berish yoki platformani asossiz yuklash.</p>
+                <p>2.2. Boshqa foydalanuvchilarning hisobidan foydalanish.</p>
 
-                <div style="margin-top: 60px; text-align: center; font-size: 0.8rem; color: var(--gray); font-weight: 700;">
-                    Oxirgi yangilanish: 2024-yil 25-may
-                </div>
+                <h4 style="color: var(--text); margin-top: 30px; font-weight: 900; text-transform: uppercase; font-size: 0.85rem; letter-spacing: 1px;">3. JAZO CHORALARI</h4>
+                <p>3.1. Qoidalarni buzgan foydalanuvchilar akkaunti bloklanishi mumkin.</p>
             </div>
         `
     }
 };
 
-export function openLegal(type: 'offer' | 'privacy') {
+export function openLegal(type: 'offer' | 'privacy' | 'rules') {
     const placeholder = document.getElementById('checkoutPlaceholder');
     if(!placeholder) return;
 

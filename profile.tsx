@@ -35,32 +35,17 @@ export async function renderProfileView(data: any) {
                 </div>
             </div>
 
-            <!-- PERSONAL DETAILS CARD -->
-            <div class="card" style="border-radius:32px; padding:25px; border:1.5px solid #f1f5f9; background:white; margin-bottom:25px;">
-                <h3 style="font-weight:900; font-size:0.9rem; color:var(--gray); margin-bottom:15px; text-transform:uppercase;">Shaxsiy Ma'lumotlar</h3>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                    <div>
-                        <div style="font-size:0.65rem; font-weight:800; color:#94a3b8; margin-bottom:4px;">TELEFON</div>
-                        <div style="font-weight:800; font-size:0.9rem;">${data?.phone || 'Kiritilmagan'}</div>
-                    </div>
-                    <div>
-                        <div style="font-size:0.65rem; font-weight:800; color:#94a3b8; margin-bottom:4px;">MANZIL</div>
-                        <div style="font-weight:800; font-size:0.85rem;">${data?.district || 'Markaz'}</div>
-                    </div>
-                </div>
-            </div>
-
             <!-- WALLET & HISTORY QUICK STATS -->
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:25px;">
-                <div class="card" onclick="import('./payment.tsx').then(m => m.openPaymentView())" style="padding:22px; border-radius:32px; border:1.5px solid #f1f5f9; cursor:pointer;">
+                <div class="card" onclick="import('./payment.tsx').then(m => m.openPaymentView())" style="padding:22px; border-radius:32px; border:1.5px solid #f1f5f9; cursor:pointer; background:white;">
                     <i class="fas fa-wallet" style="color:var(--primary); margin-bottom:12px; font-size:1.2rem;"></i>
-                    <div style="font-size:0.65rem; font-weight:800; color:var(--gray); text-transform:uppercase;">Balans</div>
+                    <div style="font-size:0.65rem; font-weight:800; color:var(--gray); text-transform:uppercase;">Hamyon</div>
                     <div style="font-weight:900; font-size:1.1rem;">${(data?.balance || 0).toLocaleString()} <small>UZS</small></div>
                 </div>
-                <div class="card" onclick="navTo('orders')" style="padding:22px; border-radius:32px; border:1.5px solid #f1f5f9; cursor:pointer;">
+                <div class="card" onclick="navTo('orders')" style="padding:22px; border-radius:32px; border:1.5px solid #f1f5f9; cursor:pointer; background:white;">
                     <i class="fas fa-history" style="color:#3b82f6; margin-bottom:12px; font-size:1.2rem;"></i>
                     <div style="font-size:0.65rem; font-weight:800; color:var(--gray); text-transform:uppercase;">Tarix</div>
-                    <div style="font-weight:900; font-size:1.1rem;">Xaridlar</div>
+                    <div style="font-weight:900; font-size:1.1rem;">Buyurtmalar</div>
                 </div>
             </div>
 
@@ -100,6 +85,18 @@ export async function renderProfileView(data: any) {
                     <i class="fas fa-chevron-right" style="font-size:0.8rem; color:#cbd5e1;"></i>
                 </div>
 
+                <div onclick="import('./legal.tsx').then(m => m.openLegal('privacy'))" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                    <div style="width:38px; height:38px; border-radius:12px; background:#f1f5f9; color:var(--gray); display:flex; align-items:center; justify-content:center;"><i class="fas fa-user-shield"></i></div>
+                    <span style="flex:1; font-weight:800; font-size:0.9rem;">Maxfiylik siyosati</span>
+                    <i class="fas fa-chevron-right" style="font-size:0.8rem; color:#cbd5e1;"></i>
+                </div>
+
+                <div onclick="import('./legal.tsx').then(m => m.openLegal('rules'))" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                    <div style="width:38px; height:38px; border-radius:12px; background:#f1f5f9; color:var(--gray); display:flex; align-items:center; justify-content:center;"><i class="fas fa-list-check"></i></div>
+                    <span style="flex:1; font-weight:800; font-size:0.9rem;">Foydalanish qoidalari</span>
+                    <i class="fas fa-chevron-right" style="font-size:0.8rem; color:#cbd5e1;"></i>
+                </div>
+
                 <div onclick="import('./security.tsx').then(m => m.openProfileSecurity())" style="display:flex; align-items:center; gap:15px; padding:18px 20px; cursor:pointer;">
                     <div style="width:38px; height:38px; border-radius:12px; background:#f1f5f9; color:var(--gray); display:flex; align-items:center; justify-content:center;"><i class="fas fa-lock"></i></div>
                     <span style="flex:1; font-weight:800; font-size:0.9rem;">Xavfsizlik</span>
@@ -107,9 +104,20 @@ export async function renderProfileView(data: any) {
                 </div>
             </div>
 
-            <button class="btn" style="width:100%; color:var(--danger); border:2.5px solid #fee2e2; height:65px; border-radius:28px; font-weight:800; background:white; margin-top:10px;" onclick="handleSignOut()">
+            <button class="btn" style="width:100%; color:var(--danger); border:2.5px solid #fee2e2; height:65px; border-radius:28px; font-weight:800; background:white; margin-top:10px; margin-bottom:30px;" onclick="handleSignOut()">
                 CHIQISH <i class="fas fa-sign-out-alt" style="margin-left:8px;"></i>
             </button>
+
+            <!-- FOOTER -->
+            <footer style="padding:35px 20px; background:#f8fafc; border-radius:35px; text-align:center; border:1px solid #f1f5f9;">
+                <div style="font-weight:900; font-size:1.4rem;">ELAZ<span style="color:var(--primary)">MARKET</span></div>
+                <p style="font-size:0.8rem; color:var(--gray); margin-top:10px;">Bag'dod tumanidagi eng yaxshi xizmat.</p>
+                <div style="margin-top:15px; display:flex; justify-content:center; gap:20px; font-size:1.2rem; color:var(--gray);">
+                    <i class="fab fa-telegram"></i>
+                    <i class="fab fa-instagram"></i>
+                    <i class="fab fa-facebook"></i>
+                </div>
+            </footer>
         </div>
     `;
 }
