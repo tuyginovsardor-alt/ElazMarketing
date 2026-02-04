@@ -8,7 +8,7 @@ import { renderOrdersView } from "./ordersView.tsx";
 import { renderSavedView } from "./savedView.tsx";
 import { renderWelcomeView } from "./welcome.tsx";
 
-// Global modullarni import qilish (window ob'ektiga birikishi uchun)
+// Global modullarni import qilish
 import "./legal.tsx";
 import "./security.tsx";
 
@@ -33,7 +33,6 @@ export function openOverlay(id: string) {
     const el = document.getElementById(id);
     if(el) {
         el.style.display = 'block';
-        // Overlay ochilganda body scrollni o'chirish mumkin
         window.history.pushState({ overlay: id }, "", "");
     }
 }
@@ -45,48 +44,75 @@ export function closeOverlay(id: string) {
 }
 (window as any).closeOverlay = closeOverlay;
 
-export async function addToCart(pId: number, qty: number = 1) {
+// --- CART FUNKSIYALARI (GLOBAL) ---
+
+// Implement and export addToCart function to be used by home and product details views
+export async function addToCart(productId: number, qty: number = 1) {
     if(!user) return showToast("Savatga qo'shish uchun tizimga kiring");
+    
     try {
-        const { data: existing } = await supabase.from('cart_items').select('*').eq('user_id', user.id).eq('product_id', pId).maybeSingle();
+        const { data: existing } = await supabase
+            .from('cart_items')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('product_id', productId)
+            .maybeSingle();
+
         if(existing) {
-            await supabase.from('cart_items').update({ quantity: existing.quantity + qty }).eq('user_id', user.id).eq('product_id', pId);
+            const { error } = await supabase
+                .from('cart_items')
+                .update({ quantity: existing.quantity + qty })
+                .eq('id', existing.id);
+            if(error) throw error;
         } else {
-            await supabase.from('cart_items').insert([{ user_id: user.id, product_id: pId, quantity: qty }]);
+            const { error } = await supabase
+                .from('cart_items')
+                .insert([{ user_id: user.id, product_id: productId, quantity: qty }]);
+            if(error) throw error;
         }
         showToast("Savatga qo'shildi! 🛒");
-    } catch(e: any) {
-        showToast("Xatolik: " + e.message);
+    } catch (e: any) {
+        console.error(e);
+        showToast("Xatolik: Savatga qo'shib bo'lmadi");
     }
 }
 (window as any).addToCart = addToCart;
 
-export async function openProductDetails(id: number) {
-    const { data } = await supabase.from('products').select('*').eq('id', id).single();
-    if(data) {
-        const { renderProductDetails } = await import("./productDetails.tsx");
-        renderProductDetails(data);
-    }
-}
-(window as any).openProductDetails = openProductDetails;
+// --- PROFIL FUNKSIYALARI (GLOBAL) ---
 
-export async function toggleLike(pId: number, iconEl: HTMLElement) {
-    if(!user) return showToast("Tizimga kiring");
-    const { data: existing } = await supabase.from('wishlist').select('*').eq('user_id', user.id).eq('product_id', pId).maybeSingle();
-    
-    if(existing) {
-        await supabase.from('wishlist').delete().eq('id', existing.id);
-        iconEl.className = 'far fa-heart';
-        iconEl.style.color = '#cbd5e1';
-    } else {
-        await supabase.from('wishlist').insert([{ user_id: user.id, product_id: pId }]);
-        iconEl.className = 'fas fa-heart';
-        iconEl.style.color = '#f43f5e';
+(window as any).openCourierRegistration = async () => {
+    showToast("Yuklanmoqda...");
+    try {
+        const { openCourierRegistrationForm } = await import("./courierRegistration.tsx");
+        openCourierRegistrationForm();
+    } catch (e) {
+        console.error(e);
+        showToast("Kuryer sahifasini yuklab bo'lmadi");
     }
-}
-(window as any).toggleLike = toggleLike;
+};
 
-export async function enterAdminPanel() {
+(window as any).openSupportCenter = async () => {
+    showToast("Bog'lanish...");
+    try {
+        const { renderSupportView } = await import("./supportView.tsx");
+        renderSupportView();
+    } catch (e) {
+        console.error(e);
+        showToast("Yordam sahifasini yuklab bo'lmadi");
+    }
+};
+
+(window as any).openCourierDashboard = async () => {
+    try {
+        const { renderCourierDashboard } = await import("./courierDashboard.tsx");
+        renderCourierDashboard();
+    } catch (e) {
+        console.error(e);
+        showToast("Dashboard yuklanmadi");
+    }
+};
+
+(window as any).enterAdminPanel = async () => {
     if(!profile || (profile.role !== 'admin' && profile.role !== 'staff')) {
         showToast("Ruxsat yo'q!");
         return;
@@ -99,25 +125,22 @@ export async function enterAdminPanel() {
         const { switchAdminTab } = await import("./admin.tsx");
         switchAdminTab('dash'); 
     }
-}
-(window as any).enterAdminPanel = enterAdminPanel;
+};
 
-export async function connectToBot() {
+(window as any).connectToBot = async () => {
     if(!profile) return showToast("Tizimga kiring");
-    
     const token = Math.random().toString(36).substring(2, 15);
     showToast("Telegramga yo'naltirilmoqda...");
-    
     const { error } = await supabase.from('profiles').update({ link_token: token }).eq('id', profile.id);
-    
     if(!error) {
         const botUsername = "elaz_market_bot"; 
         window.open(`https://t.me/${botUsername}?start=${token}`, '_blank');
     } else {
         showToast("Xatolik: " + error.message);
     }
-}
-(window as any).connectToBot = connectToBot;
+};
+
+// --- STANDART NAVIGATSIYA ---
 
 export async function loadProfileData() {
     const { data: { session } } = await supabase.auth.getSession();

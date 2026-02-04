@@ -36,7 +36,7 @@ export async function renderProfileView(data: any) {
                 </div>
             </div>
 
-            <!-- WALLET & HISTORY QUICK CARDS -->
+            <!-- WALLET & HISTORY -->
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:25px;">
                 <div class="card" onclick="import('./payment.tsx').then(m => m.openPaymentView())" style="padding:22px; border-radius:32px; border:1.5px solid #f1f5f9; cursor:pointer; background:white; text-align:center;">
                     <i class="fas fa-wallet" style="color:var(--primary); margin-bottom:12px; font-size:1.4rem;"></i>
@@ -50,7 +50,7 @@ export async function renderProfileView(data: any) {
                 </div>
             </div>
 
-            <!-- BOTGA ULASH (PROMINENT CARD) -->
+            <!-- BOTGA ULASH -->
             ${!isLinked ? `
                 <div onclick="connectToBot()" class="card" style="background:#eff6ff; border:1.5px solid #dbeafe; padding:20px; border-radius:30px; margin-bottom:25px; display:flex; align-items:center; gap:20px; cursor:pointer; animation: pulseLight 2s infinite;">
                     <div style="width:50px; height:50px; border-radius:18px; background:white; color:#3b82f6; display:flex; align-items:center; justify-content:center; font-size:1.4rem; box-shadow:0 5px 15px rgba(59,130,246,0.1);"><i class="fab fa-telegram"></i></div>
@@ -73,13 +73,21 @@ export async function renderProfileView(data: any) {
                     </div>
                 ` : ''}
 
-                <div onclick="import('./courierRegistration.tsx').then(m => m.openCourierRegistrationForm())" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
-                    <div style="width:38px; height:38px; border-radius:12px; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center;"><i class="fas fa-motorcycle"></i></div>
-                    <span style="flex:1; font-weight:800; font-size:0.9rem;">Kuryer bo'lish</span>
-                    <i class="fas fa-chevron-right" style="font-size:0.8rem; color:#cbd5e1;"></i>
-                </div>
+                ${isCourier ? `
+                    <div onclick="openCourierDashboard()" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                        <div style="width:38px; height:38px; border-radius:12px; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center;"><i class="fas fa-route"></i></div>
+                        <span style="flex:1; font-weight:800; font-size:0.9rem;">Kuryer Ish Joyi</span>
+                        <i class="fas fa-chevron-right" style="font-size:0.8rem; color:#cbd5e1;"></i>
+                    </div>
+                ` : `
+                    <div onclick="openCourierRegistration()" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                        <div style="width:38px; height:38px; border-radius:12px; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center;"><i class="fas fa-motorcycle"></i></div>
+                        <span style="flex:1; font-weight:800; font-size:0.9rem;">Kuryer bo'lish</span>
+                        <i class="fas fa-chevron-right" style="font-size:0.8rem; color:#cbd5e1;"></i>
+                    </div>
+                `}
 
-                <div onclick="import('./supportView.tsx').then(m => m.renderSupportView())" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                <div onclick="openSupportCenter()" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
                     <div style="width:38px; height:38px; border-radius:12px; background:#f1f5f9; color:var(--gray); display:flex; align-items:center; justify-content:center;"><i class="fas fa-headset"></i></div>
                     <span style="flex:1; font-weight:800; font-size:0.9rem;">Yordam markazi</span>
                     <i class="fas fa-chevron-right" style="font-size:0.8rem; color:#cbd5e1;"></i>
@@ -113,25 +121,7 @@ export async function renderProfileView(data: any) {
             <button class="btn" style="width:100%; color:var(--danger); border:2.5px solid #fee2e2; height:65px; border-radius:28px; font-weight:800; background:white; margin-bottom:30px;" onclick="handleSignOut()">
                 CHIQISH <i class="fas fa-sign-out-alt" style="margin-left:8px;"></i>
             </button>
-
-            <!-- FOOTER -->
-            <footer style="padding:40px 20px; background:#f8fafc; border-radius:35px; text-align:center; border:1px solid #f1f5f9;">
-                <div style="font-weight:900; font-size:1.6rem; margin-bottom:10px;">ELAZ<span style="color:var(--primary)">MARKET</span></div>
-                <p style="font-size:0.85rem; color:var(--gray); font-weight:600; line-height:1.5;">Bag'dod tumanidagi eng zamonaviy<br>savdo va yetkazib berish xizmati.</p>
-                <div style="margin-top:25px; display:flex; justify-content:center; gap:25px;">
-                    <a href="https://t.me/elaz_market" target="_blank" style="color:#64748b; font-size:1.5rem;"><i class="fab fa-telegram"></i></a>
-                    <a href="#" style="color:#64748b; font-size:1.5rem;"><i class="fab fa-instagram"></i></a>
-                </div>
-                <div style="margin-top:25px; font-size:0.65rem; color:#cbd5e1; font-weight:800; letter-spacing:1px; text-transform:uppercase;">© 2025 ELAZ GROUP</div>
-            </footer>
         </div>
-        <style>
-            @keyframes pulseLight {
-                0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59,130,246,0.1); }
-                50% { transform: scale(1.01); box-shadow: 0 0 0 10px rgba(59,130,246,0); }
-                100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59,130,246,0); }
-            }
-        </style>
     `;
 }
 
