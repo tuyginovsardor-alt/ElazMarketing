@@ -1,5 +1,5 @@
 
-import { supabase, tg, BOT_TOKEN } from './bot-config.js';
+import { supabase, tg, refreshBotToken } from './bot-config.js';
 import { KB } from './bot-keyboards.js';
 import { handleAuth } from './bot-auth.js';
 import { handleUser } from './bot-user.js';
@@ -41,15 +41,33 @@ async function router(update) {
 }
 
 async function start() {
-    console.log("💎 ELAZ BOT ENGINE V12 (ULTIMATE) STARTED...");
+    console.log("💎 ELAZ BOT ENGINE V12 (ULTIMATE) STARTING...");
+    
+    // 1. Bazadan tokenni yuklaymiz
+    const token = await refreshBotToken();
+    
+    if (!token) {
+        console.error("⛔ [CRITICAL] BOT_TOKEN topilmadi! Bazani yoki .env ni tekshiring.");
+        process.exit(1);
+    }
+
+    console.log("🚀 Polling started...");
+    
     while (true) {
         try {
             const res = await tg('getUpdates', { offset: lastId, timeout: 30 });
-            if (res.ok && res.result.length) {
+            if (res && res.ok && res.result.length) {
                 for (const u of res.result) {
                     await router(u);
                     lastId = u.update_id + 1;
                 }
+            } else if (res && !res.ok) {
+                console.error(`[TG ERROR] ${res.description}`);
+                if (res.description.includes("Not Found")) {
+                    console.log("🔄 Tokenni bazadan qayta yangilashga urunaman...");
+                    await refreshBotToken();
+                }
+                await new Promise(r => setTimeout(r, 5000));
             }
         } catch (e) {
             console.error("Polling error:", e.message);
