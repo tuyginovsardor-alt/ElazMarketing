@@ -151,6 +151,17 @@ export async function loadProfileData() {
             data = inserted;
         }
         profile = data;
+        
+        // Update Bottom Nav Avatar
+        const navIconContainer = document.getElementById('navProfileIconContainer');
+        if(navIconContainer && profile) {
+            if(profile.avatar_url) {
+                navIconContainer.innerHTML = `<img src="${profile.avatar_url}" class="nav-avatar">`;
+            } else {
+                navIconContainer.innerHTML = `<i class="far fa-user-circle" style="font-size: 1.75rem;"></i>`;
+            }
+        }
+
         const rb = document.getElementById('roleBadge');
         if(rb && profile) rb.innerHTML = `<span style="background:var(--primary-light); color:var(--primary); padding:6px 14px; border-radius:14px; font-size:0.65rem; font-weight:900; text-transform:uppercase; border:1px solid var(--primary);">${profile.role}</span>`;
     } catch (e) { console.error(e); }

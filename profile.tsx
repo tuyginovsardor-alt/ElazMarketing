@@ -57,7 +57,7 @@ export async function renderProfileView(data: any) {
 
             <!-- STATS GRID -->
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:25px;">
-                <div class="card" onclick="openPaymentView()" style="padding:22px; border-radius:28px; text-align:center; border:1.5px solid #f1f5f9; background:white; transition: 0.3s active:scale(0.95);">
+                <div class="card" onclick="openPaymentView()" style="padding:22px; border-radius:28px; text-align:center; border:1.5px solid #f1f5f9; background:white;">
                     <div style="width:50px; height:50px; background:var(--primary-light); color:var(--primary); border-radius:16px; display:flex; align-items:center; justify-content:center; margin:0 auto 12px;">
                         <i class="fas fa-wallet" style="font-size:1.4rem;"></i>
                     </div>
@@ -80,12 +80,12 @@ export async function renderProfileView(data: any) {
                         <i class="fab fa-telegram-plane" style="font-size:1.4rem;"></i>
                     </div>
                     <div style="flex:1;">
-                        <h4 style="font-weight:900; font-size:1rem; color:var(--text);">${isBotLinked ? 'Telegramga ulangan' : 'Botni ulang'}</h4>
+                        <h4 style="font-weight:900; font-size:1rem; color:var(--text);">${isBotLinked ? 'Telegramga ulangan ✅' : 'Botni ulang'}</h4>
                         <p style="font-size:0.7rem; color:var(--gray); font-weight:600;">Push xabarnomalar olish uchun</p>
                     </div>
                 </div>
                 ${!isBotLinked ? `
-                    <button class="btn btn-primary" style="height:54px; width:100%; border-radius:18px; font-size:0.9rem;" onclick="generateBotLink()">
+                    <button id="btnGenerateBot" class="btn btn-primary" style="height:54px; width:100%; border-radius:18px; font-size:0.9rem;" onclick="generateBotLink()">
                         ULASHNI BOSHLASH <i class="fas fa-link" style="margin-left:8px;"></i>
                     </button>
                 ` : `
@@ -112,22 +112,7 @@ export async function renderProfileView(data: any) {
                 </div>
             </div>
 
-            <!-- INFO SECTION -->
-            <div style="margin-bottom:30px;">
-                <h4 style="font-weight:900; font-size:0.75rem; color:var(--gray); text-transform:uppercase; letter-spacing:1.5px; margin-left:18px; margin-bottom:15px; opacity:0.8;">HUQUQIY MA'LUMOTLAR</h4>
-                <div class="card" style="padding:8px; border-radius:30px; border:1.5px solid #f1f5f9; background:white;">
-                    <div class="menu-item" onclick="openLegal('offer')" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
-                        <i class="fas fa-scroll" style="color:var(--gray); width:20px; text-align:center;"></i>
-                        <span style="flex:1; font-weight:700; font-size:0.9rem;">Ommaviy oferta</span>
-                    </div>
-                    <div class="menu-item" onclick="openLegal('privacy')" style="display:flex; align-items:center; gap:15px; padding:18px 20px; cursor:pointer;">
-                        <i class="fas fa-user-shield" style="color:var(--gray); width:20px; text-align:center;"></i>
-                        <span style="flex:1; font-weight:700; font-size:0.9rem;">Maxfiylik siyosati</span>
-                    </div>
-                </div>
-            </div>
-
-            <button class="btn btn-outline" style="width:100%; color:var(--danger); border-color:#fee2e2; height:65px; border-radius:24px; font-weight:800; background:white; box-shadow:0 4px 12px rgba(239,68,68,0.05);" onclick="handleSignOut()">
+            <button class="btn btn-outline" style="width:100%; color:var(--danger); border-color:#fee2e2; height:65px; border-radius:24px; font-weight:800; background:white;" onclick="handleSignOut()">
                 HISOBDAN CHIQISH <i class="fas fa-sign-out-alt" style="margin-left:8px;"></i>
             </button>
         </div>
@@ -138,7 +123,7 @@ export async function renderProfileView(data: any) {
     }
 }
 
-// Imports for context
+// Global UI context
 import { openProfileEdit } from "./profileEdit.tsx";
 import { openProfileSecurity } from "./security.tsx";
 import { openPaymentView } from "./payment.tsx";
@@ -184,16 +169,47 @@ async function openPhoneConfirmation() {
 };
 
 (window as any).generateBotLink = async () => {
-    const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    const { error } = await supabase.from('profiles').update({ 
-        link_token: token, 
-        link_token_expires: new Date(Date.now() + 10 * 60000).toISOString() 
-    }).eq('id', user.id);
+    const btn = document.getElementById('btnGenerateBot') as HTMLButtonElement;
+    if(btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> GENERATSIYA...';
+    }
 
-    if (!error) {
-        const { data: config } = await supabase.from('bot_configs').select('bot_name').eq('is_active', true).maybeSingle();
-        const botUsername = config?.bot_name.replace('@', '') || "elaz_market_bot";
-        window.open(`https://t.me/${botUsername}?start=v_${token}`, '_blank');
-        showToast("Telegramga o'naltirilmoqda...");
+    try {
+        // 1. Yangi Link Token yaratish
+        const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const expires = new Date(Date.now() + 10 * 60000).toISOString(); // 10 daqiqa
+
+        const { error: updateError } = await supabase.from('profiles').update({ 
+            link_token: token, 
+            link_token_expires: expires 
+        }).eq('id', user.id);
+
+        if (updateError) throw updateError;
+
+        // 2. Faol bot usernameini aniqlash
+        const { data: config, error: configError } = await supabase.from('bot_configs').select('bot_name').eq('is_active', true).maybeSingle();
+        
+        if (configError || !config) {
+            showToast("Bot konfiguratsiyasi topilmadi!");
+            throw new Error("Bot not configured");
+        }
+
+        const botUsername = config.bot_name.replace('@', '').trim();
+        const finalUrl = `https://t.me/${botUsername}?start=v_${token}`;
+        
+        showToast("Telegramga yo'naltirilmoqda...");
+        window.open(finalUrl, '_blank');
+        
+        if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = 'BOTGA O\'TILDI ✅';
+        }
+    } catch (e: any) {
+        showToast("Xatolik: " + e.message);
+        if(btn) {
+            btn.disabled = false;
+            btn.innerHTML = 'QAYTA URINISH';
+        }
     }
 };
