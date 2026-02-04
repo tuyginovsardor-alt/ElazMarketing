@@ -28,25 +28,26 @@ export const SITE_URL = "https://elaz-market.vercel.app";
 export let BOT_TOKEN = process.env.BOT_TOKEN;
 
 /**
- * Bazadan tokenni yuklash
+ * Bazadan tokenni yuklash (bot_configs jadvalidan)
  */
 export async function refreshBotToken() {
     try {
-        console.log("🔍 [DB] Bot tokenini bazadan qidiryapman...");
+        console.log("🔍 [DB] Bot tokenini 'bot_configs' jadvalidan qidiryapman...");
         const { data, error } = await supabase
-            .from('app_settings')
-            .select('value')
-            .eq('key', 'bot_token')
+            .from('bot_configs')
+            .select('token')
+            .eq('is_active', true)
+            .limit(1)
             .maybeSingle();
 
         if (error) throw error;
 
-        if (data && data.value) {
-            BOT_TOKEN = data.value;
-            console.log("✅ [DB] Token muvaffaqiyatli yuklandi!");
+        if (data && data.token) {
+            BOT_TOKEN = data.token;
+            console.log(`✅ [DB] Aktiv token yuklandi: ${BOT_TOKEN.substring(0, 10)}...`);
             return BOT_TOKEN;
         } else {
-            console.warn("⚠️ [DB] Bazada 'bot_token' topilmadi. .env ishlatiladi.");
+            console.warn("⚠️ [DB] Aktiv bot topilmadi. .env fayli tekshiriladi.");
             return BOT_TOKEN;
         }
     } catch (e) {
@@ -60,11 +61,12 @@ export async function refreshBotToken() {
  */
 export async function tg(method, body) {
     if (!BOT_TOKEN) {
-        return { ok: false, description: "Token yo'q" };
+        return { ok: false, description: "Bot tokeni topilmadi!" };
     }
     
     try {
-        const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
+        const url = `https://api.telegram.org/bot${BOT_TOKEN}/${method}`;
+        const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
