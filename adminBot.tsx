@@ -1,7 +1,8 @@
 
 import { supabase, showToast } from "./index.tsx";
 
-let activeBotToken = '';
+let botInstances: any[] = [];
+let activeBotIndex = 0;
 let isPolling = false;
 let lastUpdateId = 0;
 let orderListener: any = null;
@@ -11,100 +12,108 @@ export async function renderAdminBot() {
     const container = document.getElementById('admin_tab_bot');
     if(!container) return;
 
-    // Bazadan tokenni olish
-    const { data } = await supabase.from('app_settings').select('value').eq('key', 'bot_config').maybeSingle();
-    activeBotToken = data?.value?.token || '';
+    container.innerHTML = `<div style="text-align:center; padding:3rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--primary);"></i><p style="margin-top:10px; font-weight:800; color:var(--gray);">BOT ENGINE YUKLANMOQDA...</p></div>`;
+
+    // Bazadan barcha bot sozlamalarini olish
+    const { data: settings } = await supabase.from('app_settings').select('*').eq('key', 'bot_config').maybeSingle();
+    
+    // Agar bot_config massiv bo'lsa massiv, ob'ekt bo'lsa massivga o'rab olamiz
+    const configValue = settings?.value;
+    if (Array.isArray(configValue)) {
+        botInstances = configValue;
+    } else if (configValue && configValue.token) {
+        botInstances = [configValue];
+    } else {
+        botInstances = [];
+    }
+
+    const currentBot = botInstances[activeBotIndex];
 
     container.innerHTML = `
-        <div style="display:grid; grid-template-columns: 350px 1fr; gap:25px; height: calc(100vh - 200px);">
-            <!-- Panel Control -->
+        <div style="display:grid; grid-template-columns: 320px 1fr; gap:25px; height: calc(100vh - 200px);">
+            <!-- Sidebar: Bot Instances -->
             <div style="display:flex; flex-direction:column; gap:20px;">
-                <div class="card" style="padding:25px; border-radius:28px; border:none; box-shadow:var(--shadow-sm); background:white;">
-                    <h3 style="font-weight:900; margin-bottom:15px; display:flex; align-items:center; gap:10px;">
-                        <i class="fas fa-robot" style="color:var(--primary);"></i> ELAZ Engine
+                <div class="card" style="padding:20px; border-radius:24px; background:white; border:none; box-shadow:var(--shadow-sm);">
+                    <h3 style="font-weight:900; font-size:1rem; margin-bottom:15px; display:flex; align-items:center; gap:10px;">
+                        <i class="fas fa-robot" style="color:var(--primary);"></i> BOT INSTANCES
                     </h3>
-                    <div style="font-size:0.75rem; color:var(--gray); margin-bottom:20px; line-height:1.5;">
-                        Telegram Bot tizimi kuryerlarni yangi buyurtmalardan xabardor qilish va buyurtmalarni qabul qilish uchun javobgar.
+                    <div id="botInstancesList" style="display:flex; flex-direction:column; gap:10px; max-height:200px; overflow-y:auto; margin-bottom:15px;">
+                        ${botInstances.length > 0 ? botInstances.map((bot, idx) => `
+                            <div onclick="switchBotInstance(${idx})" style="padding:12px; border-radius:14px; border:2px solid ${activeBotIndex === idx ? 'var(--primary)' : '#f1f5f9'}; background:${activeBotIndex === idx ? 'var(--primary-light)' : 'white'}; cursor:pointer; transition:0.3s;">
+                                <div style="font-weight:800; font-size:0.75rem; color:${activeBotIndex === idx ? 'var(--primary)' : 'var(--text)'};">
+                                    ${bot.name || 'Bot #' + (idx + 1)}
+                                </div>
+                                <div style="font-family:monospace; font-size:0.6rem; color:var(--gray); overflow:hidden; text-overflow:ellipsis;">
+                                    ${bot.token.substring(0, 15)}...
+                                </div>
+                            </div>
+                        `).join('') : '<p style="font-size:0.7rem; color:var(--gray); text-align:center;">Botlar topilmadi.</p>'}
                     </div>
-                    
-                    <div style="padding:15px; background:#f8fafc; border-radius:18px; margin-bottom:20px; border:1px solid #f1f5f9;">
-                        <div style="font-size:0.65rem; font-weight:800; color:var(--gray); text-transform:uppercase; margin-bottom:5px;">Hozirgi Token:</div>
-                        <div style="font-family:monospace; font-size:0.75rem; color:var(--text); word-break:break-all;">
-                            ${activeBotToken ? activeBotToken.substring(0, 15) + '...' : '<span style="color:var(--danger);">Token topilmadi!</span>'}
-                        </div>
-                    </div>
-
-                    <button class="btn ${isPolling ? 'btn-outline' : 'btn-primary'}" style="width:100%; height:55px;" onclick="toggleBotPolling()">
-                        ${isPolling ? '<i class="fas fa-stop-circle"></i> BOTNI TO\'XTATISH' : '<i class="fas fa-play-circle"></i> BOTNI ISHGA TUSHIRISH'}
+                    <button class="btn btn-primary" style="width:100%; height:50px; font-size:0.8rem;" onclick="toggleBotPolling()">
+                        ${isPolling ? '<i class="fas fa-stop"></i> TO\'XTATISH' : '<i class="fas fa-play"></i> ISHGA TUSHIRISH'}
                     </button>
-                    
-                    <div id="pollingIndicator" style="margin-top:15px; text-align:center; font-size:0.75rem; font-weight:800; color:${isPolling ? 'var(--primary)' : 'var(--danger)'}">
-                        ${isPolling ? '🟢 SISTEMA ONLINE' : '🔴 SISTEMA OFFLINE'}
-                    </div>
                 </div>
 
                 <div class="card" style="padding:20px; border-radius:24px; background:var(--dark); color:white; border:none;">
-                    <h4 style="font-size:0.8rem; font-weight:900; margin-bottom:12px;">STATISTIKA</h4>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-                        <div style="background:rgba(255,255,255,0.05); padding:12px; border-radius:14px;">
-                            <div style="font-size:0.6rem; opacity:0.6;">KURYERLAR</div>
-                            <div id="activeCouriersCount" style="font-weight:900; font-size:1.1rem;">0</div>
-                        </div>
-                        <div style="background:rgba(255,255,255,0.05); padding:12px; border-radius:14px;">
-                            <div style="font-size:0.6rem; opacity:0.6;">SO'ROVLAR</div>
-                            <div id="totalRequestsCount" style="font-weight:900; font-size:1.1rem;">0</div>
-                        </div>
+                    <h4 style="font-size:0.75rem; font-weight:900; margin-bottom:12px; opacity:0.6;">ENGINE STATUS</h4>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="width:10px; height:10px; border-radius:50%; background:${isPolling ? '#10b981' : '#ef4444'}; box-shadow:0 0 10px ${isPolling ? '#10b981' : '#ef4444'};"></div>
+                        <b style="font-size:0.85rem;">${isPolling ? 'RUNNING' : 'STANDBY'}</b>
                     </div>
                 </div>
             </div>
 
-            <!-- Bot Terminal Logs -->
+            <!-- Terminal Area -->
             <div class="card" style="background:#020617; border-radius:28px; border:1px solid #1e293b; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,0.2);">
                 <div style="padding:15px 25px; background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
                     <div style="color:#94a3b8; font-family:monospace; font-size:0.75rem; font-weight:700;">
-                        <i class="fas fa-terminal" style="margin-right:8px;"></i> SYSTEM_LOGS.EXE
+                        <i class="fas fa-terminal" style="margin-right:8px;"></i> ${currentBot ? currentBot.name || 'BOT_LOGS' : 'TERMINAL'}.SH
                     </div>
-                    <button style="background:none; border:none; color:#64748b; cursor:pointer;" onclick="clearBotLogs()"><i class="fas fa-trash-alt"></i></button>
+                    <div style="display:flex; gap:10px;">
+                        <button style="background:none; border:none; color:#64748b; cursor:pointer;" onclick="renderAdminBot()"><i class="fas fa-sync-alt"></i></button>
+                        <button style="background:none; border:none; color:#64748b; cursor:pointer;" onclick="clearBotLogs()"><i class="fas fa-trash-alt"></i></button>
+                    </div>
                 </div>
                 <div id="botTerminalLogs" style="flex:1; padding:20px; overflow-y:auto; font-family:'Fira Code', monospace; font-size:0.8rem; line-height:1.6;">
-                    <!-- Logs go here -->
+                    ${logs.length === 0 ? '<div style="color:#475569; font-style:italic;">Xabarlar kutilmoqda...</div>' : ''}
                 </div>
             </div>
         </div>
     `;
 
     renderLogs();
-    updateBotStats();
 }
 
-async function updateBotStats() {
-    const { count: cCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'courier').eq('active_status', true);
-    document.getElementById('activeCouriersCount')!.innerText = (cCount || 0).toString();
-}
+(window as any).switchBotInstance = (idx: number) => {
+    if(isPolling) return showToast("Avval botni to'xtating!");
+    activeBotIndex = idx;
+    renderAdminBot();
+};
 
 (window as any).toggleBotPolling = () => {
-    if(!activeBotToken) return showToast("Iltimos, avval sozlamalardan Bot Tokenni kiriting!");
+    const currentBot = botInstances[activeBotIndex];
+    if(!currentBot || !currentBot.token) return showToast("Sozlamalardan bot tokenini kiriting!");
     
     if(isPolling) {
         isPolling = false;
         addBotLog('SYS', 'Engine to\'xtatildi.');
     } else {
         isPolling = true;
-        addBotLog('SYS', 'Engine ishga tushirildi. Polling boshlandi...');
-        startPollingLoop();
-        setupOrderListener();
+        addBotLog('SYS', `Engine [${currentBot.name || 'Bot'}] uchun ishga tushirildi...`);
+        startPollingLoop(currentBot.token);
+        setupOrderListener(currentBot.token);
     }
     renderAdminBot();
 };
 
-async function startPollingLoop() {
+async function startPollingLoop(token: string) {
     while(isPolling) {
         try {
-            const r = await fetch(`https://api.telegram.org/bot${activeBotToken}/getUpdates?offset=${lastUpdateId}&timeout=20`);
+            const r = await fetch(`https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId}&timeout=20`);
             const d = await r.json();
             if(d.ok && d.result) {
                 for(const u of d.result) {
-                    await handleBotUpdate(u);
+                    await handleBotUpdate(u, token);
                     lastUpdateId = u.update_id + 1;
                 }
             }
@@ -115,7 +124,7 @@ async function startPollingLoop() {
     }
 }
 
-async function handleBotUpdate(update: any) {
+async function handleBotUpdate(update: any, token: string) {
     const msg = update.message;
     const callback = update.callback_query;
     const chatId = msg ? msg.chat.id : callback.message.chat.id;
@@ -131,74 +140,58 @@ async function handleBotUpdate(update: any) {
     };
 
     if (text === "/start") {
-        sendMessage(chatId, `Assalomu alaykum, <b>${from}</b>!\n\nID: <code>${chatId}</code>\nUshbu ID ni ilovadagi profil tahrirlash qismiga kiriting.`, menu);
+        sendMessage(chatId, `Assalomu alaykum, <b>${from}</b>!\n\nID: <code>${chatId}</code>\nUshbu ID ni ilovadagi profil tahrirlash qismiga kiriting.`, token, menu);
     } else if (text === "🟢 Ishga tushish") {
         await supabase.from('profiles').update({ active_status: true, telegram_id: chatId }).eq('telegram_id', chatId);
-        sendMessage(chatId, "🟢 Siz <b>ONLAYN</b> holatdasiz. Yangi buyurtmalar kutavering!", menu);
+        sendMessage(chatId, "🟢 Siz <b>ONLAYN</b> holatdasiz. Yangi buyurtmalar kutavering!", token, menu);
     } else if (text === "🔴 Dam olish") {
         await supabase.from('profiles').update({ active_status: false }).eq('telegram_id', chatId);
-        sendMessage(chatId, "🔴 Siz <b>OFFLINE</b> holatdasiz. Dam oling.", menu);
+        sendMessage(chatId, "🔴 Siz <b>OFFLINE</b> holatdasiz. Dam oling.", token, menu);
     }
 
     if (data && data.startsWith('accept_')) {
         const orderId = data.split('_')[1];
-        addBotLog('SYS', `Order #${orderId} accept request from ${from}`);
-        
         const { data: courier } = await supabase.from('profiles').select('id').eq('telegram_id', chatId).single();
         if(courier) {
-            const { error } = await supabase.from('orders').update({ 
-                courier_id: courier.id, 
-                status: 'delivering' 
-            }).eq('id', orderId).is('courier_id', null);
-
+            const { error } = await supabase.from('orders').update({ courier_id: courier.id, status: 'delivering' }).eq('id', orderId).is('courier_id', null);
             if(!error) {
-                sendMessage(chatId, `✅ <b>Buyurtma #ORD-${orderId} qabul qilindi!</b>\n\nIlovada manzillar bilan tanishib yo'lga chiqing.`);
+                sendMessage(chatId, `✅ <b>Buyurtma #ORD-${orderId} qabul qilindi!</b>`, token);
                 addBotLog('SYS', `Order #${orderId} assigned to ${from}`);
             } else {
-                sendMessage(chatId, `❌ Xatolik: Buyurtma allaqachon boshqa kuryer tomonidan olingan bo'lishi mumkin.`);
+                sendMessage(chatId, `❌ Buyurtma allaqachon olingan.`, token);
             }
         }
     }
 }
 
-async function sendMessage(chatId: number, text: string, markup: any = {}) {
+async function sendMessage(chatId: number, text: string, token: string, markup: any = {}) {
     try {
-        await fetch(`https://api.telegram.org/bot${activeBotToken}/sendMessage`, {
+        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', reply_markup: markup })
         });
-        addBotLog('OUT', `To ${chatId}: ${text.substring(0, 30)}...`);
+        addBotLog('OUT', `Xabar yuborildi: ${chatId}`);
     } catch(e) {}
 }
 
-function setupOrderListener() {
+function setupOrderListener(token: string) {
     if(orderListener) supabase.removeChannel(orderListener);
     orderListener = supabase.channel('order_events')
         .on('postgres_changes', { event: 'INSERT', table: 'orders' }, payload => {
-            if(payload.new.status === 'confirmed') {
-                addBotLog('SYS', `Yangi buyurtma keldi (#ORD-${payload.new.id}). Kuryerlarni qidirish...`);
-                notifyCouriers(payload.new);
-            }
+            if(payload.new.status === 'confirmed') notifyCouriers(payload.new, token);
         })
         .subscribe();
 }
 
-async function notifyCouriers(order: any) {
+async function notifyCouriers(order: any, token: string) {
     const { data: couriers } = await supabase.from('profiles').select('telegram_id').eq('role', 'courier').eq('active_status', true);
-    
-    if(!couriers || couriers.length === 0) {
-        addBotLog('WARN', 'Hozirda onlayn kuryerlar yo\'q.');
-        return;
-    }
+    if(!couriers || couriers.length === 0) return addBotLog('WARN', 'Onlayn kuryerlar yo\'q.');
 
-    const text = `📦 <b>YANGI BUYURTMA! #ORD-${order.id}</b>\n\n💰 Summa: <b>${order.total_price.toLocaleString()} so'm</b>\n📍 Manzil: ${order.address_text}\n🚲 Yetkazish haqi: ${order.delivery_cost.toLocaleString()} so'm`;
+    const text = `📦 <b>YANGI BUYURTMA! #ORD-${order.id}</b>\n\n💰 Narxi: ${order.total_price.toLocaleString()} so'm\n📍 Manzil: ${order.address_text}`;
     const markup = { inline_keyboard: [[{ text: "✅ QABUL QILISH", callback_data: `accept_${order.id}` }]] };
     
-    couriers.forEach(c => {
-        if(c.telegram_id) sendMessage(c.telegram_id, text, markup);
-    });
-    updateBotStats();
+    couriers.forEach(c => { if(c.telegram_id) sendMessage(c.telegram_id, text, token, markup); });
 }
 
 function addBotLog(type: string, msg: string) {
