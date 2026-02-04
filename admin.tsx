@@ -6,31 +6,37 @@ export async function switchAdminTab(tab: string) {
     if(!panel) return;
 
     panel.innerHTML = `
-        <div style="width:100%; height:100%; display:flex; flex-direction:column; background:#f1f5f9;">
-            <header style="padding:1.2rem 1.5rem; background:white; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
-                <div style="font-weight:900; font-size:1.1rem; color:var(--dark); display:flex; align-items:center; gap:12px;">
-                    <div style="width:36px; height:36px; background:var(--gradient); border-radius:10px; display:flex; align-items:center; justify-content:center; color:white;">
-                        <i class="fas fa-shield-halved"></i>
+        <div style="width:100%; height:100%; display:flex; flex-direction:column; background:#f8fafc;">
+            <!-- ADMIN HEADER -->
+            <header style="padding:1rem 1.5rem; background:white; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-weight:900; font-size:1rem; color:#0f172a; display:flex; align-items:center; gap:10px;">
+                    <div style="width:32px; height:32px; background:var(--gradient); border-radius:8px; display:flex; align-items:center; justify-content:center; color:white;">
+                        <i class="fas fa-shield-halved" style="font-size:0.9rem;"></i>
                     </div>
-                    ELAZ <span style="font-weight:400; color:var(--primary);">CONTROL</span>
+                    <span style="letter-spacing:-0.5px;">ELAZ <span style="color:var(--primary); font-weight:600;">CONTROL</span></span>
                 </div>
-                <button class="btn" style="height:42px; padding:0 20px; font-size:0.75rem; background:var(--dark); color:white; border-radius:12px; font-weight:800;" onclick="navTo('profile')">
-                    CHIQISH <i class="fas fa-sign-out-alt" style="margin-left:8px;"></i>
+                <button class="btn" style="height:38px; padding:0 15px; font-size:0.7rem; background:#1e293b; color:white; border-radius:10px; font-weight:800; border:none;" onclick="navTo('profile')">
+                    CHIQISH <i class="fas fa-sign-out-alt" style="margin-left:6px;"></i>
                 </button>
             </header>
             
+            <!-- ADMIN TABS -->
             <nav style="display:flex; background:white; border-bottom:1px solid #e2e8f0; overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none;">
-                <div class="admin-tab" onclick="switchAdminTab('dash')" style="padding:18px 22px; font-weight:800; font-size:0.7rem; cursor:pointer; color:${tab === 'dash' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'dash' ? 'var(--primary)' : 'transparent'}; transition:0.3s;">ANALITIKA</div>
-                <div class="admin-tab" onclick="switchAdminTab('inv')" style="padding:18px 22px; font-weight:800; font-size:0.7rem; cursor:pointer; color:${tab === 'inv' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'inv' ? 'var(--primary)' : 'transparent'}; transition:0.3s;">SKLAD</div>
-                <div class="admin-tab" onclick="switchAdminTab('orders')" style="padding:18px 22px; font-weight:800; font-size:0.7rem; cursor:pointer; color:${tab === 'orders' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'orders' ? 'var(--primary)' : 'transparent'}; transition:0.3s;">BUYURTMALAR</div>
-                <div class="admin-tab" onclick="switchAdminTab('users')" style="padding:18px 22px; font-weight:800; font-size:0.7rem; cursor:pointer; color:${tab === 'users' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'users' ? 'var(--primary)' : 'transparent'}; transition:0.3s;">FOYDALANUVCHILAR</div>
-                <div class="admin-tab" onclick="switchAdminTab('bot')" style="padding:18px 22px; font-weight:800; font-size:0.7rem; cursor:pointer; color:${tab === 'bot' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'bot' ? 'var(--primary)' : 'transparent'}; transition:0.3s;">BOT</div>
-                <div class="admin-tab" onclick="switchAdminTab('ads')" style="padding:18px 22px; font-weight:800; font-size:0.7rem; cursor:pointer; color:${tab === 'ads' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'ads' ? 'var(--primary)' : 'transparent'}; transition:0.3s;">MARKETING</div>
-                <div class="admin-tab" onclick="switchAdminTab('settings')" style="padding:18px 22px; font-weight:800; font-size:0.7rem; cursor:pointer; color:${tab === 'settings' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'settings' ? 'var(--primary)' : 'transparent'}; transition:0.3s;">SOZLAMALAR</div>
+                <div class="admin-tab" onclick="switchAdminTab('dash')" style="padding:15px 20px; font-weight:800; font-size:0.65rem; cursor:pointer; color:${tab === 'dash' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'dash' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">ANALITIKA</div>
+                <div class="admin-tab" onclick="switchAdminTab('inv')" style="padding:15px 20px; font-weight:800; font-size:0.65rem; cursor:pointer; color:${tab === 'inv' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'inv' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">SKLAD</div>
+                <div class="admin-tab" onclick="switchAdminTab('orders')" style="padding:15px 20px; font-weight:800; font-size:0.65rem; cursor:pointer; color:${tab === 'orders' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'orders' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">BUYURTMALAR</div>
+                <div class="admin-tab" onclick="switchAdminTab('users')" style="padding:15px 20px; font-weight:800; font-size:0.65rem; cursor:pointer; color:${tab === 'users' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'users' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">FOYDALANUVCHILAR</div>
+                <div class="admin-tab" onclick="switchAdminTab('bot')" style="padding:15px 20px; font-weight:800; font-size:0.65rem; cursor:pointer; color:${tab === 'bot' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'bot' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">BOT</div>
+                <div class="admin-tab" onclick="switchAdminTab('ads')" style="padding:15px 20px; font-weight:800; font-size:0.65rem; cursor:pointer; color:${tab === 'ads' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'ads' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">MARKETING</div>
+                <div class="admin-tab" onclick="switchAdminTab('settings')" style="padding:15px 20px; font-weight:800; font-size:0.65rem; cursor:pointer; color:${tab === 'settings' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'settings' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">SOZLAMALAR</div>
             </nav>
 
+            <!-- CONTENT AREA (Yagona ID: adminTabContent) -->
             <div id="adminTabContent" style="flex:1; overflow-y:auto; padding:20px; background:#f8fafc;">
-                <div style="text-align:center; padding:50px;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--primary);"></i></div>
+                <div style="text-align:center; padding:100px 20px;">
+                    <i class="fas fa-circle-notch fa-spin fa-2x" style="color:var(--primary); margin-bottom:15px;"></i>
+                    <p style="font-weight:800; color:#94a3b8; font-size:0.8rem;">MA'LUMOTLAR YUKLANMOQDA...</p>
+                </div>
             </div>
         </div>
     `;
@@ -67,6 +73,6 @@ async function renderTabContent(tab: string) {
             renderAdminSettings();
         }
     } catch (e: any) {
-        content.innerHTML = `<div style="text-align:center; padding:40px; color:var(--danger);">Xatolik: ${e.message}</div>`;
+        content.innerHTML = `<div style="text-align:center; padding:50px; color:var(--danger); font-weight:800;">Tizim xatosi: ${e.message}</div>`;
     }
 }
