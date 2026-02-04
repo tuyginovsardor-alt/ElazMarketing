@@ -17,14 +17,29 @@ export async function renderAdminBot() {
     // Bazadan barcha bot sozlamalarini olish
     const { data: settings } = await supabase.from('app_settings').select('*').eq('key', 'bot_config').maybeSingle();
     
-    // Agar bot_config massiv bo'lsa massiv, ob'ekt bo'lsa massivga o'rab olamiz
     const configValue = settings?.value;
     if (Array.isArray(configValue)) {
         botInstances = configValue;
     } else if (configValue && configValue.token) {
-        botInstances = [configValue];
+        botInstances = [{ name: 'Asosiy Bot', token: configValue.token }];
     } else {
         botInstances = [];
+    }
+
+    if (botInstances.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center; padding:5rem 2rem; background:white; border-radius:30px; box-shadow:var(--shadow-sm);">
+                <div style="width:100px; height:100px; background:#fff1f2; color:#f43f5e; border-radius:35px; display:inline-flex; align-items:center; justify-content:center; font-size:3rem; margin-bottom:2rem;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h2 style="font-weight:900; margin-bottom:10px;">Botlar topilmadi</h2>
+                <p style="color:var(--gray); margin-bottom:30px; font-weight:600;">Tizim ishlashi uchun kamida bitta Telegram Bot tokenini qo'shishingiz kerak.</p>
+                <button class="btn btn-primary" style="display:inline-flex; width:auto; padding:0 40px;" onclick="switchAdminTab('settings')">
+                    SOZLAMALARGA O'TISH
+                </button>
+            </div>
+        `;
+        return;
     }
 
     const currentBot = botInstances[activeBotIndex];
@@ -35,19 +50,19 @@ export async function renderAdminBot() {
             <div style="display:flex; flex-direction:column; gap:20px;">
                 <div class="card" style="padding:20px; border-radius:24px; background:white; border:none; box-shadow:var(--shadow-sm);">
                     <h3 style="font-weight:900; font-size:1rem; margin-bottom:15px; display:flex; align-items:center; gap:10px;">
-                        <i class="fas fa-robot" style="color:var(--primary);"></i> BOT INSTANCES
+                        <i class="fas fa-robot" style="color:var(--primary);"></i> BOT RO'YXATI
                     </h3>
                     <div id="botInstancesList" style="display:flex; flex-direction:column; gap:10px; max-height:200px; overflow-y:auto; margin-bottom:15px;">
-                        ${botInstances.length > 0 ? botInstances.map((bot, idx) => `
+                        ${botInstances.map((bot, idx) => `
                             <div onclick="switchBotInstance(${idx})" style="padding:12px; border-radius:14px; border:2px solid ${activeBotIndex === idx ? 'var(--primary)' : '#f1f5f9'}; background:${activeBotIndex === idx ? 'var(--primary-light)' : 'white'}; cursor:pointer; transition:0.3s;">
                                 <div style="font-weight:800; font-size:0.75rem; color:${activeBotIndex === idx ? 'var(--primary)' : 'var(--text)'};">
-                                    ${bot.name || 'Bot #' + (idx + 1)}
+                                    ${bot.name}
                                 </div>
                                 <div style="font-family:monospace; font-size:0.6rem; color:var(--gray); overflow:hidden; text-overflow:ellipsis;">
                                     ${bot.token.substring(0, 15)}...
                                 </div>
                             </div>
-                        `).join('') : '<p style="font-size:0.7rem; color:var(--gray); text-align:center;">Botlar topilmadi.</p>'}
+                        `).join('')}
                     </div>
                     <button class="btn btn-primary" style="width:100%; height:50px; font-size:0.8rem;" onclick="toggleBotPolling()">
                         ${isPolling ? '<i class="fas fa-stop"></i> TO\'XTATISH' : '<i class="fas fa-play"></i> ISHGA TUSHIRISH'}
@@ -67,7 +82,7 @@ export async function renderAdminBot() {
             <div class="card" style="background:#020617; border-radius:28px; border:1px solid #1e293b; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,0.2);">
                 <div style="padding:15px 25px; background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.05); display:flex; justify-content:space-between; align-items:center;">
                     <div style="color:#94a3b8; font-family:monospace; font-size:0.75rem; font-weight:700;">
-                        <i class="fas fa-terminal" style="margin-right:8px;"></i> ${currentBot ? currentBot.name || 'BOT_LOGS' : 'TERMINAL'}.SH
+                        <i class="fas fa-terminal" style="margin-right:8px;"></i> ${currentBot ? currentBot.name : 'TERMINAL'}.SH
                     </div>
                     <div style="display:flex; gap:10px;">
                         <button style="background:none; border:none; color:#64748b; cursor:pointer;" onclick="renderAdminBot()"><i class="fas fa-sync-alt"></i></button>
@@ -84,6 +99,7 @@ export async function renderAdminBot() {
     renderLogs();
 }
 
+// ... (qolgan funksiyalar startPollingLoop va h.k. o'zgarishsiz qoladi)
 (window as any).switchBotInstance = (idx: number) => {
     if(isPolling) return showToast("Avval botni to'xtating!");
     activeBotIndex = idx;
@@ -92,14 +108,14 @@ export async function renderAdminBot() {
 
 (window as any).toggleBotPolling = () => {
     const currentBot = botInstances[activeBotIndex];
-    if(!currentBot || !currentBot.token) return showToast("Sozlamalardan bot tokenini kiriting!");
+    if(!currentBot || !currentBot.token) return showToast("Bot tokenini kiriting!");
     
     if(isPolling) {
         isPolling = false;
         addBotLog('SYS', 'Engine to\'xtatildi.');
     } else {
         isPolling = true;
-        addBotLog('SYS', `Engine [${currentBot.name || 'Bot'}] uchun ishga tushirildi...`);
+        addBotLog('SYS', `Engine [${currentBot.name}] uchun ishga tushirildi...`);
         startPollingLoop(currentBot.token);
         setupOrderListener(currentBot.token);
     }
