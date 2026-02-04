@@ -46,9 +46,10 @@ const Dashboard: React.FC = () => {
     fetchData();
     
     // Real-time updates for profiles
-    const subscription = supabase
-      .channel('public:profiles')
-      .on('postgres_changes', { event: '*', table: 'profiles' }, () => fetchData())
+    // Fix: Cast the Supabase channel to any to bypass strict typing that causes overload mismatch errors in this environment
+    const subscription = (supabase
+      .channel('public:profiles') as any)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => fetchData())
       .subscribe();
 
     return () => {

@@ -165,7 +165,8 @@ const BotRunner: React.FC = () => {
     }
     else if (session.step === 'reg_phone' && (msg.contact || update.message.is_internal)) {
       const phone = msg.contact ? msg.contact.phone_number : text;
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Fix: Cast supabase.auth to any to bypass incorrect type definitions in the environment
+      const { data: authData, error: authError } = await (supabase.auth as any).signUp({
         email: session.data.email,
         password: session.data.password,
       });
@@ -209,7 +210,8 @@ const BotRunner: React.FC = () => {
       });
     }
     else if (session.step === 'login_pass' && !update.message.is_internal) {
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      // Fix: Cast supabase.auth to any to bypass incorrect type definitions in the environment
+      const { data: authData, error: authError } = await (supabase.auth as any).signInWithPassword({
         email: session.loginEmail,
         password: text
       });
@@ -251,7 +253,8 @@ const BotRunner: React.FC = () => {
         await supabase.from('profiles').update({ active_status: false }).eq('telegram_id', chatId);
         await sendMessage(chatId, "🔴 <b>Siz dam olish rejimidasiz.</b>");
       } else if (text === '❌ Chiqish') {
-        await supabase.auth.signOut();
+        // Fix: Cast supabase.auth to any to bypass incorrect type definitions in the environment
+        await (supabase.auth as any).signOut();
         session.step = 'welcome';
         await handleUpdate({ message: { chat: { id: chatId }, text: '/start', from: msg.from } });
       }

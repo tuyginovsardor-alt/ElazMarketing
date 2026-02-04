@@ -1,8 +1,8 @@
 
 /**
  * ELAZ MARKET - BOT SERVICE (NODE.JS)
- * Google Cloud VM da 24/7 ishlatish uchun mo'ljallangan.
- * V5.1 - Pending Orders Logic added.
+ * Optimized for Google Cloud VM & Tmux
+ * V6.0 - Full Auth Flow & Session Management
  */
 import { createClient } from '@supabase/supabase-js';
 import fetch from 'node-fetch';
@@ -10,20 +10,30 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL,
-  process.env.VITE_SUPABASE_KEY
-);
+const { VITE_SUPABASE_URL, VITE_SUPABASE_KEY } = process.env;
 
+if (!VITE_SUPABASE_URL || !VITE_SUPABASE_KEY) {
+    console.error("❌ XATOLIK: .env faylida VITE_SUPABASE_URL yoki VITE_SUPABASE_KEY topilmadi!");
+    process.exit(1);
+}
+
+const supabase = createClient(VITE_SUPABASE_URL, VITE_SUPABASE_KEY);
+
+// Foydalanuvchi bosqichlarini eslab qolish uchun (In-memory session)
+const sessions = {};
 let lastUpdateId = 0;
-let isRunning = true;
 
 // --- KEYBOARDS ---
+const WELCOME_MENU = {
+    keyboard: [[{ text: "🔑 Kirish" }, { text: "📝 Ro'yxatdan o'tish" }]],
+    resize_keyboard: true
+};
+
 const USER_MENU = {
     keyboard: [
-        [{ text: "🛒 Savatim" }, { text: "🏢 Saytni ochish" }],
+        [{ text: "🛍 Market" }, { text: "🛒 Savatim" }],
         [{ text: "🛵 Kuryer bo'lish" }, { text: "👤 Profil" }],
-        [{ text: "🆘 Yordam markazi" }]
+        [{ text: "🆘 Yordam" }]
     ],
     resize_keyboard: true
 };
@@ -36,7 +46,12 @@ const COURIER_MENU = {
     resize_keyboard: true
 };
 
-// --- API HELPER ---
+const CANCEL_MENU = {
+    keyboard: [[{ text: "❌ Bekor qilish" }]],
+    resize_keyboard: true
+};
+
+// --- TG API HELPER ---
 async function tg(method, body, token) {
     try {
         const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
@@ -46,152 +61,216 @@ async function tg(method, body, token) {
         });
         return await res.json();
     } catch (e) {
-        console.error(`[Error ${method}]:`, e.message);
         return { ok: false };
     }
 }
 
-// --- PENDING ORDERS CHECKER ---
-// Kutib turgan buyurtmalarni kurerlarga yuborish
-async function checkAndNotifyPendingOrders(token, targetCourierId = null) {
-    // 1. Kutib turgan (confirmed) va kurer biriktirilmagan buyurtmalarni olish
-    const { data: pendingOrders } = await supabase
-        .from('orders')
-        .select('*')
-        .eq('status', 'confirmed')
-        .is('courier_id', null);
-
-    if (!pendingOrders || pendingOrders.length === 0) return;
-
-    // 2. Qaysi kurerlarga yuborishni aniqlash
-    let targetCouriers = [];
-    if (targetCourierId) {
-        // Faqat bitta kurer onlayn bo'lgan holat uchun
-        const { data: c } = await supabase.from('profiles').select('telegram_id').eq('id', targetCourierId).eq('active_status', true).single();
-        if (c) targetCouriers = [c];
-    } else {
-        // Hamma onlayn kurerlar uchun (Bot yonganda)
-        const { data: cs } = await supabase.from('profiles').select('telegram_id').eq('role', 'courier').eq('active_status', true);
-        targetCouriers = cs || [];
-    }
-
-    if (targetCouriers.length === 0) return;
-
-    // 3. Xabarlarni yuborish
-    for (const order of pendingOrders) {
-        const text = `📦 <b>KUTIB TURGAN BUYURTMA!</b>\n\n💰 Summa: ${order.total_price.toLocaleString()} UZS\n📍 Manzil: ${order.address_text}\n⏰ Vaqti: ${new Date(order.created_at).toLocaleString()}`;
-        const markup = { inline_keyboard: [[{ text: "✅ QABUL QILISH", callback_data: `accept_${order.id}` }]] };
-        
-        for (const courier of targetCouriers) {
-            if (courier.telegram_id) {
-                await tg('sendMessage', { chat_id: courier.telegram_id, text, parse_mode: 'HTML', reply_markup: markup }, token);
-            }
-        }
-    }
+// --- BOT FUNCTIONS ---
+async function sendMenu(chatId, text, menu, token) {
+    return await tg('sendMessage', { chat_id: chatId, text, parse_mode: 'HTML', reply_markup: menu }, token);
 }
 
-// --- BOT LOGIC ---
+// --- MAIN HANDLER ---
 async function handleUpdate(update, token) {
     const msg = update.message;
-    const callback = update.callback_query;
-    const chatId = msg ? msg.chat.id : (callback ? callback.message.chat.id : null);
-
+    const cb = update.callback_query;
+    const chatId = msg ? msg.chat.id : (cb ? cb.message.chat.id : null);
     if (!chatId) return;
 
+    // Foydalanuvchini bazadan qidirish
     const { data: profile } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
 
-    if (callback) {
-        const data = callback.data;
-        if (data === "apply_bot" && profile) {
-            await supabase.from('courier_applications').insert({ user_id: profile.id, full_name: profile.first_name, status: 'pending' });
-            await tg('answerCallbackQuery', { callback_query_id: callback.id, text: "Arizangiz qabul qilindi! ✅", show_alert: true }, token);
-        }
-        if (data.startsWith('accept_') && profile?.role === 'courier') {
+    // CALLBACK QUERY (Masalan: Buyurtmani qabul qilish)
+    if (cb) {
+        const data = cb.data;
+        if (data.startsWith('accept_')) {
+            if (!profile || profile.role !== 'courier') {
+                return await tg('answerCallbackQuery', { callback_query_id: cb.id, text: "Siz kurer emassiz!", show_alert: true }, token);
+            }
             const orderId = data.split('_')[1];
-            const { data: order } = await supabase.from('orders').update({ courier_id: profile.id, status: 'delivering' }).eq('id', orderId).is('courier_id', null).select().single();
+            const { data: order, error } = await supabase.from('orders')
+                .update({ courier_id: profile.id, status: 'delivering' })
+                .eq('id', orderId)
+                .is('courier_id', null)
+                .select().single();
+
             if (order) {
-                await tg('sendMessage', { chat_id: chatId, text: `✅ <b>BUYURTMA #ORD-${orderId} QABUL QILINDI!</b>\n\n📍 Manzil: ${order.address_text}\n💰 Summa: ${order.total_price.toLocaleString()} UZS\n📞 Tel: ${order.phone_number || 'Saytdan ko\'ring'}`, parse_mode: 'HTML' }, token);
+                await tg('editMessageText', { 
+                    chat_id: chatId, 
+                    message_id: cb.message.message_id, 
+                    text: `✅ <b>BUYURTMA QABUL QILINDI!</b>\n\nManzil: ${order.address_text}\nTel: ${order.phone_number || 'Ilovadan ko\'ring'}\nSumma: ${order.total_price.toLocaleString()} UZS`,
+                    parse_mode: 'HTML'
+                }, token);
+                await tg('answerCallbackQuery', { callback_query_id: cb.id, text: "Muvaffaqiyatli!" }, token);
             } else {
-                await tg('answerCallbackQuery', { callback_query_id: callback.id, text: "❌ Kechikdingiz, boshqa kurer oldi.", show_alert: true }, token);
+                await tg('answerCallbackQuery', { callback_query_id: cb.id, text: "Kechikdingiz! Boshqa kurer olib bo'ldi.", show_alert: true }, token);
             }
         }
         return;
     }
 
-    if (!msg || !msg.text) return;
+    if (!msg?.text) return;
     const text = msg.text;
 
-    if (text === "/start") {
-        if (!profile) {
-            await tg('sendMessage', { chat_id: chatId, text: `Assalomu alaykum! ELAZ MARKET botiga xush kelibsiz. Botdan foydalanish uchun saytda ro'yxatdan o'ting va ID ni bog'lang: <code>${chatId}</code>`, parse_mode: 'HTML', reply_markup: { inline_keyboard: [[{ text: "🌐 SAYTGA O'TISH", url: "https://elaz-marketing.vercel.app" }]] } }, token);
-        } else {
+    // Bekor qilish mantiqi
+    if (text === "❌ Bekor qilish" || text === "/start") {
+        delete sessions[chatId];
+        if (profile) {
             const menu = profile.role === 'courier' ? COURIER_MENU : USER_MENU;
-            await tg('sendMessage', { chat_id: chatId, text: `Xush kelibsiz, <b>${profile.first_name}</b>!`, parse_mode: 'HTML', reply_markup: menu }, token);
+            return await sendMenu(chatId, `Xush kelibsiz, <b>${profile.first_name}</b>!`, menu, token);
+        } else {
+            return await sendMenu(chatId, "Assalomu alaykum! ELAZ MARKET botiga xush kelibsiz. Davom etish uchun variantni tanlang:", WELCOME_MENU, token);
         }
-        return;
     }
 
-    if (!profile) return;
+    // --- REGISTER FLOW ---
+    if (text === "📝 Ro'yxatdan o'tish") {
+        sessions[chatId] = { step: 'REG_NAME' };
+        return await sendMenu(chatId, "Ism va familiyangizni kiriting:", CANCEL_MENU, token);
+    }
+    if (sessions[chatId]?.step === 'REG_NAME') {
+        sessions[chatId].name = text;
+        sessions[chatId].step = 'REG_PHONE';
+        return await sendMenu(chatId, "Telefon raqamingizni yuboring (Masalan: +998901234567):", CANCEL_MENU, token);
+    }
+    if (sessions[chatId]?.step === 'REG_PHONE') {
+        sessions[chatId].phone = text;
+        sessions[chatId].step = 'REG_EMAIL';
+        return await sendMenu(chatId, "Gmail manzilingizni kiriting:", CANCEL_MENU, token);
+    }
+    if (sessions[chatId]?.step === 'REG_EMAIL') {
+        sessions[chatId].email = text;
+        sessions[chatId].step = 'REG_PASS';
+        return await sendMenu(chatId, "Parol o'ylab toping (min. 6 belgi):", CANCEL_MENU, token);
+    }
+    if (sessions[chatId]?.step === 'REG_PASS') {
+        const s = sessions[chatId];
+        await sendMenu(chatId, "⏳ Ro'yxatdan o'tkazilmoqda...", { remove_keyboard: true }, token);
+        
+        const { data: auth, error } = await supabase.auth.signUp({ email: s.email, password: text });
+        if (error) return await sendMenu(chatId, "❌ Xato: " + error.message, WELCOME_MENU, token);
+        
+        await supabase.from('profiles').insert({
+            id: auth.user.id,
+            telegram_id: chatId,
+            first_name: s.name,
+            email: s.email,
+            phone: s.phone,
+            role: 'user',
+            balance: 0
+        });
+        
+        delete sessions[chatId];
+        return await sendMenu(chatId, "✅ Tabriklaymiz! Ro'yxatdan o'tdingiz.", USER_MENU, token);
+    }
 
-    if (profile.role === 'courier') {
-        if (text.includes("Ishga tushish")) {
-            await supabase.from('profiles').update({ active_status: true }).eq('id', profile.id);
-            await tg('sendMessage', { chat_id: chatId, text: "🟢 <b>SIZ ONLAYNSIZ!</b>\nHozirda kutib turgan buyurtmalar tekshirilmoqda...", reply_markup: COURIER_MENU }, token);
-            
-            // Onlayn bo'lgan zahoti eski zakazlarni yuborish
-            await checkAndNotifyPendingOrders(token, profile.id);
-        } else if (text.includes("Dam olish")) {
-            await supabase.from('profiles').update({ active_status: false }).eq('id', profile.id);
-            await tg('sendMessage', { chat_id: chatId, text: "🔴 <b>SIZ OFLAYNSIZ.</b> Buyurtmalar sizga ko'rinmaydi.", reply_markup: COURIER_MENU }, token);
-        } else if (text.includes("Faol buyurtmalar")) {
-            const { data: orders } = await supabase.from('orders').select('*').eq('courier_id', profile.id).eq('status', 'delivering');
-            if (!orders?.length) {
-                await tg('sendMessage', { chat_id: chatId, text: "Hozircha sizda yetkazilayotgan faol buyurtmalar yo'q.", token });
-            } else {
-                for (const o of orders) {
-                    await tg('sendMessage', { chat_id: chatId, text: `📦 <b>BUYURTMA #ORD-${o.id}</b>\n📍 Manzil: ${o.address_text}\n💰 Summa: ${o.total_price.toLocaleString()} UZS`, token });
+    // --- LOGIN FLOW ---
+    if (text === "🔑 Kirish") {
+        sessions[chatId] = { step: 'LOGIN_EMAIL' };
+        return await sendMenu(chatId, "Gmail manzilingizni kiriting:", CANCEL_MENU, token);
+    }
+    if (sessions[chatId]?.step === 'LOGIN_EMAIL') {
+        sessions[chatId].email = text;
+        sessions[chatId].step = 'LOGIN_PASS';
+        return await sendMenu(chatId, "Parolingizni kiriting:", CANCEL_MENU, token);
+    }
+    if (sessions[chatId]?.step === 'LOGIN_PASS') {
+        const email = sessions[chatId].email;
+        await sendMenu(chatId, "⏳ Tekshirilmoqda...", { remove_keyboard: true }, token);
+        
+        const { data: auth, error } = await supabase.auth.signInWithPassword({ email, password: text });
+        if (error) return await sendMenu(chatId, "❌ Email yoki parol xato!", WELCOME_MENU, token);
+        
+        // Telegram ID ni profilga bog'lash
+        await supabase.from('profiles').update({ telegram_id: chatId }).eq('id', auth.user.id);
+        const { data: newProfile } = await supabase.from('profiles').select('*').eq('id', auth.user.id).single();
+        
+        delete sessions[chatId];
+        const menu = newProfile.role === 'courier' ? COURIER_MENU : USER_MENU;
+        return await sendMenu(chatId, `✅ Xush kelibsiz, ${newProfile.first_name}!`, menu, token);
+    }
+
+    // --- AUTHENTICATED ACTIONS ---
+    if (profile) {
+        const cmd = text.replace(/[^\w\sа-яА-Я]/gi, '').trim();
+
+        // Umumiy tugmalar
+        if (cmd.includes("Profil")) {
+            const stats = `👤 <b>PROFILINGIZ:</b>\n\nIsm: ${profile.first_name}\nRol: ${profile.role.toUpperCase()}\nBalans: ${profile.balance.toLocaleString()} UZS\nID: <code>${chatId}</code>`;
+            return await tg('sendMessage', { chat_id: chatId, text: stats, parse_mode: 'HTML' }, token);
+        }
+        if (cmd.includes("Market")) {
+            return await sendMenu(chatId, "Marketga o'tish uchun tugmani bosing:", {
+                inline_keyboard: [[{ text: "🌐 SAYTNI OCHISH", web_app: { url: "https://elaz-marketing.vercel.app" } }]]
+            }, token);
+        }
+
+        // Kurer tugmalari
+        if (profile.role === 'courier') {
+            if (cmd.includes("Ishga tushish")) {
+                await supabase.from('profiles').update({ active_status: true }).eq('id', profile.id);
+                return await tg('sendMessage', { chat_id: chatId, text: "🟢 Siz onlaynsiz! Yangi buyurtmalar kelishi bilan xabar beramiz." }, token);
+            }
+            if (cmd.includes("Dam olish")) {
+                await supabase.from('profiles').update({ active_status: false }).eq('id', profile.id);
+                return await tg('sendMessage', { chat_id: chatId, text: "🔴 Siz dam olish rejimidasiz." }, token);
+            }
+            if (cmd.includes("Faol buyurtmalar")) {
+                const { data: active } = await supabase.from('orders').select('*').eq('courier_id', profile.id).eq('status', 'delivering');
+                if (!active?.length) return await tg('sendMessage', { chat_id: chatId, text: "Hozirda sizda faol buyurtmalar yo'q." }, token);
+                for (const o of active) {
+                    await tg('sendMessage', { chat_id: chatId, text: `📦 <b>BUYURTMA #ORD-${o.id}</b>\n\nManzil: ${o.address_text}\nSumma: ${o.total_price.toLocaleString()} UZS`, parse_mode: 'HTML' }, token);
                 }
             }
-        } else if (text.includes("Profil")) {
-            await tg('sendMessage', { chat_id: chatId, text: `🚛 <b>KURER PROFILI</b>\n\nIsm: ${profile.first_name}\nBalans: ${profile.balance.toLocaleString()} UZS\nStatus: ${profile.active_status ? '🟢 Onlayn' : '🔴 Oflayn'}`, token });
         }
-    } else {
-        // User logic... (Savat, Profil etc.)
-        if (text.includes("Profil")) {
-            await tg('sendMessage', { chat_id: chatId, text: `👤 <b>PROFILINGIZ:</b>\n\nIsm: ${profile.first_name}\nBalans: ${profile.balance.toLocaleString()} UZS\nID: <code>${chatId}</code>`, parse_mode: 'HTML' }, token);
+
+        // Mijoz tugmalari
+        if (profile.role === 'user') {
+            if (cmd.includes("Kuryer bo'lish")) {
+                return await sendMenu(chatId, "Kurer bo'lish uchun saytdagi profil bo'limidan ariza qoldiring.", {
+                    inline_keyboard: [[{ text: "📝 ARIZA TOPSHIRISH", url: "https://elaz-marketing.vercel.app/apply=true" }]]
+                }, token);
+            }
+            if (cmd.includes("Yordam")) {
+                return await tg('sendMessage', { chat_id: chatId, text: "Yordam uchun admin bilan bog'laning: @elaz_admin" }, token);
+            }
+            if (cmd.includes("Savatim")) {
+                return await sendMenu(chatId, "Savatingizni ko'rish va to'lov qilish uchun saytga o'ting:", {
+                    inline_keyboard: [[{ text: "🛒 SAVATNI OCHISH", url: "https://elaz-marketing.vercel.app/view=cart" }]]
+                }, token);
+            }
         }
     }
 }
 
-// --- MAIN ENGINE ---
-async function startBot() {
-    console.log("ELAZ Bot Engine started on VM...");
-    
-    const { data: botConfig } = await supabase.from('bot_configs').select('token').eq('is_active', true).single();
-    if (!botConfig) {
-        console.error("Active bot token not found!");
-        return;
+// --- REALTIME NOTIFICATIONS ---
+async function notifyNewOrder(order, token) {
+    const { data: couriers } = await supabase.from('profiles').select('telegram_id').eq('role', 'courier').eq('active_status', true);
+    if (!couriers?.length) return;
+
+    const text = `📦 <b>YANGI BUYURTMA!</b>\n\n📍 Manzil: ${order.address_text}\n💰 Summa: ${order.total_price.toLocaleString()} UZS\n🛵 Masofa: ${order.delivery_cost.toLocaleString()} UZS`;
+    const markup = { inline_keyboard: [[{ text: "✅ QABUL QILISH", callback_data: `accept_${order.id}` }]] };
+
+    for (const c of couriers) {
+        if (c.telegram_id) await tg('sendMessage', { chat_id: c.telegram_id, text, parse_mode: 'HTML', reply_markup: markup }, token);
     }
-    const token = botConfig.token;
+}
 
-    // Bot yonganda kutib turgan barcha zakazlarni onlayn kurerlarga yuboramiz
-    await checkAndNotifyPendingOrders(token);
+// --- START ENGINE ---
+async function start() {
+    console.log("🚀 ELAZ Bot Engine v6.0 starting...");
+    const { data: config } = await supabase.from('bot_configs').select('token').eq('is_active', true).single();
+    if (!config) return console.error("❌ Bot token topilmadi!");
+    const token = config.token;
 
-    // Realtime orders listener (Faqat yangi tushganlar uchun)
-    supabase.channel('vm_orders')
-        .on('postgres_changes', { event: 'INSERT', table: 'orders' }, async payload => {
-            if (payload.new.status === 'confirmed') {
-                const { data: couriers } = await supabase.from('profiles').select('telegram_id').eq('role', 'courier').eq('active_status', true);
-                const text = `📦 <b>YANGI BUYURTMA!</b>\n\n💰 Summa: ${payload.new.total_price.toLocaleString()} UZS\n📍 Manzil: ${payload.new.address_text}`;
-                const markup = { inline_keyboard: [[{ text: "✅ QABUL QILISH", callback_data: `accept_${payload.new.id}` }]] };
-                for (const c of couriers || []) {
-                    if (c.telegram_id) await tg('sendMessage', { chat_id: c.telegram_id, text, parse_mode: 'HTML', reply_markup: markup }, token);
-                }
-            }
+    // Supabase Realtime for Orders
+    supabase.channel('orders_channel')
+        .on('postgres_changes', { event: 'INSERT', table: 'orders' }, payload => {
+            if (payload.new.status === 'confirmed') notifyNewOrder(payload.new, token);
         }).subscribe();
 
     // Polling Loop
-    while (isRunning) {
+    while (true) {
         try {
             const updates = await tg('getUpdates', { offset: lastUpdateId, timeout: 30 }, token);
             if (updates.ok && updates.result) {
@@ -201,10 +280,9 @@ async function startBot() {
                 }
             }
         } catch (e) {
-            console.error("Polling error:", e.message);
             await new Promise(r => setTimeout(r, 5000));
         }
     }
 }
 
-startBot();
+start();

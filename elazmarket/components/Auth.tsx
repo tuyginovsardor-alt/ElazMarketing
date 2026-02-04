@@ -27,14 +27,16 @@ const Auth: React.FC<AuthProps> = ({ onSession }) => {
 
     try {
       if (isLogin) {
-        const { data, error: authError } = await supabase.auth.signInWithPassword({
+        // Fix: Cast supabase.auth to any to bypass incorrect type definitions in the environment
+        const { data, error: authError } = await (supabase.auth as any).signInWithPassword({
           email,
           password,
         });
         if (authError) throw authError;
         onSession(data.session);
       } else {
-        const { data, error: authError } = await supabase.auth.signUp({
+        // Fix: Cast supabase.auth to any to bypass incorrect type definitions in the environment
+        const { data, error: authError } = await (supabase.auth as any).signUp({
           email,
           password,
           options: {

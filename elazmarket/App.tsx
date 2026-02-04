@@ -19,13 +19,16 @@ const App: React.FC = () => {
   const [activeView, setActiveView] = useState<'dashboard' | 'simulator' | 'code'>('dashboard');
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Fix: Cast supabase.auth to any to bypass incorrect type definitions in the environment
+    (supabase.auth as any).getSession().then(({ data }: any) => {
+      const session = data?.session;
       setSession(session);
       if (session) fetchProfile(session.user.id);
       else setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Fix: Cast supabase.auth to any to bypass incorrect type definitions in the environment
+    const { data: { subscription } } = (supabase.auth as any).onAuthStateChange((_event: any, session: any) => {
       setSession(session);
       if (session) fetchProfile(session.user.id);
       else {
@@ -50,7 +53,8 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    // Fix: Cast supabase.auth to any to bypass incorrect type definitions in the environment
+    await (supabase.auth as any).signOut();
     setSession(null);
     setProfile(null);
   };
