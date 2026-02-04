@@ -58,16 +58,19 @@ async function loadAdminProducts(searchTerm = '') {
                         <tr style="border-bottom:1px solid #f1f5f9;">
                             <td style="padding:12px 15px;">
                                 <div style="display:flex; align-items:center; gap:12px;">
-                                    <img src="${p.image_url || p.images?.[0] || 'https://via.placeholder.com/100'}" style="width:40px; height:40px; border-radius:8px; object-fit:cover; border:1px solid #eee;">
-                                    <div><div style="font-weight:800;">${p.name}</div><div style="font-size:0.65rem; color:#94a3b8;">Sklad: ${p.stock_qty || 0} ${p.unit || 'dona'}</div></div>
+                                    <img src="${p.image_url || p.images?.[0] || 'https://via.placeholder.com/100'}" style="width:45px; height:45px; border-radius:10px; object-fit:cover; border:1px solid #eee;">
+                                    <div>
+                                        <div style="font-weight:800;">${p.name}</div>
+                                        <div style="font-size:0.65rem; color:#94a3b8;">Sklad: ${p.stock_qty || 0} ${p.unit || 'dona'}</div>
+                                    </div>
                                 </div>
                             </td>
-                            <td style="padding:15px;"><b style="color:var(--primary);">${p.price?.toLocaleString()}</b></td>
-                            <td style="padding:15px;"><span style="font-size:0.7rem; font-weight:800; color:#64748b; background:#f1f5f9; padding:4px 8px; border-radius:6px;">${p.category?.toUpperCase()}</span></td>
+                            <td style="padding:15px;"><b style="color:var(--primary); font-weight:900;">${p.price?.toLocaleString()}</b></td>
+                            <td style="padding:15px;"><span style="font-size:0.6rem; font-weight:900; color:#64748b; background:#f1f5f9; padding:4px 8px; border-radius:6px; text-transform:uppercase;">${p.category}</span></td>
                             <td style="padding:15px; text-align:center;">
                                 <div style="display:flex; justify-content:center; gap:8px;">
-                                    <button class="btn" style="width:30px; height:30px; padding:0; border-radius:8px; background:#f1f5f9; color:#64748b; border:none;" onclick="openProductEditor(${p.id})"><i class="fas fa-edit"></i></button>
-                                    <button class="btn" style="width:30px; height:30px; padding:0; border-radius:8px; background:#fee2e2; color:var(--danger); border:none;" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i></button>
+                                    <button class="btn" style="width:34px; height:34px; padding:0; border-radius:10px; background:#f1f5f9; color:#64748b; border:none;" onclick="openProductEditor(${p.id})"><i class="fas fa-edit" style="font-size:0.8rem;"></i></button>
+                                    <button class="btn" style="width:34px; height:34px; padding:0; border-radius:10px; background:#fee2e2; color:var(--danger); border:none;" onclick="deleteProduct(${p.id})"><i class="fas fa-trash" style="font-size:0.8rem;"></i></button>
                                 </div>
                             </td>
                         </tr>
@@ -85,41 +88,75 @@ async function loadAdminProducts(searchTerm = '') {
     const placeholder = document.getElementById('checkoutPlaceholder');
     if(!placeholder) return;
 
-    let p: any = { name: '', price: '', category: 'grocery', unit: 'dona', stock_qty: 10, image_url: '' };
+    let p: any = { name: '', price: '', category: 'grocery', unit: 'dona', stock_qty: 10, image_url: '', images: [], video_url: '', description: '', marketing_tag: '' };
     if(id) {
         const { data } = await supabase.from('products').select('*').eq('id', id).single();
         if(data) p = data;
     }
 
     placeholder.innerHTML = `
-        <div style="padding-bottom:50px;">
-            <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px;">
+        <div style="padding-bottom:100px;">
+            <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px; position:sticky; top:0; background:white; z-index:10; padding:10px 0;">
                 <i class="fas fa-arrow-left" onclick="closeOverlay('checkoutOverlay')" style="font-size:1.4rem; cursor:pointer;"></i>
                 <h2 style="font-weight:900;">${id ? 'Tahrirlash' : 'Yangi mahsulot'}</h2>
             </div>
 
-            <div class="card" style="padding:25px; border-radius:24px;">
-                <label style="font-size:0.7rem; font-weight:800; color:var(--gray);">MAHSULOT NOMI</label>
-                <input type="text" id="p_name" value="${p.name}" placeholder="Masalan: Pepsi 1.5L" style="height:55px;">
+            <div class="card" style="padding:25px; border-radius:28px; border:1.5px solid #f1f5f9;">
+                <div style="margin-bottom:20px;">
+                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase;">MAHSULOT NOMI</label>
+                    <input type="text" id="p_name" value="${p.name}" placeholder="Masalan: Pepsi 1.5L" style="height:60px; font-size:1rem;">
+                </div>
 
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
-                    <div><label style="font-size:0.7rem; font-weight:800; color:var(--gray);">NARXI (UZS)</label><input type="number" id="p_price" value="${p.price}" style="height:55px;"></div>
-                    <div><label style="font-size:0.7rem; font-weight:800; color:var(--gray);">KATEGORIYA</label>
-                        <select id="p_cat" style="height:55px;">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:20px;">
+                    <div>
+                        <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase;">NARXI (UZS)</label>
+                        <input type="number" id="p_price" value="${p.price}" style="height:60px;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase;">KATEGORIYA</label>
+                        <select id="p_cat" style="height:60px;">
                             ${CATEGORIES.map(c => `<option value="${c.id}" ${p.category === c.id ? 'selected' : ''}>${c.label}</option>`).join('')}
                         </select>
                     </div>
                 </div>
 
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
-                    <div><label style="font-size:0.7rem; font-weight:800; color:var(--gray);">O'LCHOV</label><input type="text" id="p_unit" value="${p.unit}" placeholder="dona, kg, litr" style="height:55px;"></div>
-                    <div><label style="font-size:0.7rem; font-weight:800; color:var(--gray);">SKLAD (MIQDOR)</label><input type="number" id="p_stock" value="${p.stock_qty}" style="height:55px;"></div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:20px;">
+                    <div>
+                        <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase;">O'LCHOV</label>
+                        <input type="text" id="p_unit" value="${p.unit}" placeholder="dona, kg, litr" style="height:60px;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase;">SKLAD (QOLDIQ)</label>
+                        <input type="number" id="p_stock" value="${p.stock_qty}" style="height:60px;">
+                    </div>
                 </div>
 
-                <label style="font-size:0.7rem; font-weight:800; color:var(--gray);">RASM URL (YOKI YUKLASH)</label>
-                <input type="text" id="p_img" value="${p.image_url || ''}" placeholder="https://..." style="height:55px;">
-                
-                <button class="btn btn-primary" style="width:100%; height:60px; margin-top:20px;" onclick="saveAdminProduct(${id || 'null'})">
+                <div style="margin-bottom:20px;">
+                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase;">BATAFSIL TAVSIF</label>
+                    <textarea id="p_desc" style="height:120px; padding:15px; border-radius:18px;">${p.description || ''}</textarea>
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase;">RASM URL (ASOSIY)</label>
+                    <input type="text" id="p_img" value="${p.image_url || ''}" placeholder="https://image-url.jpg" style="height:60px;">
+                </div>
+
+                <div style="margin-bottom:20px;">
+                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase;">QO'SHIMCHA RASMLAR (VERGUL BILAN)</label>
+                    <input type="text" id="p_imgs" value="${(p.images || []).join(', ')}" placeholder="url1, url2, url3" style="height:60px;">
+                </div>
+
+                <div style="margin-bottom:25px;">
+                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase;">VIDEO URL (YOUTUBE/MP4)</label>
+                    <input type="text" id="p_video" value="${p.video_url || ''}" placeholder="https://youtube.com/..." style="height:60px;">
+                </div>
+
+                <div style="margin-bottom:25px;">
+                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase;">MARKETING TEG (MASALAN: 'CHEGIRMA')</label>
+                    <input type="text" id="p_tag" value="${p.marketing_tag || ''}" placeholder="New, Sale, etc" style="height:60px;">
+                </div>
+
+                <button class="btn btn-primary" style="width:100%; height:65px; border-radius:22px; font-size:1.1rem; box-shadow:0 12px 24px rgba(34,197,94,0.3);" onclick="saveAdminProduct(${id || 'null'})">
                     ${id ? 'O\'ZGARISHLARNI SAQLASH' : 'MAHSULOTNI QO\'SHISH'}
                 </button>
             </div>
@@ -128,17 +165,31 @@ async function loadAdminProducts(searchTerm = '') {
 };
 
 (window as any).saveAdminProduct = async (id: any) => {
+    const btn = document.querySelector('.btn-primary') as HTMLButtonElement;
+    const name = (document.getElementById('p_name') as HTMLInputElement).value;
+    const price = Number((document.getElementById('p_price') as HTMLInputElement).value);
+    
+    if(!name || !price) return showToast("Nom va narxni kiriting!");
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> SAQLANMOQDA...';
+
+    const imagesInput = (document.getElementById('p_imgs') as HTMLInputElement).value;
+    const imagesArray = imagesInput.split(',').map(s => s.trim()).filter(s => s.length > 0);
+
     const data = {
-        name: (document.getElementById('p_name') as HTMLInputElement).value,
-        price: Number((document.getElementById('p_price') as HTMLInputElement).value),
+        name,
+        price,
         category: (document.getElementById('p_cat') as HTMLSelectElement).value,
         unit: (document.getElementById('p_unit') as HTMLInputElement).value,
         stock_qty: Number((document.getElementById('p_stock') as HTMLInputElement).value),
+        description: (document.getElementById('p_desc') as HTMLTextAreaElement).value,
         image_url: (document.getElementById('p_img') as HTMLInputElement).value,
+        images: imagesArray,
+        video_url: (document.getElementById('p_video') as HTMLInputElement).value,
+        marketing_tag: (document.getElementById('p_tag') as HTMLInputElement).value,
         is_archived: false
     };
-
-    if(!data.name || !data.price) return showToast("Nom va narxni kiriting!");
 
     const { error } = id ? await supabase.from('products').update(data).eq('id', id) : await supabase.from('products').insert(data);
     
@@ -148,6 +199,8 @@ async function loadAdminProducts(searchTerm = '') {
         renderAdminInventory();
     } else {
         showToast("Xato: " + error.message);
+        btn.disabled = false;
+        btn.innerText = "QAYTA URINISH";
     }
 };
 
