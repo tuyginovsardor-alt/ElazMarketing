@@ -14,7 +14,6 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export let user: any = null;
 export let profile: any = null;
-let currentOverlayId: string | null = null;
 
 export function showToast(msg: string) {
     const t = document.getElementById('toast');
@@ -30,7 +29,6 @@ export function openOverlay(id: string) {
     const el = document.getElementById(id);
     if(el) {
         el.style.display = 'block';
-        currentOverlayId = id;
         window.history.pushState({ overlay: id }, "", "");
     }
 }
@@ -38,48 +36,9 @@ export function openOverlay(id: string) {
 
 export function closeOverlay(id: string) {
     const el = document.getElementById(id);
-    if(el) {
-        el.style.display = 'none';
-        if(currentOverlayId === id) currentOverlayId = null;
-    }
+    if(el) el.style.display = 'none';
 }
 (window as any).closeOverlay = closeOverlay;
-
-// Implementation of addToCart to handle adding products to the Supabase-managed cart.
-// This function is exported for modules and bound to window for inline HTML onclick handlers.
-export async function addToCart(productId: number, quantity: number = 1) {
-    if (!user) {
-        showToast("Xarid qilish uchun tizimga kiring");
-        navTo('auth');
-        return;
-    }
-    try {
-        const { data: existing } = await supabase
-            .from('cart_items')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('product_id', productId)
-            .maybeSingle();
-
-        if (existing) {
-            const { error } = await supabase
-                .from('cart_items')
-                .update({ quantity: existing.quantity + quantity })
-                .eq('id', existing.id);
-            if (error) throw error;
-        } else {
-            const { error } = await supabase
-                .from('cart_items')
-                .insert([{ user_id: user.id, product_id: productId, quantity }]);
-            if (error) throw error;
-        }
-        showToast("Savatga qo'shildi! 🛒");
-    } catch (e: any) {
-        console.error(e);
-        showToast("Xatolik: " + e.message);
-    }
-}
-(window as any).addToCart = addToCart;
 
 export async function loadProfileData() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -99,7 +58,7 @@ export async function loadProfileData() {
         }
         profile = data;
         
-        // Bottom Nav Avatar update
+        // Update Bottom Nav Avatar
         const navIconContainer = document.getElementById('navProfileIconContainer');
         if (navIconContainer) {
             if (profile?.avatar_url) {
@@ -109,7 +68,7 @@ export async function loadProfileData() {
             }
         }
 
-        // Header Admin button update
+        // Update Header Admin Action
         const ha = document.getElementById('headerActions');
         if(ha && profile) {
             if(profile.role === 'admin' || profile.role === 'staff') {
@@ -125,11 +84,11 @@ export const navTo = (view: string) => {
     showView(view);
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const navItems = document.querySelectorAll('.nav-item');
-    if(view === 'home') navItems[0].classList.add('active');
-    if(view === 'saved') navItems[1].classList.add('active');
-    if(view === 'cart') navItems[2].classList.add('active');
-    if(view === 'orders') navItems[3].classList.add('active');
-    if(view === 'profile') navItems[4].classList.add('active');
+    if(view === 'home') navItems[0]?.classList.add('active');
+    if(view === 'saved') navItems[1]?.classList.add('active');
+    if(view === 'cart') navItems[2]?.classList.add('active');
+    if(view === 'orders') navItems[3]?.classList.add('active');
+    if(view === 'profile') navItems[4]?.classList.add('active');
     
     if(view === 'home') renderHomeView();
     if(view === 'saved') renderSavedView();
@@ -158,7 +117,10 @@ export function showView(viewId: string) {
 (window as any).showView = showView;
 
 export const enterAdminPanel = () => {
-    if(!profile || (profile.role !== 'admin' && profile.role !== 'staff')) return showToast("Siz admin emassiz!");
+    if(!profile || (profile.role !== 'admin' && profile.role !== 'staff')) {
+        showToast("Ruxsat yo'q!");
+        return;
+    }
     const panel = document.getElementById('adminPanel');
     const app = document.getElementById('appContainer');
     if(panel && app) { 
@@ -168,6 +130,62 @@ export const enterAdminPanel = () => {
     }
 };
 (window as any).enterAdminPanel = enterAdminPanel;
+
+// Add missing Cart functionality
+export async function addToCart(productId: number, quantity: number = 1) {
+    if(!user) {
+        showToast("Xarid qilish uchun tizimga kiring");
+        navTo('profile');
+        return;
+    }
+    try {
+        const { data: existing } = await supabase.from('cart_items').select('*').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
+        if(existing) {
+            await supabase.from('cart_items').update({ quantity: existing.quantity + quantity }).eq('id', existing.id);
+        } else {
+            await supabase.from('cart_items').insert({ user_id: user.id, product_id: productId, quantity });
+        }
+        showToast("Savatga qo'shildi! 🛒");
+    } catch(e: any) {
+        showToast("Xato: " + e.message);
+    }
+}
+(window as any).addToCart = addToCart;
+
+// Add missing Wishlist functionality
+export async function toggleLike(productId: number, iconEl: HTMLElement) {
+    if (!user) return showToast("Tizimga kiring");
+    const isLiked = iconEl.classList.contains('fas');
+    
+    try {
+        if (isLiked) {
+            await supabase.from('wishlist').delete().eq('user_id', user.id).eq('product_id', productId);
+            iconEl.classList.replace('fas', 'far');
+            iconEl.style.color = '#cbd5e1';
+        } else {
+            await supabase.from('wishlist').insert([{ user_id: user.id, product_id: productId }]);
+            iconEl.classList.replace('far', 'fas');
+            iconEl.style.color = '#f43f5e';
+        }
+    } catch(e: any) {
+        showToast("Xato: " + e.message);
+    }
+}
+(window as any).toggleLike = toggleLike;
+
+// Add missing Product Detail functionality
+export async function openProductDetails(productId: number) {
+    try {
+        const { data: p } = await supabase.from('products').select('*').eq('id', productId).single();
+        if(p) {
+            const { renderProductDetails } = await import("./productDetails.tsx");
+            renderProductDetails(p);
+        }
+    } catch(e: any) {
+        showToast("Mahsulot yuklanmadi");
+    }
+}
+(window as any).openProductDetails = openProductDetails;
 
 export async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
