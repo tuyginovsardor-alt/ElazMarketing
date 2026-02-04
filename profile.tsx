@@ -50,62 +50,64 @@ export async function renderProfileView(data: any) {
                 </div>
             </div>
 
-            <!-- ADMIN/COURIER QUICK ACTION -->
-            ${isAdmin ? `
-                <div class="card" style="padding:22px; border-radius:32px; border:none; background:var(--dark); color:white; margin-bottom:25px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="enterAdminPanel()">
-                    <div style="display:flex; align-items:center; gap:15px;">
-                        <div style="width:45px; height:45px; background:var(--primary); border-radius:15px; display:flex; align-items:center; justify-content:center;"><i class="fas fa-shield-halved"></i></div>
-                        <div><h4 style="font-weight:900; font-size:0.9rem;">BOSHQARUV PANELI</h4><p style="font-size:0.7rem; opacity:0.6;">Admin funksiyalari</p></div>
-                    </div>
-                    <i class="fas fa-chevron-right" style="opacity:0.3;"></i>
-                </div>
-            ` : (!isCourier ? `
-                <div class="card" style="padding:22px; border-radius:32px; border:2px dashed var(--primary); background:var(--primary-light); margin-bottom:25px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="import('./courierRegistration.tsx').then(m => m.openCourierRegistrationForm())">
-                    <div style="display:flex; align-items:center; gap:15px;">
-                        <div style="width:45px; height:45px; background:var(--primary); color:white; border-radius:15px; display:flex; align-items:center; justify-content:center;"><i class="fas fa-motorcycle"></i></div>
-                        <div><h4 style="font-weight:900; font-size:0.9rem; color:var(--text);">KURER BO'LIB ISHLASH</h4><p style="font-size:0.7rem; color:var(--gray);">Ariza topshirish</p></div>
-                    </div>
-                    <i class="fas fa-arrow-right" style="color:var(--primary);"></i>
-                </div>
-            ` : `
-                <div class="card" style="padding:22px; border-radius:32px; border:none; background:var(--primary); color:white; margin-bottom:25px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" onclick="import('./courierDashboard.tsx').then(m => m.renderCourierDashboard())">
-                    <div style="display:flex; align-items:center; gap:15px;">
-                        <div style="width:45px; height:45px; background:rgba(255,255,255,0.2); border-radius:15px; display:flex; align-items:center; justify-content:center;"><i class="fas fa-route"></i></div>
-                        <div><h4 style="font-weight:900; font-size:0.9rem;">KURER PANELI</h4><p style="font-size:0.7rem; opacity:0.8;">Buyurtmalarni yetkazish</p></div>
-                    </div>
-                    <i class="fas fa-chevron-right"></i>
-                </div>
-            `)}
-
-            <!-- WALLET & HISTORY -->
+            <!-- WALLET & HISTORY QUICK STATS -->
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:25px;">
                 <div class="card" onclick="import('./payment.tsx').then(m => m.openPaymentView())" style="padding:22px; border-radius:32px; border:1.5px solid #f1f5f9; cursor:pointer;">
                     <i class="fas fa-wallet" style="color:var(--primary); margin-bottom:12px; font-size:1.2rem;"></i>
                     <div style="font-size:0.65rem; font-weight:800; color:var(--gray); text-transform:uppercase;">Balans</div>
-                    <div style="font-weight:900; font-size:1.2rem;">${(data?.balance || 0).toLocaleString()} <small>UZS</small></div>
+                    <div style="font-weight:900; font-size:1.1rem;">${(data?.balance || 0).toLocaleString()} <small>UZS</small></div>
                 </div>
                 <div class="card" onclick="navTo('orders')" style="padding:22px; border-radius:32px; border:1.5px solid #f1f5f9; cursor:pointer;">
-                    <i class="fas fa-clock-rotate-left" style="color:#3b82f6; margin-bottom:12px; font-size:1.2rem;"></i>
+                    <i class="fas fa-history" style="color:#3b82f6; margin-bottom:12px; font-size:1.2rem;"></i>
                     <div style="font-size:0.65rem; font-weight:800; color:var(--gray); text-transform:uppercase;">Tarix</div>
-                    <div style="font-weight:900; font-size:1.2rem;">Xaridlar</div>
+                    <div style="font-weight:900; font-size:1.1rem;">Xaridlar</div>
                 </div>
             </div>
 
-            <!-- APP SERVICES -->
+            <!-- ACTION SECTIONS -->
             <div class="card" style="padding:10px; border-radius:32px; border:1.5px solid #f1f5f9; background:white; margin-bottom:25px;">
+                ${isAdmin ? `
+                    <div onclick="enterAdminPanel()" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                        <div style="width:38px; height:38px; border-radius:12px; background:var(--dark); color:white; display:flex; align-items:center; justify-content:center;"><i class="fas fa-shield-halved"></i></div>
+                        <span style="flex:1; font-weight:800; font-size:0.9rem;">Admin Panel</span>
+                        <i class="fas fa-chevron-right" style="font-size:0.8rem; color:#cbd5e1;"></i>
+                    </div>
+                ` : ''}
+
+                ${!isCourier ? `
+                    <div onclick="import('./courierRegistration.tsx').then(m => m.openCourierRegistrationForm())" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                        <div style="width:38px; height:38px; border-radius:12px; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center;"><i class="fas fa-motorcycle"></i></div>
+                        <span style="flex:1; font-weight:800; font-size:0.9rem;">Kuryer bo'lish</span>
+                        <i class="fas fa-chevron-right" style="font-size:0.8rem; color:#cbd5e1;"></i>
+                    </div>
+                ` : `
+                    <div onclick="import('./courierDashboard.tsx').then(m => m.renderCourierDashboard())" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                        <div style="width:38px; height:38px; border-radius:12px; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center;"><i class="fas fa-route"></i></div>
+                        <span style="flex:1; font-weight:800; font-size:0.9rem;">Kuryer Ish Joyi</span>
+                        <i class="fas fa-chevron-right" style="font-size:0.8rem; color:#cbd5e1;"></i>
+                    </div>
+                `}
+
                 <div onclick="import('./supportView.tsx').then(m => m.renderSupportView())" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
-                    <div style="width:38px; height:38px; border-radius:12px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:var(--gray);"><i class="fas fa-headset"></i></div>
+                    <div style="width:38px; height:38px; border-radius:12px; background:#f1f5f9; color:var(--gray); display:flex; align-items:center; justify-content:center;"><i class="fas fa-headset"></i></div>
                     <span style="flex:1; font-weight:800; font-size:0.9rem;">Yordam markazi</span>
                     <i class="fas fa-chevron-right" style="font-size:0.8rem; color:#cbd5e1;"></i>
                 </div>
+
+                <div onclick="import('./legal.tsx').then(m => m.openLegal('offer'))" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                    <div style="width:38px; height:38px; border-radius:12px; background:#f1f5f9; color:var(--gray); display:flex; align-items:center; justify-content:center;"><i class="fas fa-file-contract"></i></div>
+                    <span style="flex:1; font-weight:800; font-size:0.9rem;">Ommaviy oferta</span>
+                    <i class="fas fa-chevron-right" style="font-size:0.8rem; color:#cbd5e1;"></i>
+                </div>
+
                 <div onclick="import('./security.tsx').then(m => m.openProfileSecurity())" style="display:flex; align-items:center; gap:15px; padding:18px 20px; cursor:pointer;">
-                    <div style="width:38px; height:38px; border-radius:12px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:var(--gray);"><i class="fas fa-shield-halved"></i></div>
+                    <div style="width:38px; height:38px; border-radius:12px; background:#f1f5f9; color:var(--gray); display:flex; align-items:center; justify-content:center;"><i class="fas fa-lock"></i></div>
                     <span style="flex:1; font-weight:800; font-size:0.9rem;">Xavfsizlik</span>
                     <i class="fas fa-chevron-right" style="font-size:0.8rem; color:#cbd5e1;"></i>
                 </div>
             </div>
 
-            <button class="btn" style="width:100%; color:var(--danger); border:2.5px solid #fee2e2; height:65px; border-radius:28px; font-weight:800; background:white;" onclick="handleSignOut()">
+            <button class="btn" style="width:100%; color:var(--danger); border:2.5px solid #fee2e2; height:65px; border-radius:28px; font-weight:800; background:white; margin-top:10px;" onclick="handleSignOut()">
                 CHIQISH <i class="fas fa-sign-out-alt" style="margin-left:8px;"></i>
             </button>
         </div>
