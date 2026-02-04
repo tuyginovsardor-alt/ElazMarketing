@@ -54,86 +54,6 @@ window.onpopstate = () => {
     currentOverlayId = null;
 };
 
-// Mahsulot batafsil oynasini ochish
-(window as any).openProductDetails = async (id: number) => {
-    const { data: prod } = await supabase.from('products').select('*').eq('id', id).single();
-    if (prod) {
-        const { renderProductDetails } = await import("./productDetails.tsx");
-        renderProductDetails(prod);
-    }
-};
-
-(window as any).toggleLike = async (id: number, el: HTMLElement) => {
-    if(!user) return showToast("Tizimga kiring");
-    const isLiked = el.classList.contains('fas');
-    if(isLiked) {
-        await supabase.from('wishlist').delete().eq('user_id', user.id).eq('product_id', id);
-        el.classList.replace('fas', 'far'); el.style.color = '#cbd5e1';
-    } else {
-        await supabase.from('wishlist').insert({ user_id: user.id, product_id: id });
-        el.classList.replace('far', 'fas'); el.style.color = '#f43f5e';
-        showToast("Tanlanganlarga qo'shildi ❤️");
-    }
-};
-
-export const addToCart = async (id: number, qty = 1) => {
-    if(!user) return showToast("Tizimga kiring");
-    
-    const { data: existing } = await supabase.from('cart_items').select('*').eq('user_id', user.id).eq('product_id', id).maybeSingle();
-    
-    if(existing) {
-        const { error } = await supabase.from('cart_items').update({ quantity: existing.quantity + qty }).eq('id', existing.id);
-        if(!error) showToast("Savatdagi miqdor yangilandi! 🛒");
-    } else {
-        const { error } = await supabase.from('cart_items').insert([{ user_id: user.id, product_id: id, quantity: qty }]);
-        if(!error) showToast("Savatga qo'shildi! 🛒");
-    }
-};
-(window as any).addToCart = addToCart;
-
-export async function checkAuth() {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (session?.user) {
-        user = session.user;
-        await loadProfileData();
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const applyMode = urlParams.get('apply') === 'true';
-        const viewMode = urlParams.get('view');
-
-        if (applyMode) {
-            const { openCourierRegistrationForm } = await import("./courierRegistration.tsx");
-            openCourierRegistrationForm();
-            window.history.replaceState({}, document.title, window.location.pathname);
-        } else if (viewMode) {
-            (window as any).navTo(viewMode);
-            window.history.replaceState({}, document.title, window.location.pathname);
-        } else if (!profile?.district) {
-            import("./location.tsx").then(m => m.openLocationSetup());
-        } else {
-            if(profile.role === 'courier') {
-                (window as any).navTo('courier');
-            } else {
-                (window as any).navTo('home');
-            }
-        }
-    } else {
-        user = null; profile = null;
-        if(!localStorage.getItem('welcomeShown')) {
-            showView('welcome');
-            renderWelcomeView(() => {
-                localStorage.setItem('welcomeShown', 'true');
-                showView('auth');
-                renderAuthView('login');
-            });
-        } else {
-            showView('auth');
-            renderAuthView('login');
-        }
-    }
-}
-
 export async function loadProfileData() {
     const { data: { session } } = await supabase.auth.getSession();
     if(!session?.user) return;
@@ -152,20 +72,128 @@ export async function loadProfileData() {
         }
         profile = data;
         
-        // --- DINAMIK NAV ICON YANGILASH ---
+        // Update Bottom Nav Avatar
         const navIconContainer = document.getElementById('navProfileIconContainer');
         if (navIconContainer) {
             if (profile?.avatar_url) {
                 navIconContainer.innerHTML = `<img src="${profile.avatar_url}" class="nav-profile-img">`;
             } else {
-                navIconContainer.innerHTML = `<i class="far fa-user-circle"></i>`;
+                navIconContainer.innerHTML = `<i class="far fa-user-circle" style="font-size: 1.6rem;"></i>`;
             }
         }
 
-        const rb = document.getElementById('roleBadge');
-        if(rb && profile) rb.innerHTML = `<span style="background:var(--primary-light); color:var(--primary); padding:6px 14px; border-radius:14px; font-size:0.65rem; font-weight:900; text-transform:uppercase; border:1px solid var(--primary);">${profile.role}</span>`;
+        // Update Header Actions
+        const ha = document.getElementById('headerActions');
+        if(ha && profile) {
+            if(profile.role === 'admin' || profile.role === 'staff') {
+                ha.innerHTML = `<button class="admin-badge-top" onclick="enterAdminPanel()">ADMIN</button>`;
+            } else {
+                ha.innerHTML = ``;
+            }
+        }
     } catch (e) { console.error(e); }
 }
+
+export async function checkAuth() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+        user = session.user;
+        await loadProfileData();
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const viewMode = urlParams.get('view');
+        if (viewMode) {
+            (window as any).navTo(viewMode);
+        } else {
+            (window as any).navTo('home');
+        }
+    } else {
+        user = null; profile = null;
+        if(!localStorage.getItem('welcomeShown')) {
+            showView('welcome');
+            renderWelcomeView(() => {
+                localStorage.setItem('welcomeShown', 'true');
+                showView('auth');
+                renderAuthView('login');
+            });
+        } else {
+            showView('auth');
+            renderAuthView('login');
+        }
+    }
+}
+
+// Fix: Added addToCart to index.tsx as it is required by other views like productDetails.tsx and home.tsx
+export async function addToCart(productId: number, quantity: number = 1) {
+    if (!user) {
+        showToast("Savatga qo'shish uchun tizimga kiring");
+        return;
+    }
+    try {
+        const { data: existing, error: fetchError } = await supabase
+            .from('cart_items')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('product_id', productId)
+            .maybeSingle();
+
+        if (fetchError) throw fetchError;
+
+        if (existing) {
+            const { error: updateError } = await supabase
+                .from('cart_items')
+                .update({ quantity: existing.quantity + quantity })
+                .eq('id', existing.id);
+            if (updateError) throw updateError;
+        } else {
+            const { error: insertError } = await supabase
+                .from('cart_items')
+                .insert([{ user_id: user.id, product_id: productId, quantity }]);
+            if (insertError) throw insertError;
+        }
+        showToast("Savatga qo'shildi! 🛒");
+    } catch (e: any) {
+        showToast("Xatolik: " + e.message);
+    }
+}
+(window as any).addToCart = addToCart;
+
+// Fix: Added openProductDetails to index.tsx to handle product detail view opening from home.tsx
+export async function openProductDetails(productId: number) {
+    const { data: product, error } = await supabase.from('products').select('*').eq('id', productId).single();
+    if (product && !error) {
+        const { renderProductDetails } = await import("./productDetails.tsx");
+        renderProductDetails(product);
+    } else {
+        showToast("Mahsulot topilmadi");
+    }
+}
+(window as any).openProductDetails = openProductDetails;
+
+// Fix: Added toggleLike to index.tsx to handle wishlist functionality in home.tsx
+export async function toggleLike(productId: number, iconEl: HTMLElement) {
+    if (!user) {
+        showToast("Tizimga kiring");
+        return;
+    }
+    try {
+        const { data: existing } = await supabase.from('wishlist').select('*').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
+        if (existing) {
+            await supabase.from('wishlist').delete().eq('id', existing.id);
+            iconEl.classList.remove('fas');
+            iconEl.classList.add('far');
+            iconEl.style.color = '#cbd5e1';
+        } else {
+            await supabase.from('wishlist').insert([{ user_id: user.id, product_id: productId }]);
+            iconEl.classList.remove('far');
+            iconEl.classList.add('fas');
+            iconEl.style.color = '#f43f5e';
+        }
+    } catch (e: any) {
+        showToast("Xatolik: " + e.message);
+    }
+}
+(window as any).toggleLike = toggleLike;
 
 export const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -185,7 +213,7 @@ export function showView(viewId: string) {
     
     const header = document.getElementById('appHeader');
     const nav = document.getElementById('bottomNav');
-    const showNavHeader = ['home', 'cart', 'profile', 'orders', 'saved', 'courier'].includes(viewId);
+    const showNavHeader = ['home', 'cart', 'profile', 'orders', 'saved'].includes(viewId);
     if(header) header.style.display = showNavHeader ? 'flex' : 'none';
     if(nav) nav.style.display = showNavHeader ? 'flex' : 'none';
 }
@@ -207,7 +235,6 @@ export function showView(viewId: string) {
     if(view === 'cart') renderCartView();
     if(view === 'orders') renderOrdersView();
     if(view === 'profile') renderProfileView(profile);
-    if(view === 'courier') import("./courierDashboard.tsx").then(m => m.renderCourierDashboard());
 };
 
 (window as any).enterAdminPanel = () => {
@@ -219,16 +246,6 @@ export function showView(viewId: string) {
         app.style.display = 'none'; 
         import("./admin.tsx").then(m => (window as any).switchAdminTab('dash')); 
     }
-};
-
-(window as any).exitAdminPanel = () => {
-    const panel = document.getElementById('adminPanel');
-    const app = document.getElementById('appContainer');
-    if(panel && app) {
-        panel.style.display = 'none';
-        app.style.display = 'flex';
-    }
-    (window as any).navTo('profile');
 };
 
 if (typeof window !== 'undefined') {
