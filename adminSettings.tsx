@@ -16,7 +16,7 @@ export async function renderAdminSettings() {
     const office = getVal('office_location') || { address: '', lat: 40.5050, lng: 71.2215 };
     const botConfig = getVal('bot_config');
 
-    // Botlarni massivga aylantirish
+    // Botlarni yuklash
     if (Array.isArray(botConfig)) {
         tempBots = [...botConfig];
     } else if (botConfig && botConfig.token) {
@@ -26,55 +26,55 @@ export async function renderAdminSettings() {
     }
 
     container.innerHTML = `
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px; align-items: start;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:30px; align-items: start; padding-bottom:50px;">
+            <!-- CHAP TOMON -->
             <div style="display:flex; flex-direction:column; gap:25px;">
-                <!-- MULTI-BOT MANAGEMENT -->
+                <!-- DOSTAVKA TARIFLARI -->
                 <div class="card" style="border-radius:28px; padding:25px; border:none; background:white; box-shadow:var(--shadow-sm);">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                        <h3 style="font-weight:900; display:flex; align-items:center; gap:10px;"><i class="fas fa-robot" style="color:#3b82f6;"></i> Botlar Ro'yxati</h3>
-                        <button class="btn btn-outline" style="height:35px; width:auto; padding:0 15px; font-size:0.7rem; border-radius:10px;" onclick="addNewBotRow()">+ QO'SHISH</button>
+                    <h3 style="font-weight:900; margin-bottom:20px; display:flex; align-items:center; gap:10px;"><i class="fas fa-truck" style="color:var(--primary);"></i> Dostavka Tariflari (UZS)</h3>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
+                        <div><label style="font-size:0.7rem; font-weight:800;">Piyoda: Baza</label><input type="number" id="s_walking_base" value="${deliveryRates.walking_base}" style="height:50px;"></div>
+                        <div><label style="font-size:0.7rem; font-weight:800;">Piyoda: + har km</label><input type="number" id="s_walking_km" value="${deliveryRates.walking_km}" style="height:50px;"></div>
                     </div>
-                    
-                    <div id="botsListInputs" style="display:flex; flex-direction:column; gap:15px; margin-bottom:20px;">
-                        ${tempBots.map((bot, idx) => `
-                            <div style="background:#f8fafc; padding:15px; border-radius:18px; border:1px solid #f1f5f9; position:relative;">
-                                <div style="display:grid; grid-template-columns: 1fr 2fr; gap:10px;">
-                                    <input type="text" placeholder="Bot nomi" value="${bot.name}" oninput="updateTempBot(${idx}, 'name', this.value)" style="height:45px; margin:0; font-size:0.8rem;">
-                                    <input type="password" placeholder="Token" value="${bot.token}" oninput="updateTempBot(${idx}, 'token', this.value)" style="height:45px; margin:0; font-size:0.8rem;">
-                                </div>
-                                <button onclick="removeBotRow(${idx})" style="position:absolute; -right:10px; -top:10px; width:24px; height:24px; background:var(--danger); color:white; border:none; border-radius:50%; font-size:0.7rem; cursor:pointer;"><i class="fas fa-times"></i></button>
-                            </div>
-                        `).join('')}
-                        ${tempBots.length === 0 ? '<p style="text-align:center; color:var(--gray); font-size:0.8rem; padding:1rem;">Hali bot qo\'shilmagan.</p>' : ''}
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                        <div><label style="font-size:0.7rem; font-weight:800;">Mashina: Baza</label><input type="number" id="s_car_base" value="${deliveryRates.car_base}" style="height:50px;"></div>
+                        <div><label style="font-size:0.7rem; font-weight:800;">Mashina: + har km</label><input type="number" id="s_car_km" value="${deliveryRates.car_km}" style="height:50px;"></div>
                     </div>
                 </div>
 
+                <!-- OFIS JOYLASHUVI -->
                 <div class="card" style="border-radius:28px; padding:25px; border:none; background:white; box-shadow:var(--shadow-sm);">
                     <h3 style="font-weight:900; margin-bottom:20px; display:flex; align-items:center; gap:10px;"><i class="fas fa-map-marker-alt" style="color:var(--danger);"></i> Market Joylashuvi</h3>
-                    <label style="font-size:0.75rem; font-weight:900; color:var(--gray);">OFIS MANZILI (MATN)</label>
-                    <input type="text" id="s_off_address" value="${office.address || ''}" style="height:55px; border-radius:15px;">
+                    <label style="font-size:0.75rem; font-weight:900;">MANZIL MATNI</label>
+                    <input type="text" id="s_off_address" value="${office.address || ''}" style="height:50px;">
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                        <div><label style="font-size:0.75rem;">Latitude</label><input type="number" id="s_off_lat" value="${office.lat || ''}" step="0.0001" style="height:55px; border-radius:15px;"></div>
-                        <div><label style="font-size:0.75rem;">Longitude</label><input type="number" id="s_off_lng" value="${office.lng || ''}" step="0.0001" style="height:55px; border-radius:15px;"></div>
+                        <div><label style="font-size:0.7rem;">Latitude</label><input type="number" id="s_off_lat" value="${office.lat}" step="0.0001" style="height:50px;"></div>
+                        <div><label style="font-size:0.7rem;">Longitude</label><input type="number" id="s_off_lng" value="${office.lng}" step="0.0001" style="height:50px;"></div>
                     </div>
                 </div>
             </div>
 
+            <!-- O'NG TOMON -->
             <div style="display:flex; flex-direction:column; gap:25px;">
+                <!-- BOTLAR BOSHQARUVI -->
                 <div class="card" style="border-radius:28px; padding:25px; border:none; background:white; box-shadow:var(--shadow-sm);">
-                    <h3 style="font-weight:900; margin-bottom:20px; display:flex; align-items:center; gap:10px;"><i class="fas fa-truck" style="color:var(--primary);"></i> Dostavka Tariflari (UZS)</h3>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
-                        <div><label style="font-size:0.7rem; font-weight:800;">Piyoda: Baza</label><input type="number" id="s_walking_base" value="${deliveryRates.walking_base || 5000}" style="height:50px; border-radius:12px;"></div>
-                        <div><label style="font-size:0.7rem; font-weight:800;">Piyoda: + har km</label><input type="number" id="s_walking_km" value="${deliveryRates.walking_km || 2000}" style="height:50px; border-radius:12px;"></div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <h3 style="font-weight:900; display:flex; align-items:center; gap:10px;"><i class="fas fa-robot" style="color:#3b82f6;"></i> Telegram Botlar</h3>
+                        <button class="btn btn-outline" style="height:35px; width:auto; padding:0 15px; font-size:0.7rem;" onclick="addNewBotRow()">+ QO'SHISH</button>
                     </div>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
-                        <div><label style="font-size:0.7rem; font-weight:800;">Mashina: Baza</label><input type="number" id="s_car_base" value="${deliveryRates.car_base || 10000}" style="height:50px; border-radius:12px;"></div>
-                        <div><label style="font-size:0.7rem; font-weight:800;">Mashina: + har km</label><input type="number" id="s_car_km" value="${deliveryRates.car_km || 3000}" style="height:50px; border-radius:12px;"></div>
+                    <div id="botsListInputs" style="display:flex; flex-direction:column; gap:10px;">
+                        ${tempBots.map((bot, idx) => `
+                            <div style="background:#f8fafc; padding:12px; border-radius:15px; border:1px solid #e2e8f0; position:relative;">
+                                <input type="text" placeholder="Bot nomi" value="${bot.name}" oninput="updateTempBot(${idx}, 'name', this.value)" style="height:40px; margin-bottom:8px; font-size:0.8rem;">
+                                <input type="password" placeholder="Token" value="${bot.token}" oninput="updateTempBot(${idx}, 'token', this.value)" style="height:40px; margin:0; font-size:0.8rem;">
+                                <button onclick="removeBotRow(${idx})" style="position:absolute; right:5px; top:5px; border:none; background:none; color:var(--danger); cursor:pointer;"><i class="fas fa-times-circle"></i></button>
+                            </div>
+                        `).join('')}
                     </div>
                 </div>
 
-                <button class="btn btn-primary" id="btnSaveAllSettings" style="height:65px; border-radius:25px; font-size:1.1rem; box-shadow:0 10px 25px rgba(34,197,94,0.3);" onclick="saveAdminSettings()">
-                    <i class="fas fa-save"></i> BARCHA O'ZGARISHLARNI SAQLASH
+                <button class="btn btn-primary" id="btnSaveAllSettings" style="height:65px; border-radius:22px; font-size:1.1rem;" onclick="saveAdminSettings()">
+                    <i class="fas fa-save"></i> HAMMASINI SAQLASH
                 </button>
             </div>
         </div>
@@ -113,7 +113,6 @@ export async function renderAdminSettings() {
         lng: Number((document.getElementById('s_off_lng') as HTMLInputElement).value)
     };
 
-    // Botlarni filtrlash (bo'shlarini olib tashlash)
     const bot_config = tempBots.filter(b => b.token.trim() !== '');
 
     const { error } = await supabase.from('app_settings').upsert([
@@ -123,11 +122,11 @@ export async function renderAdminSettings() {
     ]);
 
     if (!error) {
-        showToast("Barcha sozlamalar saqlandi! ✅");
+        showToast("Sozlamalar yangilandi! ✅");
         renderAdminSettings();
     } else {
-        showToast("Xatolik: " + error.message);
+        showToast("Xato: " + error.message);
         btn.disabled = false;
-        btn.innerText = "SAQLASH";
+        btn.innerText = "HAMMASINI SAQLASH";
     }
 };
