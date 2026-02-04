@@ -116,6 +116,56 @@ export function showView(viewId: string) {
 }
 (window as any).showView = showView;
 
+// Botga ulash uchun token yaratish
+export async function connectToBot() {
+    if(!profile) return showToast("Tizimga kiring");
+    const token = Math.random().toString(36).substring(2, 15);
+    const { error } = await supabase.from('profiles').update({ link_token: token }).eq('id', profile.id);
+    
+    if(!error) {
+        // Bot username'ni o'zingizniki bilan almashtiring
+        const botUsername = "elaz_market_bot"; 
+        window.open(`https://t.me/${botUsername}?start=${token}`, '_blank');
+    } else {
+        showToast("Xatolik yuz berdi");
+    }
+}
+(window as any).connectToBot = connectToBot;
+
+// Savatga mahsulot qo'shish funksiyasi
+export async function addToCart(productId: number, quantity: number = 1) {
+    if (!user) return showToast("Iltimos, avval tizimga kiring!");
+    
+    try {
+        const { data: existing } = await supabase
+            .from('cart_items')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('product_id', productId)
+            .maybeSingle();
+
+        if (existing) {
+            await supabase
+                .from('cart_items')
+                .update({ quantity: existing.quantity + quantity })
+                .eq('id', existing.id);
+        } else {
+            await supabase
+                .from('cart_items')
+                .insert([{ user_id: user.id, product_id: productId, quantity }]);
+        }
+        showToast("Savatga qo'shildi! 🛒");
+        
+        const currentView = document.querySelector('.view-section.active')?.id;
+        if(currentView === 'cartView') {
+            renderCartView();
+        }
+    } catch (e: any) {
+        showToast("Xatolik: " + e.message);
+    }
+}
+(window as any).addToCart = addToCart;
+
 export const enterAdminPanel = () => {
     if(!profile || (profile.role !== 'admin' && profile.role !== 'staff')) {
         showToast("Ruxsat yo'q!");
@@ -131,61 +181,7 @@ export const enterAdminPanel = () => {
 };
 (window as any).enterAdminPanel = enterAdminPanel;
 
-// Add missing Cart functionality
-export async function addToCart(productId: number, quantity: number = 1) {
-    if(!user) {
-        showToast("Xarid qilish uchun tizimga kiring");
-        navTo('profile');
-        return;
-    }
-    try {
-        const { data: existing } = await supabase.from('cart_items').select('*').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
-        if(existing) {
-            await supabase.from('cart_items').update({ quantity: existing.quantity + quantity }).eq('id', existing.id);
-        } else {
-            await supabase.from('cart_items').insert({ user_id: user.id, product_id: productId, quantity });
-        }
-        showToast("Savatga qo'shildi! 🛒");
-    } catch(e: any) {
-        showToast("Xato: " + e.message);
-    }
-}
-(window as any).addToCart = addToCart;
-
-// Add missing Wishlist functionality
-export async function toggleLike(productId: number, iconEl: HTMLElement) {
-    if (!user) return showToast("Tizimga kiring");
-    const isLiked = iconEl.classList.contains('fas');
-    
-    try {
-        if (isLiked) {
-            await supabase.from('wishlist').delete().eq('user_id', user.id).eq('product_id', productId);
-            iconEl.classList.replace('fas', 'far');
-            iconEl.style.color = '#cbd5e1';
-        } else {
-            await supabase.from('wishlist').insert([{ user_id: user.id, product_id: productId }]);
-            iconEl.classList.replace('far', 'fas');
-            iconEl.style.color = '#f43f5e';
-        }
-    } catch(e: any) {
-        showToast("Xato: " + e.message);
-    }
-}
-(window as any).toggleLike = toggleLike;
-
-// Add missing Product Detail functionality
-export async function openProductDetails(productId: number) {
-    try {
-        const { data: p } = await supabase.from('products').select('*').eq('id', productId).single();
-        if(p) {
-            const { renderProductDetails } = await import("./productDetails.tsx");
-            renderProductDetails(p);
-        }
-    } catch(e: any) {
-        showToast("Mahsulot yuklanmadi");
-    }
-}
-(window as any).openProductDetails = openProductDetails;
+window.onload = () => { checkAuth(); };
 
 export async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -194,18 +190,7 @@ export async function checkAuth() {
         await loadProfileData();
         navTo('home');
     } else {
-        if(!localStorage.getItem('welcomeShown')) {
-            showView('welcome');
-            renderWelcomeView(() => {
-                localStorage.setItem('welcomeShown', 'true');
-                showView('auth');
-                renderAuthView('login');
-            });
-        } else {
-            showView('auth');
-            renderAuthView('login');
-        }
+        showView('auth');
+        renderAuthView('login');
     }
 }
-
-window.onload = () => { checkAuth(); };

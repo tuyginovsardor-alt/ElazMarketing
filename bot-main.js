@@ -19,6 +19,36 @@ async function router(update) {
     if (!sessions[chatId]) sessions[chatId] = { step: 'idle' };
     const session = sessions[chatId];
 
+    // --- DEEP LINKING (/start TOKEN) ---
+    if (text?.startsWith("/start ")) {
+        const token = text.split(" ")[1];
+        if (token) {
+            console.log(`[LINKING] User trying to connect with token: ${token}`);
+            const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('link_token', token)
+                .maybeSingle();
+
+            if (profile) {
+                // Bog'lashni amalga oshirish
+                await supabase.from('profiles').update({ 
+                    telegram_id: chatId, 
+                    link_token: null // Tokenni o'chiramiz
+                }).eq('id', profile.id);
+
+                return tg('sendMessage', { 
+                    chat_id: chatId, 
+                    text: `✅ <b>TABRIKLAYMIZ!</b>\n\nProfilingiz (<b>${profile.first_name}</b>) muvaffaqiyatli botga ulandi. Endi xabarnomalar shu yerga keladi.`, 
+                    parse_mode: 'HTML', 
+                    reply_markup: profile.role === 'courier' ? KB.courier : KB.user 
+                });
+            } else {
+                return tg('sendMessage', { chat_id: chatId, text: "❌ <b>Xatolik:</b> Token yaroqsiz yoki eskirgan.", parse_mode: 'HTML' });
+            }
+        }
+    }
+
     if (text === "/start" || text === "❌ Chiqish" || text === "❌ Bekor qilish") {
         session.step = 'idle';
         const { data: profile } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
@@ -26,7 +56,7 @@ async function router(update) {
             const kb = profile.role === 'courier' ? KB.courier : KB.user;
             return tg('sendMessage', { chat_id: chatId, text: `👋 Xush kelibsiz, <b>${profile.first_name}</b>!`, parse_mode: 'HTML', reply_markup: kb });
         }
-        return tg('sendMessage', { chat_id: chatId, text: "🏪 <b>ELAZ MARKET: Bag'dod</b>\n\nPlatformaga xush kelibsiz! Botdan foydalanish uchun tizimga kiring:", parse_mode: 'HTML', reply_markup: KB.welcome });
+        return tg('sendMessage', { chat_id: chatId, text: "🏪 <b>ELAZ MARKET: Bag'dod</b>\n\nPlatformaga xush kelibsiz! Botdan foydalanish uchun tizimga kiring yoki sayt orqali ulaning:", parse_mode: 'HTML', reply_markup: KB.welcome });
     }
 
     if (session.step !== 'idle' || text === "🔑 Kirish" || text === "📝 Ro'yxatdan o'tish") {
@@ -42,17 +72,12 @@ async function router(update) {
 
 async function start() {
     console.log("💎 ELAZ BOT ENGINE V12 (ULTIMATE) STARTING...");
-    
-    // 1. Bazadan tokenni yuklaymiz
     const token = await refreshBotToken();
-    
     if (!token) {
-        console.error("⛔ [CRITICAL] BOT_TOKEN topilmadi! Bazani yoki .env ni tekshiring.");
+        console.error("⛔ [CRITICAL] BOT_TOKEN topilmadi!");
         process.exit(1);
     }
-
     console.log("🚀 Polling started...");
-    
     while (true) {
         try {
             const res = await tg('getUpdates', { offset: lastId, timeout: 30 });
@@ -62,18 +87,11 @@ async function start() {
                     lastId = u.update_id + 1;
                 }
             } else if (res && !res.ok) {
-                console.error(`[TG ERROR] ${res.description}`);
-                if (res.description.includes("Not Found")) {
-                    console.log("🔄 Tokenni bazadan qayta yangilashga urunaman...");
-                    await refreshBotToken();
-                }
                 await new Promise(r => setTimeout(r, 5000));
             }
         } catch (e) {
-            console.error("Polling error:", e.message);
             await new Promise(r => setTimeout(r, 5000));
         }
     }
 }
-
 start();
