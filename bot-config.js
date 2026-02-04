@@ -5,7 +5,7 @@ dotenv.config();
 
 export const { VITE_SUPABASE_URL, VITE_SUPABASE_KEY, BOT_TOKEN } = process.env;
 export const supabase = createClient(VITE_SUPABASE_URL, VITE_SUPABASE_KEY);
-export const SITE_URL = "https://elaz-market.uz";
+export const SITE_URL = "https://elaz-market.vercel.app";
 
 export async function tg(method, body) {
     try {

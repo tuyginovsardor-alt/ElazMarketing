@@ -12,7 +12,7 @@ export const KB = {
     user: {
         keyboard: [
             [{ text: "🛒 Savatim" }, { text: "👤 Profil" }],
-            [{ text: "🛵 Kuryer bo'lish" }, { text: "🏢 Platformaga o'tish", web_app: { url: SITE_URL } }],
+            [{ text: "🛵 Kuryer bo'lish" }, { text: "🏢 Platforma", web_app: { url: SITE_URL } }],
             [{ text: "❌ Chiqish" }]
         ],
         resize_keyboard: true
@@ -26,8 +26,18 @@ export const KB = {
         ],
         resize_keyboard: true
     },
+    share_contact: {
+        keyboard: [[{ text: "📱 Telefon raqamni ulashish", request_contact: true }], [{ text: "❌ Bekor qilish" }]],
+        resize_keyboard: true
+    },
     cancel: {
         keyboard: [[{ text: "❌ Bekor qilish" }]],
         resize_keyboard: true
-    }
+    },
+    confirm_apply: (id) => ({
+        inline_keyboard: [
+            [{ text: "✅ TASDIQLASH VA YUBORISH", callback_data: `confirm_courier_${id}` }],
+            [{ text: "❌ BEKOR QILISH", callback_data: `cancel_apply` }]
+        ]
+    })
 };
