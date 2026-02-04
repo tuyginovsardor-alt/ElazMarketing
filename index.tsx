@@ -219,7 +219,8 @@ export function showView(viewId: string) {
 }
 (window as any).showView = showView;
 
-(window as any).navTo = (view: string) => {
+// Fix: Exported navTo so it can be imported in other modules like profile.tsx
+export const navTo = (view: string) => {
     showView(view);
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     
@@ -236,8 +237,10 @@ export function showView(viewId: string) {
     if(view === 'orders') renderOrdersView();
     if(view === 'profile') renderProfileView(profile);
 };
+(window as any).navTo = navTo;
 
-(window as any).enterAdminPanel = () => {
+// Fix: Exported enterAdminPanel so it can be imported in other modules like profile.tsx
+export const enterAdminPanel = () => {
     if(!profile || (profile.role !== 'admin' && profile.role !== 'staff')) return showToast("Ruxsat yo'q");
     const panel = document.getElementById('adminPanel');
     const app = document.getElementById('appContainer');
@@ -247,6 +250,7 @@ export function showView(viewId: string) {
         import("./admin.tsx").then(m => (window as any).switchAdminTab('dash')); 
     }
 };
+(window as any).enterAdminPanel = enterAdminPanel;
 
 if (typeof window !== 'undefined') {
     window.onload = () => { checkAuth(); };
