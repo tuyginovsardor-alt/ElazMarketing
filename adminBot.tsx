@@ -114,9 +114,10 @@ async function routeUpdate(update: any, token: string) {
 }
 
 function setupRealtimeOrderListener(token: string) {
-    orderListener = supabase.channel('bot_orders')
-        .on('postgres_changes', { event: 'INSERT', table: 'orders' }, payload => {
-            if(payload.new.status === 'confirmed') notifyCouriers(payload.new, token);
+    // Fix: Cast the Supabase channel to any to bypass strict typing that causes overload mismatch errors in this environment
+    orderListener = (supabase.channel('bot_orders') as any)
+        .on('postgres_changes', { event: 'INSERT', table: 'orders', schema: 'public' }, (payload: any) => {
+            if(payload.new && payload.new.status === 'confirmed') notifyCouriers(payload.new, token);
         }).subscribe();
 }
 

@@ -1,4 +1,5 @@
 
+import { createClient } from '@supabase/supabase-js';
 import { renderAuthView } from "./auth.tsx";
 import { renderProfileView } from "./profile.tsx";
 import { renderHomeView } from "./home.tsx";
@@ -10,12 +11,11 @@ import { renderWelcomeView } from "./welcome.tsx";
 const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY = (import.meta as any).env?.VITE_SUPABASE_KEY || "";
 
-// @ts-ignore
-export const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-export let user = null;
-export let profile = null;
-let currentOverlayId = null;
+export let user: any = null;
+export let profile: any = null;
+let currentOverlayId: string | null = null;
 
 export function showToast(msg: string) {
     const t = document.getElementById('toast');
@@ -92,16 +92,16 @@ export const addToCart = async (id: number, qty = 1) => {
 (window as any).addToCart = addToCart;
 
 export async function checkAuth() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const applyMode = urlParams.get('apply') === 'true';
-    const viewMode = urlParams.get('view');
-
     const { data: { session } } = await supabase.auth.getSession();
     
     if (session?.user) {
         user = session.user;
         await loadProfileData();
         
+        const urlParams = new URLSearchParams(window.location.search);
+        const applyMode = urlParams.get('apply') === 'true';
+        const viewMode = urlParams.get('view');
+
         if (applyMode) {
             const { openCourierRegistrationForm } = await import("./courierRegistration.tsx");
             openCourierRegistrationForm();
@@ -120,10 +120,7 @@ export async function checkAuth() {
         }
     } else {
         user = null; profile = null;
-        if (applyMode) {
-            showView('auth');
-            renderAuthView('register');
-        } else if(!localStorage.getItem('welcomeShown')) {
+        if(!localStorage.getItem('welcomeShown')) {
             showView('welcome');
             renderWelcomeView(() => {
                 localStorage.setItem('welcomeShown', 'true');
@@ -144,11 +141,14 @@ export async function loadProfileData() {
     try {
         let { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
         if (!data && !error) {
-            data = (await supabase.from('profiles').insert([{ 
-                id: user.id, email: user.email, 
-                first_name: user.user_metadata?.first_name || user.email?.split('@')[0],
-                role: 'user', balance: 0
-            }]).select().single()).data;
+            const { data: inserted } = await supabase.from('profiles').insert([{ 
+                id: user.id, 
+                email: user.email, 
+                first_name: user.user_metadata?.full_name || user.user_metadata?.first_name || user.email?.split('@')[0],
+                role: 'user', 
+                balance: 0
+            }]).select().single();
+            data = inserted;
         }
         profile = data;
         const rb = document.getElementById('roleBadge');
@@ -184,14 +184,12 @@ export function showView(viewId: string) {
     showView(view);
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     
-    // UI Feedback for nav items
     const navItems = document.querySelectorAll('.nav-item');
     if(view === 'home') navItems[0].classList.add('active');
     if(view === 'saved') navItems[1].classList.add('active');
     if(view === 'cart') navItems[2].classList.add('active');
     if(view === 'orders') navItems[3].classList.add('active');
     if(view === 'profile') navItems[4].classList.add('active');
-    if(view === 'courier') navItems[3].classList.add('active'); // Courier also uses History icon slot sometimes
     
     if(view === 'home') renderHomeView();
     if(view === 'saved') renderSavedView();

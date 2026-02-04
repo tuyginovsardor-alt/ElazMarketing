@@ -1,12 +1,11 @@
 
 import { profile, user, openOverlay, closeOverlay, showToast, handleSignOut, supabase, loadProfileData } from "./index.tsx";
 
-export async function renderProfileView(data) {
+export async function renderProfileView(data: any) {
     const container = document.getElementById('profileView');
     if(!container || !user) return;
 
     const isBotLinked = !!data?.telegram_id;
-    const isCourier = data?.role === 'courier';
 
     container.innerHTML = `
         <div style="padding-bottom:120px; animation: fadeIn 0.4s ease-out;">
@@ -61,11 +60,11 @@ export async function renderProfileView(data) {
             <div class="card" style="padding:20px; border-radius:28px; margin-bottom:25px;">
                 <div style="display:flex; flex-direction:column; gap:12px;">
                     <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding-bottom:8px; border-bottom:1px solid #f8fafc;">
-                        <span style="color:var(--gray); font-weight:600;">Gmail</span>
-                        <b>${data?.email}</b>
+                        <span style="color:var(--gray); font-weight:600;">Email</span>
+                        <b style="font-size:0.75rem;">${data?.email}</b>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
-                        <span style="color:var(--gray); font-weight:600;">Tel:</span>
+                        <span style="color:var(--gray); font-weight:600;">Telefon:</span>
                         <b>${data?.phone || 'Kiritilmagan'}</b>
                     </div>
                 </div>
@@ -77,7 +76,6 @@ export async function renderProfileView(data) {
         </div>
     `;
 
-    // Agar raqam yo'q bo'lsa (Google Authdan keyin), majburiy so'rash
     if (!data?.phone) {
         setTimeout(() => openPhoneConfirmation(), 500);
     }
@@ -88,11 +86,26 @@ async function openPhoneConfirmation() {
     if(!placeholder) return;
     placeholder.innerHTML = `
         <div style="padding:10px 0;">
-            <h2 style="font-weight:900; margin-bottom:10px;">Raqamni tasdiqlang</h2>
-            <p style="font-size:0.85rem; color:var(--gray); margin-bottom:20px; font-weight:600;">Buyurtmalar bo'yicha bog'lanish uchun telefon raqamingizni kiriting.</p>
-            <input type="tel" id="confirmPhone" placeholder="+998 90 123 45 67" value="${profile?.phone || ''}" style="height:60px; font-size:1.1rem;">
-            <p style="font-size:0.7rem; color:var(--gray); margin-bottom:20px;">* SMS kod yuborilmaydi, faqat aloqa uchun kerak.</p>
-            <button class="btn btn-primary" style="width:100%; height:60px;" onclick="saveConfirmedPhone()">TASDIQLASH</button>
+            <div style="text-align:center; margin-bottom:20px;">
+                <div style="width:60px; height:60px; background:var(--primary-light); color:var(--primary); border-radius:20px; display:inline-flex; align-items:center; justify-content:center; font-size:1.5rem; margin-bottom:15px;">
+                    <i class="fas fa-phone-alt"></i>
+                </div>
+                <h2 style="font-weight:900;">Raqamni tasdiqlang</h2>
+                <p style="font-size:0.8rem; color:var(--gray); margin-top:5px; font-weight:600;">Kuryerlarimiz buyurtma bo'yicha bog'lanishi uchun telefon raqamingiz kerak.</p>
+            </div>
+            
+            <div class="input-group">
+                <label style="font-size:0.7rem; font-weight:800; color:var(--gray); text-transform:uppercase;">Telefon raqamingiz</label>
+                <input type="tel" id="confirmPhone" placeholder="+998 90 123 45 67" value="${profile?.phone || ''}" style="height:60px; font-size:1.2rem; font-weight:800; border-color:var(--primary); text-align:center;">
+            </div>
+            
+            <div style="background:#f0f9ff; padding:15px; border-radius:15px; margin-bottom:25px; border:1px dashed #0ea5e9;">
+                <p style="font-size:0.7rem; color:#0369a1; font-weight:700; line-height:1.4;">
+                    <i class="fas fa-info-circle"></i> SMS kod yuborilmaydi. Kiritgan raqamingiz faqat kuryer uchun bog'lanish raqami sifatida ishlatiladi.
+                </p>
+            </div>
+            
+            <button class="btn btn-primary" style="width:100%; height:60px; border-radius:20px;" onclick="saveConfirmedPhone()">RAQAMNI SAQLASH</button>
         </div>
     `;
     openOverlay('checkoutOverlay');
@@ -101,10 +114,10 @@ async function openPhoneConfirmation() {
 (window as any).saveConfirmedPhone = async () => {
     const phone = (document.getElementById('confirmPhone') as HTMLInputElement).value.trim();
     if (phone.length < 9) return showToast("To'g'ri raqam kiriting");
+    
     const { error } = await supabase.from('profiles').update({ phone }).eq('id', user.id);
     if (!error) {
         showToast("Raqam saqlandi! ✨");
-        // closeOverlay was missing from imports
         closeOverlay('checkoutOverlay');
         await loadProfileData();
         renderProfileView(profile);
@@ -119,7 +132,7 @@ async function openPhoneConfirmation() {
     }).eq('id', user.id);
 
     if (!error) {
-        const { data: config } = await supabase.from('bot_configs').select('bot_name').eq('is_active', true).single();
+        const { data: config } = await supabase.from('bot_configs').select('bot_name').eq('is_active', true).maybeSingle();
         const botUsername = config?.bot_name.replace('@', '') || "elaz_market_bot";
         window.open(`https://t.me/${botUsername}?start=v_${token}`, '_blank');
         showToast("Telegramga yo'naltirilmoqda...");
