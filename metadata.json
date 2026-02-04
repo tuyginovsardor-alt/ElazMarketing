@@ -1,8 +1,8 @@
 {
-  "description": "Marketing platformasi - Foydalanuvchi, Hodim va Admin rollari bilan.",
+  "name": "ELAZ MARKET Professional",
+  "description": "Professional savdo va kuryerlik platformasi",
   "requestFramePermissions": [
     "camera",
     "geolocation"
-  ],
-  "name": "Copy of ELAZ MARKET"
+  ]
 }

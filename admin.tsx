@@ -1,79 +1,72 @@
 
+import { supabase, showToast, navTo } from "./index.tsx";
+
 export async function switchAdminTab(tab: string) {
-    try {
-        const titles: Record<string, string> = { 
-            dash: 'Analitika Tizimi', 
-            inv: 'Mahsulotlar Ombori', 
-            orders: 'Buyurtmalar Nazorati', 
-            users: 'Mijozlar va Kuryerlar',
-            marketing: 'Marketing va Reklama',
-            bot: 'ELAZ Bot Engine (v2.5)',
-            settings: 'Tizim Sozlamalari'
-        };
-        
-        const titleEl = document.getElementById('adminTabTitle');
-        if(titleEl) titleEl.innerText = titles[tab] || 'Admin Panel';
+    const panel = document.getElementById('adminPanel');
+    if(!panel) return;
 
-        // Tablarni yashirish
-        const tabs = ['dash', 'inv', 'orders', 'users', 'marketing', 'settings', 'bot'];
-        tabs.forEach(t => {
-            const el = document.getElementById('admin_tab_' + t);
-            if(el) el.style.display = 'none';
-        });
+    panel.innerHTML = `
+        <div style="width:100%; height:100%; display:flex; flex-direction:column;">
+            <header style="padding:1.5rem; background:white; border-bottom:1px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center;">
+                <div style="font-weight:900; font-size:1.2rem; color:var(--dark);">
+                    <i class="fas fa-shield-halved" style="color:var(--primary); margin-right:10px;"></i>
+                    BOSHQARUV <span style="font-weight:400;">PANELI</span>
+                </div>
+                <button class="btn" style="height:40px; padding:0 20px; font-size:0.8rem; background:var(--dark); color:white; border-radius:12px;" onclick="navTo('profile')">
+                    ILOVAGA QAYTISH
+                </button>
+            </header>
+            
+            <nav style="display:flex; background:white; border-bottom:1px solid #f1f5f9; overflow-x:auto;">
+                <div class="admin-tab ${tab === 'dash' ? 'active' : ''}" onclick="switchAdminTab('dash')" style="padding:15px 25px; font-weight:800; font-size:0.8rem; cursor:pointer; color:${tab === 'dash' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'dash' ? 'var(--primary)' : 'transparent'};">ANALITIKA</div>
+                <div class="admin-tab ${tab === 'inv' ? 'active' : ''}" onclick="switchAdminTab('inv')" style="padding:15px 25px; font-weight:800; font-size:0.8rem; cursor:pointer; color:${tab === 'inv' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'inv' ? 'var(--primary)' : 'transparent'};">SKLAD</div>
+                <div class="admin-tab ${tab === 'orders' ? 'active' : ''}" onclick="switchAdminTab('orders')" style="padding:15px 25px; font-weight:800; font-size:0.8rem; cursor:pointer; color:${tab === 'orders' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'orders' ? 'var(--primary)' : 'transparent'};">BUYURTMALAR</div>
+                <div class="admin-tab ${tab === 'users' ? 'active' : ''}" onclick="switchAdminTab('users')" style="padding:15px 25px; font-weight:800; font-size:0.8rem; cursor:pointer; color:${tab === 'users' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'users' ? 'var(--primary)' : 'transparent'};">FOYDALANUVCHILAR</div>
+            </nav>
 
-        // Navigatsiya holatini yangilash
-        document.querySelectorAll('.admin-nav-item').forEach(i => i.classList.remove('active'));
-        
-        const target = document.getElementById('admin_tab_' + tab);
-        if(target) target.style.display = 'block';
-        
-        // Faol menyuni belgilash
-        const navItems = document.querySelectorAll('.admin-nav-item');
-        navItems.forEach(item => {
-            const label = (item as HTMLElement).innerText.toLowerCase();
-            if (label.includes(tab.toLowerCase()) || 
-                (tab === 'dash' && label.includes('analitika')) || 
-                (tab === 'bot' && (label.includes('bot') || label.includes('robot')))) {
-                item.classList.add('active');
-            }
-        });
+            <div id="adminTabContent" style="flex:1; overflow-y:auto; padding:20px; background:#f8fafc;">
+                <div style="text-align:center; padding:50px;"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+            </div>
+        </div>
+    `;
 
-        // Dinamik yuklash (Bu xatolikni oldini oladi)
-        switch(tab) {
-            case 'dash': 
-                const dash = await import("./adminDashboard.tsx");
-                dash.renderAdminDashboard(); 
-                break;
-            case 'inv': 
-                const inv = await import("./adminInventory.tsx");
-                inv.renderAdminInventory(); 
-                break;
-            case 'orders': 
-                const ord = await import("./adminOrders.tsx");
-                ord.renderAdminOrders(); 
-                break;
-            case 'users': 
-                const usr = await import("./adminUsers.tsx");
-                usr.renderAdminUsers(); 
-                break;
-            case 'bot': 
-                const b = await import("./adminBot.tsx");
-                b.renderAdminBot();
-                break;
-            case 'marketing': 
-                const m = await import("./adminAds.tsx");
-                m.renderAdminAds(); 
-                break;
-            case 'settings': 
-                const s = await import("./adminSettings.tsx");
-                s.renderAdminSettings(); 
-                break;
-        }
-    } catch (err) {
-        console.error("Admin Navigation Error:", err);
-        import("./index.tsx").then(m => m.showToast("Bo'limni yuklashda xatolik yuz berdi."));
+    renderTabContent(tab);
+}
+(window as any).switchAdminTab = switchAdminTab;
+
+async function renderTabContent(tab: string) {
+    const content = document.getElementById('adminTabContent');
+    if(!content) return;
+
+    if(tab === 'dash') {
+        const { data: prods } = await supabase.from('products').select('*', { count: 'exact', head: true });
+        const { data: users } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
+        const { data: orders } = await supabase.from('orders').select('*', { count: 'exact', head: true });
+
+        content.innerHTML = `
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                <div class="card" style="border:none; box-shadow:var(--shadow-sm); text-align:center;">
+                    <div style="font-size:1.5rem; font-weight:900; color:var(--primary);">${prods || 0}</div>
+                    <div style="font-size:0.7rem; font-weight:800; color:var(--gray);">MAHSULOTLAR</div>
+                </div>
+                <div class="card" style="border:none; box-shadow:var(--shadow-sm); text-align:center;">
+                    <div style="font-size:1.5rem; font-weight:900; color:#3b82f6;">${users || 0}</div>
+                    <div style="font-size:0.7rem; font-weight:800; color:var(--gray);">MIJOZLAR</div>
+                </div>
+                <div class="card" style="border:none; box-shadow:var(--shadow-sm); text-align:center;">
+                    <div style="font-size:1.5rem; font-weight:900; color:var(--danger);">${orders || 0}</div>
+                    <div style="font-size:0.7rem; font-weight:800; color:var(--gray);">BUYURTMALAR</div>
+                </div>
+            </div>
+        `;
+    } else if(tab === 'inv') {
+        const { renderAdminInventory } = await import("./adminInventory.tsx");
+        renderAdminInventory();
+    } else if(tab === 'orders') {
+        const { renderAdminOrders } = await import("./adminOrders.tsx");
+        renderAdminOrders();
+    } else if(tab === 'users') {
+        const { renderAdminUsers } = await import("./adminUsers.tsx");
+        renderAdminUsers();
     }
 }
-
-// Window globalga ulaymiz
-(window as any).switchAdminTab = switchAdminTab;
