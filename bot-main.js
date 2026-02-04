@@ -9,19 +9,16 @@ const sessions = {};
 let lastId = 0;
 
 async function router(update) {
+    if (update.callback_query) return handleCallbacks(update.callback_query);
     const msg = update.message;
-    const cb = update.callback_query;
-
-    if (cb) return handleCallbacks(cb, BOT_TOKEN);
     if (!msg?.text && !msg?.contact) return;
 
-    const chatId = msg.chat?.id || cb?.from.id;
-    const text = msg?.text;
+    const chatId = msg.chat.id;
+    const text = msg.text;
 
     if (!sessions[chatId]) sessions[chatId] = { step: 'idle' };
     const session = sessions[chatId];
 
-    // Global Reset
     if (text === "/start" || text === "❌ Chiqish" || text === "❌ Bekor qilish") {
         session.step = 'idle';
         const { data: profile } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
@@ -29,15 +26,13 @@ async function router(update) {
             const kb = profile.role === 'courier' ? KB.courier : KB.user;
             return tg('sendMessage', { chat_id: chatId, text: `👋 Xush kelibsiz, <b>${profile.first_name}</b>!`, parse_mode: 'HTML', reply_markup: kb });
         }
-        return tg('sendMessage', { chat_id: chatId, text: "🏪 <b>ELAZ MARKET: Bag'dod</b>\n\nPlatformamizga xush kelibsiz! Botdan to'liq foydalanish uchun tizimga kiring:", parse_mode: 'HTML', reply_markup: KB.welcome });
+        return tg('sendMessage', { chat_id: chatId, text: "🏪 <b>ELAZ MARKET: Bag'dod</b>\n\nPlatformaga xush kelibsiz! Botdan foydalanish uchun tizimga kiring:", parse_mode: 'HTML', reply_markup: KB.welcome });
     }
 
-    // Auth Step-by-Step
     if (session.step !== 'idle' || text === "🔑 Kirish" || text === "📝 Ro'yxatdan o'tish") {
         return handleAuth(chatId, text, session, msg);
     }
 
-    // Main Role Logic
     const { data: profile } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
     if (profile) {
         if (profile.role === 'courier') return handleCourier(chatId, text, profile);
@@ -46,19 +41,19 @@ async function router(update) {
 }
 
 async function start() {
-    console.log("💎 ELAZ BOT ENGINE V11 (PRO) STARTED...");
+    console.log("💎 ELAZ BOT ENGINE V12 (ULTIMATE) STARTED...");
     while (true) {
         try {
-            const updates = await tg('getUpdates', { offset: lastId, timeout: 30 });
-            if (updates.ok && updates.result) {
-                for (const u of updates.result) {
+            const res = await tg('getUpdates', { offset: lastId, timeout: 30 });
+            if (res.ok && res.result.length) {
+                for (const u of res.result) {
                     await router(u);
                     lastId = u.update_id + 1;
                 }
             }
-        } catch (e) { 
-            console.error("Loop Error:", e);
-            await new Promise(r => setTimeout(r, 5000)); 
+        } catch (e) {
+            console.error("Polling error:", e.message);
+            await new Promise(r => setTimeout(r, 5000));
         }
     }
 }
