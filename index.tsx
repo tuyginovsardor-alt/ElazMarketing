@@ -46,7 +46,7 @@ export function closeOverlay(id: string) {
 }
 (window as any).closeOverlay = closeOverlay;
 
-window.onpopstate = (event) => {
+window.onpopstate = () => {
     const overlays = document.querySelectorAll('.overlay');
     overlays.forEach(ov => {
         (ov as HTMLElement).style.display = 'none';
@@ -220,4 +220,6 @@ export function showView(viewId: string) {
     (window as any).navTo('profile');
 };
 
-window.onload = () => { checkAuth(); };
+if (typeof window !== 'undefined') {
+    window.onload = () => { checkAuth(); };
+}
