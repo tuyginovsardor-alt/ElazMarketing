@@ -9,7 +9,7 @@ export const openProfileEdit = () => {
     if(!placeholder) return;
     
     const districtParts = profile.district ? profile.district.split(', ') : ['', ''];
-    const currentMahalla = districtParts[1] || '';
+    const currentMahalla = districtParts[1] || districtParts[0] || '';
 
     placeholder.innerHTML = `
         <div style="padding-bottom:50px;">
@@ -18,35 +18,27 @@ export const openProfileEdit = () => {
                 <h2 style="font-weight:900; font-size:1.4rem;">Profilni tahrirlash</h2>
             </div>
 
-            <div class="card" style="border-radius: 30px; padding: 25px; border:1px solid #f1f5f9; background:white; box-shadow:var(--shadow-sm);">
+            <div class="card" style="border-radius: 32px; padding: 25px; border:1px solid #f1f5f9; background:white; box-shadow:var(--shadow-sm);">
                 <div style="margin-bottom:20px;">
-                    <label style="font-size:0.75rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Ism</label>
+                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Ism</label>
                     <input type="text" id="editFName" value="${profile.first_name || ''}" placeholder="Ismingiz" style="height:62px; font-weight:700; font-size:1rem; border-radius:18px;">
                 </div>
 
                 <div style="margin-bottom:20px;">
-                    <label style="font-size:0.75rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Familiya</label>
+                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Familiya</label>
                     <input type="text" id="editLName" value="${profile.last_name || ''}" placeholder="Familiyangiz" style="height:62px; font-weight:700; font-size:1rem; border-radius:18px;">
                 </div>
                 
                 <div style="margin-bottom:20px;">
-                    <label style="font-size:0.75rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Telefon raqami</label>
+                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Telefon raqami</label>
                     <input type="tel" id="editPhone" value="${profile.phone || ''}" placeholder="+998 90 123 45 67" style="height:62px; font-weight:700; font-size:1rem; border-radius:18px;">
                 </div>
 
-                <div style="margin-bottom:20px;">
-                    <label style="font-size:0.75rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Viloyat</label>
-                    <select id="editRegion" style="height:62px; font-weight:700; font-size:1rem; border-radius:18px;">
-                        <option value="Farg'ona viloyati" ${profile.region?.includes('Farg\'ona') ? 'selected' : ''}>Farg'ona viloyati</option>
-                        <option value="Sirdaryo viloyati" ${profile.region?.includes('Sirdaryo') ? 'selected' : ''}>Sirdaryo viloyati</option>
-                    </select>
-                </div>
-
                 <div style="margin-bottom:30px;">
-                    <label style="font-size:0.75rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Mahalla / Hudud</label>
+                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Hududni tanlang</label>
                     <select id="editMahalla" style="height:62px; font-weight:700; font-size:1rem; border-radius:18px; border-color:var(--primary); background:var(--primary-light);">
                         <option value="">Tanlang...</option>
-                        ${BAGDOD_MAHALLALARI.map(m => `<option value="${m}" ${currentMahalla === m ? 'selected' : ''}>${m}</option>`).join('')}
+                        ${BAGDOD_MAHALLALARI.map(m => `<option value="${m}" ${currentMahalla.includes(m) ? 'selected' : ''}>${m}</option>`).join('')}
                     </select>
                 </div>
 
@@ -59,14 +51,11 @@ export const openProfileEdit = () => {
     openOverlay('profileEditOverlay');
 };
 
-(window as any).openProfileEdit = openProfileEdit;
-
 (window as any).saveProfileChanges = async () => {
     const btn = document.getElementById('btnSaveProfile') as HTMLButtonElement;
     const first_name = (document.getElementById('editFName') as HTMLInputElement).value.trim();
     const last_name = (document.getElementById('editLName') as HTMLInputElement).value.trim();
     const phone = (document.getElementById('editPhone') as HTMLInputElement).value.trim();
-    const region = (document.getElementById('editRegion') as HTMLSelectElement).value;
     const mahalla = (document.getElementById('editMahalla') as HTMLSelectElement).value;
 
     if(!first_name || !phone) return showToast("Ism va telefon raqami majburiy");
@@ -81,12 +70,11 @@ export const openProfileEdit = () => {
             first_name, 
             last_name, 
             phone, 
-            region, 
             district: fullDistrict 
         }).eq('id', profile.id);
         
         if(!error) {
-            showToast("Ma'lumotlar yangilandi! ✨");
+            showToast("Ma'lumotlar muvaffaqiyatli yangilandi! ✨");
             await loadProfileData();
             closeOverlay('profileEditOverlay');
             const { renderProfileView } = await import("./profile.tsx");

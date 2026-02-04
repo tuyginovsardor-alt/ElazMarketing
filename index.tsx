@@ -79,7 +79,6 @@ window.onpopstate = (event) => {
 export const addToCart = async (id: number, qty = 1) => {
     if(!user) return showToast("Tizimga kiring");
     
-    // Avval savatda bor-yo'qligini tekshirish
     const { data: existing } = await supabase.from('cart_items').select('*').eq('user_id', user.id).eq('product_id', id).maybeSingle();
     
     if(existing) {
@@ -99,20 +98,13 @@ export async function checkAuth() {
 
     const { data: { session } } = await supabase.auth.getSession();
     
-    const app = document.getElementById('appContainer');
-    const admin = document.getElementById('adminPanel');
-    if(app) app.style.display = 'flex';
-    if(admin) admin.style.display = 'none';
-
     if (session?.user) {
         user = session.user;
         await loadProfileData();
         
         if (applyMode) {
-            // Agar apply=true bo'lsa va login qilgan bo'lsa, ariza shaklini ochamiz
             const { openCourierRegistrationForm } = await import("./courierRegistration.tsx");
             openCourierRegistrationForm();
-            // Parametrni tozalash
             window.history.replaceState({}, document.title, window.location.pathname);
         } else if (viewMode) {
             (window as any).navTo(viewMode);
@@ -121,20 +113,16 @@ export async function checkAuth() {
             import("./location.tsx").then(m => m.openLocationSetup());
         } else {
             if(profile.role === 'courier') {
-                showView('courier');
-                import("./courierDashboard.tsx").then(m => m.renderCourierDashboard());
+                (window as any).navTo('courier');
             } else {
-                showView('home');
-                renderHomeView();
+                (window as any).navTo('home');
             }
         }
     } else {
         user = null; profile = null;
         if (applyMode) {
-            // Apply mode bo'lsa lekin login qilmagan bo'lsa, registratsiyaga yo'naltirish
             showView('auth');
             renderAuthView('register');
-            showToast("Arizani to'ldirish uchun avval ro'yxatdan o'ting");
         } else if(!localStorage.getItem('welcomeShown')) {
             showView('welcome');
             renderWelcomeView(() => {
@@ -159,7 +147,7 @@ export async function loadProfileData() {
             data = (await supabase.from('profiles').insert([{ 
                 id: user.id, email: user.email, 
                 first_name: user.user_metadata?.first_name || user.email?.split('@')[0],
-                role: 'user', balance: 0, is_subscribed: true
+                role: 'user', balance: 0
             }]).select().single()).data;
         }
         profile = data;
@@ -195,8 +183,15 @@ export function showView(viewId: string) {
 (window as any).navTo = (view: string) => {
     showView(view);
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const idx = {home:0, saved:1, cart:2, orders:3, profile:4, courier: 3}[view];
-    if(idx !== undefined) document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
+    
+    // UI Feedback for nav items
+    const navItems = document.querySelectorAll('.nav-item');
+    if(view === 'home') navItems[0].classList.add('active');
+    if(view === 'saved') navItems[1].classList.add('active');
+    if(view === 'cart') navItems[2].classList.add('active');
+    if(view === 'orders') navItems[3].classList.add('active');
+    if(view === 'profile') navItems[4].classList.add('active');
+    if(view === 'courier') navItems[3].classList.add('active'); // Courier also uses History icon slot sometimes
     
     if(view === 'home') renderHomeView();
     if(view === 'saved') renderSavedView();
