@@ -157,7 +157,9 @@ async function loadCourierRequests() {
         if (appError) throw appError;
 
         showToast("Kuryer tasdiqlandi! ✅");
+        // Arizalar ro'yxatini yangilash
         loadCourierRequests();
+        // Badge raqamini yangilash
         updateReqCount();
     } catch(e: any) { 
         console.error(e);
@@ -185,7 +187,16 @@ async function loadCourierList() {
     content.innerHTML = '<div style="text-align:center; padding:3rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--primary);"></i></div>';
     
     try {
-        const { data: couriers, error } = await supabase.from('profiles').select('*').eq('role', 'courier');
+        // Kuryerlar va ularning yetkazib berilgan buyurtmalari sonini olish
+        const { data: couriers, error } = await supabase
+            .from('profiles')
+            .select(`
+                *,
+                orders:orders(count)
+            `)
+            .eq('role', 'courier')
+            .eq('orders.status', 'delivered');
+
         if (error) throw error;
         
         content.innerHTML = `
@@ -195,24 +206,36 @@ async function loadCourierList() {
                         <tr>
                             <th style="padding:15px; text-align:left; font-size:0.7rem; font-weight:800; color:var(--gray);">KURER</th>
                             <th style="padding:15px; text-align:left; font-size:0.7rem; font-weight:800; color:var(--gray);">TRANSPORT</th>
+                            <th style="padding:15px; text-align:center; font-size:0.7rem; font-weight:800; color:var(--gray);">TOPSHIRIQLAR</th>
                             <th style="padding:15px; text-align:left; font-size:0.7rem; font-weight:800; color:var(--gray);">HOLAT</th>
                             <th style="padding:15px; text-align:center; font-size:0.7rem; font-weight:800; color:var(--gray);">AMAL</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${couriers?.map(u => `
-                            <tr style="border-bottom:1px solid #f1f5f9;">
-                                <td style="padding:15px;">
-                                    <div style="font-weight:800; font-size:0.9rem;">${u.first_name || 'Ismsiz'}</div>
-                                    <div style="font-size:0.7rem; color:var(--gray);">${u.email}</div>
-                                </td>
-                                <td style="padding:15px;"><span style="font-size:0.75rem; font-weight:800; color:var(--primary);">${u.transport_type || 'Piyoda'}</span></td>
-                                <td style="padding:15px;">${u.active_status ? '<span style="color:#22c55e; font-weight:800;">🟢 Onlayn</span>' : '<span style="color:var(--gray); font-weight:800;">🔴 Oflayn</span>'}</td>
-                                <td style="padding:15px; text-align:center;">
-                                    <button class="btn" style="width:32px; height:32px; background:#fee2e2; color:var(--danger); border-radius:8px; border:none;" onclick="deleteUser('${u.id}')"><i class="fas fa-trash"></i></button>
-                                </td>
-                            </tr>
-                        `).join('')}
+                        ${couriers?.map(u => {
+                            const taskCount = u.orders?.[0]?.count || 0;
+                            return `
+                                <tr style="border-bottom:1px solid #f1f5f9;">
+                                    <td style="padding:15px;">
+                                        <div style="font-weight:800; font-size:0.9rem;">${u.first_name || 'Ismsiz'}</div>
+                                        <div style="font-size:0.7rem; color:var(--gray);">${u.email}</div>
+                                    </td>
+                                    <td style="padding:15px;"><span style="font-size:0.75rem; font-weight:800; color:var(--primary);">${u.transport_type?.toUpperCase() || 'PIYODA'}</span></td>
+                                    <td style="padding:15px; text-align:center;">
+                                        <div style="display:inline-flex; align-items:center; gap:5px; background:var(--primary-light); color:var(--primary); padding:4px 10px; border-radius:10px; font-weight:900; font-size:0.8rem;">
+                                            <i class="fas fa-check-double" style="font-size:0.7rem;"></i> ${taskCount}
+                                        </div>
+                                    </td>
+                                    <td style="padding:15px;">${u.active_status ? '<span style="color:#22c55e; font-weight:800; font-size:0.75rem;">🟢 ONLAYN</span>' : '<span style="color:var(--gray); font-weight:800; font-size:0.75rem;">🔴 OFLAYN</span>'}</td>
+                                    <td style="padding:15px; text-align:center;">
+                                        <div style="display:flex; justify-content:center; gap:8px;">
+                                            <button class="btn" title="Balansni ko'rish" style="width:32px; height:32px; background:#f0fdf4; color:var(--primary); border-radius:8px; border:none;" onclick="showToast('Balans: ${u.balance.toLocaleString()} UZS')"><i class="fas fa-wallet"></i></button>
+                                            <button class="btn" style="width:32px; height:32px; background:#fee2e2; color:var(--danger); border-radius:8px; border:none;" onclick="deleteUser('${u.id}')"><i class="fas fa-trash"></i></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -228,7 +251,10 @@ async function loadCourierList() {
         const { error } = await supabase.from('profiles').delete().eq('id', id);
         if (error) throw error;
         showToast("Muvaffaqiyatli o'chirildi.");
-        loadUserList();
+        // Qaysi tabdaligiga qarab ro'yxatni yangilash
+        const activeTab = document.querySelector('.btn[style*="background: white"]')?.id;
+        if(activeTab === 'btnCourierList') loadCourierList();
+        else loadUserList();
     } catch (e) {
         showToast("O'chirishda xatolik!");
     }
