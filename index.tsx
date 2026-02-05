@@ -44,25 +44,31 @@ export function closeOverlay(id: string) {
 }
 (window as any).closeOverlay = closeOverlay;
 
-// --- PAYMENT FUNKSIYALARI (GLOBAL) ---
+// --- PAYMENT FUNKSIYASI ---
 export async function openPayment() {
+    console.log("Payment requested...");
     if(!user) return showToast("To'lov qilish uchun tizimga kiring");
-    showToast("Hamyon yuklanmoqda...");
+    
+    // Vizual feedback
+    const btn = document.querySelector('[onclick="openPayment()"]');
+    if(btn) (btn as HTMLElement).style.opacity = '0.5';
+    
+    showToast("Hamyon ochilmoqda...");
     try {
         const { openPaymentView } = await import("./payment.tsx");
         await openPaymentView();
+        if(btn) (btn as HTMLElement).style.opacity = '1';
     } catch (e) {
-        console.error(e);
-        showToast("To'lov sahifasini yuklab bo'lmadi");
+        console.error("Payment load error:", e);
+        showToast("Xatolik: Sahifani yuklab bo'lmadi");
+        if(btn) (btn as HTMLElement).style.opacity = '1';
     }
 }
 (window as any).openPayment = openPayment;
 
-// --- CART FUNKSIYALARI (GLOBAL) ---
-
+// --- CART FUNKSIYALARI ---
 export async function addToCart(productId: number, qty: number = 1) {
     if(!user) return showToast("Savatga qo'shish uchun tizimga kiring");
-    
     try {
         const { data: existing } = await supabase
             .from('cart_items')
@@ -72,64 +78,41 @@ export async function addToCart(productId: number, qty: number = 1) {
             .maybeSingle();
 
         if(existing) {
-            const { error } = await supabase
-                .from('cart_items')
-                .update({ quantity: existing.quantity + qty })
-                .eq('id', existing.id);
-            if(error) throw error;
+            await supabase.from('cart_items').update({ quantity: existing.quantity + qty }).eq('id', existing.id);
         } else {
-            const { error } = await supabase
-                .from('cart_items')
-                .insert([{ user_id: user.id, product_id: productId, quantity: qty }]);
-            if(error) throw error;
+            await supabase.from('cart_items').insert([{ user_id: user.id, product_id: productId, quantity: qty }]);
         }
         showToast("Savatga qo'shildi! 🛒");
     } catch (e: any) {
-        console.error(e);
-        showToast("Xatolik: Savatga qo'shib bo'lmadi");
+        showToast("Xatolik yuz berdi");
     }
 }
 (window as any).addToCart = addToCart;
 
-// --- PROFIL FUNKSIYALARI (GLOBAL) ---
-
+// --- GLOBAL BINDINGS ---
 (window as any).openCourierRegistration = async () => {
-    showToast("Yuklanmoqda...");
     try {
         const { openCourierRegistrationForm } = await import("./courierRegistration.tsx");
         openCourierRegistrationForm();
-    } catch (e) {
-        console.error(e);
-        showToast("Kuryer sahifasini yuklab bo'lmadi");
-    }
+    } catch (e) { showToast("Xatolik!"); }
 };
 
 (window as any).openSupportCenter = async () => {
-    showToast("Bog'lanish...");
     try {
         const { renderSupportView } = await import("./supportView.tsx");
         renderSupportView();
-    } catch (e) {
-        console.error(e);
-        showToast("Yordam sahifasini yuklab bo'lmadi");
-    }
+    } catch (e) { showToast("Xatolik!"); }
 };
 
 (window as any).openCourierDashboard = async () => {
     try {
         const { renderCourierDashboard } = await import("./courierDashboard.tsx");
         renderCourierDashboard();
-    } catch (e) {
-        console.error(e);
-        showToast("Dashboard yuklanmadi");
-    }
+    } catch (e) { showToast("Xatolik!"); }
 };
 
 (window as any).enterAdminPanel = async () => {
-    if(!profile || (profile.role !== 'admin' && profile.role !== 'staff')) {
-        showToast("Ruxsat yo'q!");
-        return;
-    }
+    if(!profile || (profile.role !== 'admin' && profile.role !== 'staff')) return;
     const panel = document.getElementById('adminPanel');
     const app = document.getElementById('appContainer');
     if(panel && app) { 
@@ -141,27 +124,21 @@ export async function addToCart(productId: number, qty: number = 1) {
 };
 
 (window as any).connectToBot = async () => {
-    if(!profile) return showToast("Tizimga kiring");
+    if(!profile) return;
     const token = Math.random().toString(36).substring(2, 15);
-    showToast("Telegramga yo'naltirilmoqda...");
     const { error } = await supabase.from('profiles').update({ link_token: token }).eq('id', profile.id);
     if(!error) {
-        const botUsername = "elaz_market_bot"; 
-        window.open(`https://t.me/${botUsername}?start=${token}`, '_blank');
-    } else {
-        showToast("Xatolik: " + error.message);
+        window.open(`https://t.me/elaz_market_bot?start=${token}`, '_blank');
     }
 };
-
-// --- STANDART NAVIGATSIYA ---
 
 export async function loadProfileData() {
     const { data: { session } } = await supabase.auth.getSession();
     if(!session?.user) return;
     user = session.user;
     try {
-        let { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
-        if (!data && !error) {
+        let { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+        if (!data) {
             const { data: inserted } = await supabase.from('profiles').insert([{ 
                 id: user.id, 
                 email: user.email, 
@@ -172,14 +149,9 @@ export async function loadProfileData() {
             data = inserted;
         }
         profile = data;
-        
         const navIconContainer = document.getElementById('navProfileIconContainer');
         if (navIconContainer) {
-            if (profile?.avatar_url) {
-                navIconContainer.innerHTML = `<img src="${profile.avatar_url}" class="nav-profile-img">`;
-            } else {
-                navIconContainer.innerHTML = `<i class="far fa-user-circle" style="font-size: 1.6rem;"></i>`;
-            }
+            navIconContainer.innerHTML = profile?.avatar_url ? `<img src="${profile.avatar_url}" class="nav-profile-img">` : `<i class="far fa-user-circle" style="font-size: 1.6rem;"></i>`;
         }
     } catch (e) { console.error(e); }
 }

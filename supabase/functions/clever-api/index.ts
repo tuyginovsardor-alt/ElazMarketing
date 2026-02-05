@@ -11,7 +11,6 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // CORS Preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -22,7 +21,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Body bo'sh bo'lsa xato bermasligi uchun
     let body: any = {};
     try {
         body = await req.json();
@@ -33,14 +31,21 @@ serve(async (req) => {
     const rawToken = Deno.env.get('TSPAY_TOKEN');
     const token = rawToken ? rawToken.trim() : null;
 
+    // DEBUG: Supabase Logs-da qaysi token ishlatilayotganini ko'rish uchun (faqat boshlanishi)
+    if (token) {
+        console.log(`[AUTH] TSPAY_TOKEN picked up. Prefix: ${token.substring(0, 6)}...`);
+    } else {
+        console.error("[AUTH] TSPAY_TOKEN is missing in environment variables!");
+    }
+
     if (!token) {
         return new Response(JSON.stringify({ 
             status: 'error', 
-            message: "API Token topilmadi (TSPAY_TOKEN set qilinmagan)." 
+            message: "To'lov tizimi sozlanmagan (Token missing)." 
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
     }
 
-    // --- 1. WEBHOOK (To'lov tasdiqlanganda TsPay ushbu qismga murojaat qiladi) ---
+    // --- 1. WEBHOOK HANDLING ---
     if (!body.action && (body.pay_status || body.status)) {
       const status = body.pay_status || body.status;
       if (status === 'paid' || status === 'success') {
@@ -48,25 +53,26 @@ serve(async (req) => {
         const comment = body.comment || "";
         const orderId = body.id || body.cheque_id || 0;
         
-        // Komment ichidan User ID (UUID) ni qidirib olamiz
         const userIdMatch = comment.match(/([a-f0-9-]{36})/i);
         const userId = userIdMatch ? userIdMatch[1] : null;
 
         if (userId && amount) {
-          // Baza rpc funksiyasini chaqiramiz (balansni yangilash uchun)
           await supabaseAdmin.rpc('record_tspay_success', { 
               u_id: userId, 
               amt: amount, 
               o_id: Number(orderId) 
           });
+          console.log(`[SUCCESS] Balance updated for user: ${userId}, Amount: ${amount}`);
         }
       }
       return new Response(JSON.stringify({ status: 'ok' }), { headers: corsHeaders });
     }
 
-    // --- 2. TO'LOV YARATISH (Frontenddan kelgan so'rov) ---
+    // --- 2. PAYMENT CREATION ---
     if (body.action === 'create') {
       const amount = Math.floor(Number(body.amount));
+      if (amount < 5000) throw new Error("Minimal summa 5000 so'm");
+
       const TSPAY_API_URL = 'https://tspay.uz/api/v1/transactions/create/';
 
       const tsResponse = await fetch(TSPAY_API_URL, {
@@ -78,13 +84,13 @@ serve(async (req) => {
         body: JSON.stringify({
           amount: amount,
           access_token: token,
-          // Branding yangilandi: Anilo.uz -> ELAZ MARKET
-          comment: `ELAZ MARKET: ${body.user_id}`,
+          comment: `ELAZ_MARKET_TOPUP: ${body.user_id}`,
           redirect_url: 'https://elaz-market.uz/profile'
         })
       });
       
       const data = await tsResponse.json().catch(() => ({}));
+      console.log(`[TSPAY RESPONSE] Status: ${tsResponse.status}`, data);
 
       const findUrlDeep = (obj: any): string | null => {
           if (!obj || typeof obj !== 'object') return null;
@@ -103,31 +109,27 @@ serve(async (req) => {
       };
 
       const payUrl = findUrlDeep(data);
-      const transactionId = data.id || (data.data && data.data.id) || data.cheque_id;
-
-      if ((tsResponse.status === 200 || tsResponse.status === 201) && payUrl) {
+      if (payUrl) {
           return new Response(JSON.stringify({ 
               status: 'success', 
-              transaction: { url: payUrl, id: transactionId } 
+              transaction: { url: payUrl } 
           }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
       } else {
-          const errorMsg = data.message || data.error || `TsPay xatosi: ${tsResponse.status}`;
           return new Response(JSON.stringify({ 
               status: 'error', 
-              message: errorMsg
+              message: data.message || "To'lov havolasini olib bo'lmadi"
           }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
       }
     }
 
-    return new Response(JSON.stringify({ status: 'error', message: 'Noma\'lum amal' }), { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+    return new Response(JSON.stringify({ status: 'error', message: 'Unknown action' }), { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 
     });
 
   } catch (error: any) {
+    console.error("[CRITICAL ERROR]", error);
     return new Response(JSON.stringify({ status: 'error', message: error.message }), { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200
     });
   }
 })
