@@ -1,7 +1,11 @@
 
 import { supabase, profile, showToast, openOverlay, loadProfileData, closeOverlay } from "./index.tsx";
 
-export const BAGDOD_MAHALLALARI = ["Tuman Markazi", "Guliston shahri", "Markaz", "Guliston", "Istiqlol", "Bog'dod", "Samarqand", "Tinchlik", "Navoiy", "Paxtaobod", "Zafar", "Nurafshon", "Do'stlik", "Ahillik", "Obod", "Farovon", "Yangi hayot"];
+export const BAGDOD_MAHALLALARI = [
+    "Tuman Markazi", "Guliston shahri", "Markaz", "Guliston", "Istiqlol", "Bog'dod", 
+    "Samarqand", "Tinchlik", "Navoiy", "Paxtaobod", "Zafar", "Nurafshon", 
+    "Do'stlik", "Ahillik", "Obod", "Farovon", "Yangi hayot"
+];
 
 export const openProfileEdit = () => {
     if(!profile) return showToast("Profil ma'lumotlari mavjud emas");
@@ -12,25 +16,29 @@ export const openProfileEdit = () => {
     const currentMahalla = districtParts[1] || districtParts[0] || '';
 
     placeholder.innerHTML = `
-        <div style="padding-bottom:50px; animation: fadeIn 0.3s ease-out;">
-            <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px; position:sticky; top:0; background:white; z-index:10; padding:10px 0;">
+        <div style="padding-bottom:100px; animation: fadeIn 0.3s ease-out;">
+            <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px; position:sticky; top:0; background:white; z-index:10; padding:15px 0;">
                 <i class="fas fa-arrow-left" onclick="closeOverlay('profileEditOverlay')" style="font-size:1.4rem; cursor:pointer; color:var(--text); padding: 5px;"></i>
                 <h2 style="font-weight:900; font-size:1.4rem;">Profilni tahrirlash</h2>
             </div>
 
-            <div class="card" style="border-radius: 35px; padding: 25px; border:1.5px solid #f1f5f9; background:white; box-shadow:var(--shadow-sm);">
-                
-                <!-- AVATAR PREVIEW & INPUT -->
-                <div style="text-align:center; margin-bottom:30px;">
-                    <div style="width:100px; height:100px; border-radius:35px; background:#f8fafc; margin:0 auto 15px; overflow:hidden; border:3px solid var(--primary-light); display:flex; align-items:center; justify-content:center;">
+            <div style="text-align:center; margin-bottom:30px;">
+                <div style="position:relative; width:120px; height:120px; margin:0 auto;">
+                    <div style="width:120px; height:120px; border-radius:40px; background:#f8fafc; overflow:hidden; border:4px solid white; box-shadow:var(--shadow-lg); display:flex; align-items:center; justify-content:center;">
                         <img id="editAvatarPreview" src="${profile.avatar_url || 'https://via.placeholder.com/150'}" style="width:100%; height:100%; object-fit:cover;">
+                        <div id="avatarLoading" style="display:none; position:absolute; inset:0; background:rgba(255,255,255,0.7); align-items:center; justify-content:center; border-radius:40px;">
+                            <i class="fas fa-sync fa-spin" style="color:var(--primary); font-size:1.5rem;"></i>
+                        </div>
                     </div>
-                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Profil rasm URL manzili</label>
-                    <input type="text" id="editAvatarUrl" value="${profile.avatar_url || ''}" placeholder="https://rasm-manzili.jpg" 
-                           style="height:55px; font-weight:700; font-size:0.9rem; border-radius:16px;"
-                           oninput="document.getElementById('editAvatarPreview').src = this.value || 'https://via.placeholder.com/150'">
+                    <label for="avatarInput" style="position:absolute; bottom:-5px; right:-5px; width:40px; height:40px; border-radius:15px; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; cursor:pointer; border:3px solid white; box-shadow:var(--shadow-sm);">
+                        <i class="fas fa-camera"></i>
+                    </label>
+                    <input type="file" id="avatarInput" accept="image/*" style="display:none;" onchange="handleAvatarUpload(this)">
                 </div>
+                <p style="font-size:0.7rem; font-weight:800; color:var(--gray); margin-top:15px; text-transform:uppercase;">Suratni o'zgartirish</p>
+            </div>
 
+            <div class="card" style="border-radius: 35px; padding: 25px; border:1.5px solid #f1f5f9; background:white;">
                 <div style="margin-bottom:20px;">
                     <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Ismingiz</label>
                     <input type="text" id="editFName" value="${profile.first_name || ''}" placeholder="Masalan: Azizbek" style="height:62px; font-weight:700; font-size:1rem; border-radius:18px;">
@@ -48,14 +56,14 @@ export const openProfileEdit = () => {
 
                 <div style="margin-bottom:30px;">
                     <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Hududni tanlang</label>
-                    <select id="editMahalla" style="height:62px; font-weight:700; font-size:1rem; border-radius:18px; border-color:var(--primary); background:var(--primary-light);">
+                    <select id="editMahalla" style="height:62px; font-weight:700; font-size:1rem; border-radius:18px;">
                         <option value="">Tanlang...</option>
                         ${BAGDOD_MAHALLALARI.map(m => `<option value="${m}" ${currentMahalla.includes(m) ? 'selected' : ''}>${m}</option>`).join('')}
                     </select>
                 </div>
 
-                <button class="btn btn-primary" id="btnSaveProfile" style="width: 100%; height:65px; font-size:1.1rem; border-radius:24px; box-shadow:0 12px 24px rgba(34,197,94,0.3);" onclick="saveProfileChanges()">
-                    O'ZGARISHLARNI SAQLASH <i class="fas fa-check-double" style="margin-left:8px;"></i>
+                <button class="btn btn-primary" id="btnSaveProfile" style="width: 100%; height:65px; font-size:1.1rem; border-radius:24px;" onclick="saveProfileChanges()">
+                    SAQLASH <i class="fas fa-check-circle" style="margin-left:8px;"></i>
                 </button>
             </div>
         </div>
@@ -63,13 +71,48 @@ export const openProfileEdit = () => {
     openOverlay('profileEditOverlay');
 };
 
+(window as any).handleAvatarUpload = async (input: HTMLInputElement) => {
+    const file = input.files?.[0];
+    if(!file) return;
+
+    if(file.size > 2 * 1024 * 1024) return showToast("Rasm hajmi 2MB dan kichik bo'lishi kerak");
+
+    const loading = document.getElementById('avatarLoading');
+    if(loading) loading.style.display = 'flex';
+
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${profile.id}-${Math.random()}.${fileExt}`;
+        const filePath = `avatars/${fileName}`;
+
+        // Supabase Storage-ga yuklash (Bucket nomi 'products' yoki 'avatars' bo'lishi kerak)
+        const { error: uploadError } = await supabase.storage.from('products').upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(filePath);
+        
+        const preview = document.getElementById('editAvatarPreview') as HTMLImageElement;
+        if(preview) preview.src = publicUrl;
+        
+        // Keyinchalik saqlash uchun profile ob'ektiga vaqtinchalik yozib qo'yamiz
+        (window as any).tempAvatarUrl = publicUrl;
+        showToast("Rasm yuklandi! 📸");
+
+    } catch (e: any) {
+        showToast("Yuklashda xato: " + e.message);
+    } finally {
+        if(loading) loading.style.display = 'none';
+    }
+};
+
 (window as any).saveProfileChanges = async () => {
     const btn = document.getElementById('btnSaveProfile') as HTMLButtonElement;
     const first_name = (document.getElementById('editFName') as HTMLInputElement).value.trim();
     const last_name = (document.getElementById('editLName') as HTMLInputElement).value.trim();
     const phone = (document.getElementById('editPhone') as HTMLInputElement).value.trim();
-    const avatar_url = (document.getElementById('editAvatarUrl') as HTMLInputElement).value.trim();
     const mahalla = (document.getElementById('editMahalla') as HTMLSelectElement).value;
+    const avatar_url = (window as any).tempAvatarUrl || profile.avatar_url;
 
     if(!first_name || !phone) return showToast("Ism va telefon raqami majburiy!");
 
