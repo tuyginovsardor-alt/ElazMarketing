@@ -26,12 +26,12 @@ export async function switchAdminTab(tab: string) {
                 <div class="admin-tab" onclick="switchAdminTab('inv')" style="padding:15px 20px; font-weight:800; font-size:0.65rem; cursor:pointer; color:${tab === 'inv' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'inv' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">SKLAD</div>
                 <div class="admin-tab" onclick="switchAdminTab('orders')" style="padding:15px 20px; font-weight:800; font-size:0.65rem; cursor:pointer; color:${tab === 'orders' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'orders' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">BUYURTMALAR</div>
                 <div class="admin-tab" onclick="switchAdminTab('users')" style="padding:15px 20px; font-weight:800; font-size:0.65rem; cursor:pointer; color:${tab === 'users' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'users' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">FOYDALANUVCHILAR</div>
+                <div class="admin-tab" onclick="switchAdminTab('fin')" style="padding:15px 20px; font-weight:800; font-size:0.65rem; cursor:pointer; color:${tab === 'fin' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'fin' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">MOLIYA</div>
                 <div class="admin-tab" onclick="switchAdminTab('bot')" style="padding:15px 20px; font-weight:800; font-size:0.65rem; cursor:pointer; color:${tab === 'bot' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'bot' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">BOT</div>
                 <div class="admin-tab" onclick="switchAdminTab('ads')" style="padding:15px 20px; font-weight:800; font-size:0.65rem; cursor:pointer; color:${tab === 'ads' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'ads' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">MARKETING</div>
                 <div class="admin-tab" onclick="switchAdminTab('settings')" style="padding:15px 20px; font-weight:800; font-size:0.65rem; cursor:pointer; color:${tab === 'settings' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'settings' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">SOZLAMALAR</div>
             </nav>
 
-            <!-- Yagona ID li content maydoni -->
             <div id="adminTabContent" style="flex:1; overflow-y:auto; padding:20px; background:#f8fafc;">
                 <div style="text-align:center; padding:100px 20px;">
                     <i class="fas fa-circle-notch fa-spin fa-2x" style="color:var(--primary); margin-bottom:15px;"></i>
@@ -62,6 +62,9 @@ async function renderTabContent(tab: string) {
         } else if(tab === 'users') {
             const { renderAdminUsers } = await import("./adminUsers.tsx");
             renderAdminUsers();
+        } else if(tab === 'fin') {
+            const { renderAdminFinance } = await import("./adminFinance.tsx");
+            renderAdminFinance();
         } else if(tab === 'bot') {
             const { renderAdminBot } = await import("./adminBot.tsx");
             renderAdminBot();
