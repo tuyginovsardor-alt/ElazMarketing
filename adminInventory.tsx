@@ -8,18 +8,22 @@ const CATEGORIES = [
     { id: 'household', label: 'Xo\'jalik' }
 ];
 
+// Vaqtinchalik galereya rasmlarini saqlash uchun
+let tempGallery: string[] = [];
+let tempMainImg: string = "";
+
 export async function renderAdminInventory() {
     const container = document.getElementById('adminTabContent');
     if(!container) return;
 
     container.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <button class="btn btn-primary" style="height:46px; padding:0 20px; font-size:0.8rem; border-radius:12px;" onclick="openProductEditor()">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
+            <button class="btn btn-primary" style="height:52px; padding:0 25px; font-size:0.85rem; border-radius:16px; box-shadow:0 8px 20px rgba(34,197,94,0.2);" onclick="openProductEditor()">
                 <i class="fas fa-plus-circle"></i> YANGI MAHSULOT
             </button>
-            <div style="width:280px; position:relative;">
-                <i class="fas fa-search" style="position:absolute; left:15px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.8rem;"></i>
-                <input type="text" id="skladSearchInput" placeholder="Qidirish..." style="margin:0; height:46px; padding-left:40px; font-size:0.85rem; border-radius:12px;" oninput="searchSklad(this.value)">
+            <div style="width:300px; position:relative;">
+                <i class="fas fa-search" style="position:absolute; left:18px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:0.9rem;"></i>
+                <input type="text" id="skladSearchInput" placeholder="Mahsulot qidirish..." style="margin:0; height:52px; padding-left:48px; font-size:0.9rem; border-radius:16px; border:1.5px solid #e2e8f0; background:white;" oninput="searchSklad(this.value)">
             </div>
         </div>
         <div id="skladList"></div>
@@ -31,48 +35,51 @@ async function loadAdminProducts(searchTerm = '') {
     const listEl = document.getElementById('skladList');
     if(!listEl) return;
     
-    listEl.innerHTML = '<div style="text-align:center; padding:3rem;"><i class="fas fa-circle-notch fa-spin fa-2x" style="color:var(--primary);"></i></div>';
+    listEl.innerHTML = '<div style="text-align:center; padding:5rem;"><i class="fas fa-circle-notch fa-spin fa-3x" style="color:var(--primary); opacity:0.3;"></i></div>';
     
     let query = supabase.from('products').select('*').eq('is_archived', false).order('created_at', { ascending: false });
     if(searchTerm) query = query.ilike('name', `%${searchTerm}%`);
     const { data: prods, error } = await query;
 
     if(error) {
-        listEl.innerHTML = `<div style="text-align:center; color:var(--danger); padding:2rem;">Ulanishda xatolik!</div>`;
+        listEl.innerHTML = `<div class="card" style="text-align:center; color:var(--danger); padding:3rem; font-weight:800;">Ulanishda xatolik!</div>`;
         return;
     }
 
     listEl.innerHTML = `
-        <div class="card" style="padding:0; border-radius:18px; border:1px solid #e2e8f0; background:white; overflow:hidden;">
+        <div class="card" style="padding:0; border-radius:24px; border:1.5px solid #f1f5f9; background:white; overflow:hidden; box-shadow:var(--shadow-sm);">
             <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
-                <thead style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                <thead style="background:#f8fafc; border-bottom:1.5px solid #f1f5f9;">
                     <tr>
-                        <th style="padding:15px; text-align:left; color:#64748b; font-weight:800; font-size:0.7rem;">MAHSULOT</th>
-                        <th style="padding:15px; text-align:left; color:#64748b; font-weight:800; font-size:0.7rem;">NARX</th>
-                        <th style="padding:15px; text-align:center; color:#64748b; font-weight:800; font-size:0.7rem;">AMAL</th>
+                        <th style="padding:18px; text-align:left; color:#64748b; font-weight:800; font-size:0.7rem; text-transform:uppercase; letter-spacing:1px;">Mahsulot</th>
+                        <th style="padding:18px; text-align:left; color:#64748b; font-weight:800; font-size:0.7rem; text-transform:uppercase; letter-spacing:1px;">Narx</th>
+                        <th style="padding:18px; text-align:center; color:#64748b; font-weight:800; font-size:0.7rem; text-transform:uppercase; letter-spacing:1px;">Amal</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${prods?.map(p => `
-                        <tr style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:12px 15px;">
-                                <div style="display:flex; align-items:center; gap:12px;">
-                                    <img src="${p.image_url || p.images?.[0] || 'https://via.placeholder.com/100'}" style="width:40px; height:40px; border-radius:8px; object-fit:cover; border:1px solid #eee;">
+                        <tr style="border-bottom:1px solid #f8fafc; transition:0.2s;" onmouseover="this.style.background='#fcfdfe'" onmouseout="this.style.background='transparent'">
+                            <td style="padding:15px 18px;">
+                                <div style="display:flex; align-items:center; gap:15px;">
+                                    <div style="width:48px; height:48px; border-radius:12px; overflow:hidden; border:1px solid #f1f5f9; flex-shrink:0;">
+                                        <img src="${p.image_url || p.images?.[0] || 'https://via.placeholder.com/100'}" style="width:100%; height:100%; object-fit:cover;">
+                                    </div>
                                     <div>
-                                        <div style="font-weight:800;">${p.name}</div>
-                                        <div style="font-size:0.65rem; color:#94a3b8;">Sklad: ${p.stock_qty || 0} ${p.unit}</div>
+                                        <div style="font-weight:900; color:var(--text); font-size:0.9rem;">${p.name}</div>
+                                        <div style="font-size:0.7rem; color:#94a3b8; font-weight:700;">Zaxira: ${p.stock_qty || 0} ${p.unit}</div>
                                     </div>
                                 </div>
                             </td>
-                            <td style="padding:15px;"><b style="color:var(--primary);">${p.price?.toLocaleString()}</b></td>
-                            <td style="padding:15px; text-align:center;">
-                                <div style="display:flex; justify-content:center; gap:8px;">
-                                    <button class="btn" style="width:30px; height:30px; padding:0; border-radius:8px; background:#f1f5f9; color:#64748b; border:none;" onclick="openProductEditor(${p.id})"><i class="fas fa-edit"></i></button>
-                                    <button class="btn" style="width:30px; height:30px; padding:0; border-radius:8px; background:#fee2e2; color:var(--danger); border:none;" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i></button>
+                            <td style="padding:18px;"><b style="color:var(--primary); font-size:0.95rem;">${p.price?.toLocaleString()}</b> <small style="font-size:0.6rem; opacity:0.6;">UZS</small></td>
+                            <td style="padding:18px; text-align:center;">
+                                <div style="display:flex; justify-content:center; gap:10px;">
+                                    <button class="btn" style="width:36px; height:36px; padding:0; border-radius:10px; background:#eff6ff; color:#3b82f6; border:none;" onclick="openProductEditor(${p.id})"><i class="fas fa-edit"></i></button>
+                                    <button class="btn" style="width:36px; height:36px; padding:0; border-radius:10px; background:#fee2e2; color:var(--danger); border:none;" onclick="deleteProduct(${p.id})"><i class="fas fa-trash-alt"></i></button>
                                 </div>
                             </td>
                         </tr>
                     `).join('')}
+                    ${!prods?.length ? `<tr><td colspan="3" style="padding:50px; text-align:center; color:#94a3b8; font-weight:700;">Mahsulotlar topilmadi</td></tr>` : ''}
                 </tbody>
             </table>
         </div>
@@ -92,47 +99,92 @@ async function loadAdminProducts(searchTerm = '') {
         if(data) p = data;
     }
 
+    tempMainImg = p.image_url || "";
+    tempGallery = p.images || [];
+
     placeholder.innerHTML = `
-        <div style="padding-bottom:100px;">
-            <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px; position:sticky; top:0; background:white; z-index:10; padding:10px 0;">
-                <i class="fas fa-arrow-left" onclick="closeOverlay('checkoutOverlay')" style="font-size:1.4rem; cursor:pointer;"></i>
-                <h2 style="font-weight:900;">${id ? 'Tahrirlash' : 'Yangi mahsulot'}</h2>
+        <div style="padding-bottom:120px; animation: fadeIn 0.3s ease-out;">
+            <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px; position:sticky; top:0; background:white; z-index:10; padding:15px 0;">
+                <i class="fas fa-arrow-left" onclick="closeOverlay('checkoutOverlay')" style="font-size:1.4rem; cursor:pointer; color:var(--text);"></i>
+                <h2 style="font-weight:900; font-size:1.4rem;">${id ? 'Tahrirlash' : 'Yangi mahsulot'}</h2>
             </div>
 
-            <div class="card" style="padding:25px; border-radius:28px;">
-                <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase;">MAHSULOT NOMI</label>
-                <input type="text" id="p_name" value="${p.name}" placeholder="Masalan: Pepsi 1.5L" style="height:55px;">
+            <!-- MEDIA SECTION -->
+            <div class="card" style="padding:25px; border-radius:28px; border:1.5px solid #f1f5f9; background:white; margin-bottom:20px;">
+                <label style="font-size:0.75rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:15px; display:block;">Asosiy rasm</label>
+                
+                <div style="position:relative; width:150px; height:150px; margin-bottom:25px;">
+                    <div style="width:100%; height:100%; border-radius:22px; background:#f8fafc; border:2px dashed #e2e8f0; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                        <img id="pEditMainPreview" src="${tempMainImg || 'https://via.placeholder.com/150?text=Rasm+yoq'}" style="width:100%; height:100%; object-fit:cover; display:${tempMainImg ? 'block' : 'none'};">
+                        <i id="pEditMainIcon" class="fas fa-image" style="font-size:2rem; color:#cbd5e1; display:${tempMainImg ? 'none' : 'block'};"></i>
+                    </div>
+                    <label for="pMainInput" style="position:absolute; bottom:-10px; right:-10px; width:44px; height:44px; border-radius:15px; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; cursor:pointer; border:3.5px solid white; box-shadow:var(--shadow-sm);">
+                        <i class="fas fa-camera"></i>
+                    </label>
+                    <input type="file" id="pMainInput" accept="image/*" style="display:none;" onchange="uploadProductMainImg(this)">
+                </div>
 
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
-                    <div><label style="font-size:0.7rem; font-weight:900; color:var(--gray);">NARXI (UZS)</label><input type="number" id="p_price" value="${p.price}" style="height:55px;"></div>
-                    <div><label style="font-size:0.7rem; font-weight:900; color:var(--gray);">KATEGORIYA</label>
-                        <select id="p_cat" style="height:55px;">
+                <label style="font-size:0.75rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:15px; display:block;">Galereya (Qo'shimcha rasmlar)</label>
+                <div id="pGalleryList" style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:15px;">
+                    ${tempGallery.map((img, idx) => `
+                        <div style="position:relative; width:80px; height:80px; border-radius:15px; overflow:hidden; border:1px solid #f1f5f9;">
+                            <img src="${img}" style="width:100%; height:100%; object-fit:cover;">
+                            <div style="position:absolute; top:4px; right:4px; width:22px; height:22px; background:var(--danger); color:white; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:0.6rem;" onclick="removeFromGallery(${idx})">
+                                <i class="fas fa-times"></i>
+                            </div>
+                        </div>
+                    `).join('')}
+                    
+                    <label for="pGalleryInput" style="width:80px; height:80px; border-radius:15px; background:#f8fafc; border:2px dashed #e2e8f0; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; gap:5px;">
+                        <i class="fas fa-plus" style="color:#94a3b8;"></i>
+                        <span style="font-size:0.5rem; font-weight:800; color:#94a3b8;">QO'SHISH</span>
+                        <input type="file" id="pGalleryInput" accept="image/*" multiple style="display:none;" onchange="uploadToProductGallery(this)">
+                    </label>
+                </div>
+            </div>
+
+            <!-- INFO SECTION -->
+            <div class="card" style="padding:25px; border-radius:28px; border:1.5px solid #f1f5f9; background:white;">
+                <div style="margin-bottom:20px;">
+                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Mahsulot nomi</label>
+                    <input type="text" id="p_name" value="${p.name}" placeholder="Masalan: Pepsi 1.5L" style="height:62px; font-weight:700;">
+                </div>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:20px;">
+                    <div>
+                        <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Narxi (UZS)</label>
+                        <input type="number" id="p_price" value="${p.price}" style="height:62px; font-weight:700;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Kategoriya</label>
+                        <select id="p_cat" style="height:62px; font-weight:700;">
                             ${CATEGORIES.map(c => `<option value="${c.id}" ${p.category === c.id ? 'selected' : ''}>${c.label}</option>`).join('')}
                         </select>
                     </div>
                 </div>
 
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
-                    <div><label style="font-size:0.7rem; font-weight:900; color:var(--gray);">O'LCHOV</label><input type="text" id="p_unit" value="${p.unit}" placeholder="dona, kg" style="height:55px;"></div>
-                    <div><label style="font-size:0.7rem; font-weight:900; color:var(--gray);">SKLAD (MIQDOR)</label><input type="number" id="p_stock" value="${p.stock_qty}" style="height:55px;"></div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:20px;">
+                    <div>
+                        <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">O'lchov birligi</label>
+                        <input type="text" id="p_unit" value="${p.unit}" placeholder="dona, kg" style="height:62px; font-weight:700;">
+                    </div>
+                    <div>
+                        <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Skladdagi miqdor</label>
+                        <input type="number" id="p_stock" value="${p.stock_qty}" style="height:62px; font-weight:700;">
+                    </div>
                 </div>
 
-                <label style="font-size:0.7rem; font-weight:900; color:var(--gray);">ASOSIY RASM URL</label>
-                <input type="text" id="p_img" value="${p.image_url || ''}" placeholder="https://..." style="height:55px;">
+                <div style="margin-bottom:20px;">
+                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Marketing tegi (Masalan: CHEGIRMA)</label>
+                    <input type="text" id="p_tag" value="${p.marketing_tag || ''}" placeholder="New, Sale, Top..." style="height:62px; font-weight:700;">
+                </div>
 
-                <label style="font-size:0.7rem; font-weight:900; color:var(--gray);">QO'SHIMCHA RASMLAR (VERGUL BILAN)</label>
-                <input type="text" id="p_imgs" value="${(p.images || []).join(', ')}" placeholder="url1, url2, url3" style="height:55px;">
+                <div style="margin-bottom:25px;">
+                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Batafsil tavsif</label>
+                    <textarea id="p_desc" style="height:120px; padding:18px; border-radius:18px; font-weight:600; font-size:0.9rem;">${p.description || ''}</textarea>
+                </div>
 
-                <label style="font-size:0.7rem; font-weight:900; color:var(--gray);">VIDEO URL (YouTube/MP4)</label>
-                <input type="text" id="p_video" value="${p.video_url || ''}" placeholder="https://youtube.com/..." style="height:55px;">
-
-                <label style="font-size:0.7rem; font-weight:900; color:var(--gray);">MARKETING TEG (New, Sale, Top)</label>
-                <input type="text" id="p_tag" value="${p.marketing_tag || ''}" placeholder="Masalan: CHEGIRMA" style="height:55px;">
-
-                <label style="font-size:0.7rem; font-weight:900; color:var(--gray);">BATAFSIL TAVSIF</label>
-                <textarea id="p_desc" style="height:120px; padding:15px; border-radius:18px;">${p.description || ''}</textarea>
-
-                <button class="btn btn-primary" style="width:100%; height:60px; margin-top:20px;" onclick="saveAdminProduct(${id || 'null'})">
+                <button class="btn btn-primary" id="btnSaveP" style="width:100%; height:65px; border-radius:24px; font-size:1.1rem; box-shadow:0 10px 25px rgba(34,197,94,0.25);" onclick="saveAdminProduct(${id || 'null'})">
                     ${id ? 'O\'ZGARISHLARNI SAQLASH' : 'MAHSULOTNI QO\'SHISH'}
                 </button>
             </div>
@@ -140,34 +192,129 @@ async function loadAdminProducts(searchTerm = '') {
     `;
 };
 
+// --- IMAGE UPLOAD LOGIC ---
+
+(window as any).uploadProductMainImg = async (input: HTMLInputElement) => {
+    const file = input.files?.[0];
+    if(!file) return;
+    
+    showToast("Rasm yuklanmoqda...");
+    try {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `main_${Date.now()}.${fileExt}`;
+        const filePath = `products/${fileName}`;
+
+        const { error } = await supabase.storage.from('products').upload(filePath, file);
+        if (error) throw error;
+
+        const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(filePath);
+        
+        tempMainImg = publicUrl;
+        const preview = document.getElementById('pEditMainPreview') as HTMLImageElement;
+        const icon = document.getElementById('pEditMainIcon');
+        if(preview) { preview.src = publicUrl; preview.style.display = 'block'; }
+        if(icon) icon.style.display = 'none';
+        
+        showToast("Asosiy rasm yuklandi! ✅");
+    } catch(e: any) {
+        showToast("Xato: " + e.message);
+    }
+};
+
+(window as any).uploadToProductGallery = async (input: HTMLInputElement) => {
+    const files = input.files;
+    if(!files || files.length === 0) return;
+
+    showToast("Galereya yangilanmoqda...");
+    const galleryContainer = document.getElementById('pGalleryList');
+
+    for (const file of Array.from(files)) {
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `gal_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+            const filePath = `products/gallery/${fileName}`;
+
+            const { error } = await supabase.storage.from('products').upload(filePath, file);
+            if (error) throw error;
+
+            const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(filePath);
+            tempGallery.push(publicUrl);
+        } catch(e) {
+            console.error(e);
+        }
+    }
+
+    // Galereyani qayta chizish
+    if(galleryContainer) {
+        const addBtn = galleryContainer.lastElementChild;
+        galleryContainer.innerHTML = tempGallery.map((img, idx) => `
+            <div style="position:relative; width:80px; height:80px; border-radius:15px; overflow:hidden; border:1px solid #f1f5f9;">
+                <img src="${img}" style="width:100%; height:100%; object-fit:cover;">
+                <div style="position:absolute; top:4px; right:4px; width:22px; height:22px; background:var(--danger); color:white; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:0.6rem;" onclick="removeFromGallery(${idx})">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+        `).join('') + addBtn?.outerHTML;
+    }
+    showToast("Galereya yuklandi! ✨");
+};
+
+(window as any).removeFromGallery = (idx: number) => {
+    tempGallery.splice(idx, 1);
+    const galleryContainer = document.getElementById('pGalleryList');
+    if(galleryContainer) {
+        const addBtn = galleryContainer.lastElementChild;
+        galleryContainer.innerHTML = tempGallery.map((img, i) => `
+            <div style="position:relative; width:80px; height:80px; border-radius:15px; overflow:hidden; border:1px solid #f1f5f9;">
+                <img src="${img}" style="width:100%; height:100%; object-fit:cover;">
+                <div style="position:absolute; top:4px; right:4px; width:22px; height:22px; background:var(--danger); color:white; border-radius:6px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:0.6rem;" onclick="removeFromGallery(${i})">
+                    <i class="fas fa-times"></i>
+                </div>
+            </div>
+        `).join('') + addBtn?.outerHTML;
+    }
+};
+
 (window as any).saveAdminProduct = async (id: any) => {
-    const imagesRaw = (document.getElementById('p_imgs') as HTMLInputElement).value;
-    const imagesArr = imagesRaw.split(',').map(s => s.trim()).filter(s => s !== '');
+    const btn = document.getElementById('btnSaveP') as HTMLButtonElement;
+    const name = (document.getElementById('p_name') as HTMLInputElement).value.trim();
+    const price = Number((document.getElementById('p_price') as HTMLInputElement).value);
+    const category = (document.getElementById('p_cat') as HTMLSelectElement).value;
+    const unit = (document.getElementById('p_unit') as HTMLInputElement).value.trim();
+    const stock_qty = Number((document.getElementById('p_stock') as HTMLInputElement).value);
+    const marketing_tag = (document.getElementById('p_tag') as HTMLInputElement).value.trim();
+    const description = (document.getElementById('p_desc') as HTMLTextAreaElement).value.trim();
+
+    if(!name || !price || !tempMainImg) return showToast("Nom, narx va asosiy rasm majburiy!");
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> SAQLANMOQDA...';
 
     const data = {
-        name: (document.getElementById('p_name') as HTMLInputElement).value,
-        price: Number((document.getElementById('p_price') as HTMLInputElement).value),
-        category: (document.getElementById('p_cat') as HTMLSelectElement).value,
-        unit: (document.getElementById('p_unit') as HTMLInputElement).value,
-        stock_qty: Number((document.getElementById('p_stock') as HTMLInputElement).value),
-        image_url: (document.getElementById('p_img') as HTMLInputElement).value,
-        images: imagesArr,
-        video_url: (document.getElementById('p_video') as HTMLInputElement).value,
-        marketing_tag: (document.getElementById('p_tag') as HTMLInputElement).value,
-        description: (document.getElementById('p_desc') as HTMLTextAreaElement).value,
+        name,
+        price,
+        category,
+        unit,
+        stock_qty,
+        image_url: tempMainImg,
+        images: tempGallery,
+        marketing_tag,
+        description,
         is_archived: false
     };
 
-    if(!data.name || !data.price) return showToast("Nom va narx majburiy!");
-
-    const { error } = id ? await supabase.from('products').update(data).eq('id', id) : await supabase.from('products').insert(data);
-    
-    if(!error) {
-        showToast("Muvaffaqiyatli saqlandi! ✨");
-        closeOverlay('checkoutOverlay');
-        renderAdminInventory();
-    } else {
-        showToast("Xato: " + error.message);
+    try {
+        const { error } = id ? await supabase.from('products').update(data).eq('id', id) : await supabase.from('products').insert(data);
+        
+        if(!error) {
+            showToast("Muvaffaqiyatli saqlandi! ✨");
+            closeOverlay('checkoutOverlay');
+            renderAdminInventory();
+        } else throw error;
+    } catch (e: any) {
+        showToast("Xato: " + e.message);
+        btn.disabled = false;
+        btn.innerText = "QAYTA URINISH";
     }
 };
 
