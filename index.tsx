@@ -44,9 +44,22 @@ export function closeOverlay(id: string) {
 }
 (window as any).closeOverlay = closeOverlay;
 
+// --- PAYMENT FUNKSIYALARI (GLOBAL) ---
+export async function openPayment() {
+    if(!user) return showToast("To'lov qilish uchun tizimga kiring");
+    showToast("Hamyon yuklanmoqda...");
+    try {
+        const { openPaymentView } = await import("./payment.tsx");
+        await openPaymentView();
+    } catch (e) {
+        console.error(e);
+        showToast("To'lov sahifasini yuklab bo'lmadi");
+    }
+}
+(window as any).openPayment = openPayment;
+
 // --- CART FUNKSIYALARI (GLOBAL) ---
 
-// Implement and export addToCart function to be used by home and product details views
 export async function addToCart(productId: number, qty: number = 1) {
     if(!user) return showToast("Savatga qo'shish uchun tizimga kiring");
     

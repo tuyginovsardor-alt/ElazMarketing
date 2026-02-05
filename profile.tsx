@@ -43,7 +43,7 @@ export async function renderProfileView(data: any) {
 
             <!-- WALLET & HISTORY -->
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:25px;">
-                <div class="card" onclick="import('./payment.tsx').then(m => m.openPaymentView())" style="padding:22px; border-radius:32px; border:1.5px solid #f1f5f9; cursor:pointer; background:white; text-align:center; transition:0.3s; position:relative;">
+                <div class="card" onclick="openPayment()" style="padding:22px; border-radius:32px; border:1.5px solid #f1f5f9; cursor:pointer; background:white; text-align:center; transition:0.3s; position:relative;">
                     <div style="position:absolute; top:12px; right:12px; width:22px; height:22px; border-radius:50%; background:var(--primary); color:white; display:flex; align-items:center; justify-content:center; font-size:0.7rem; box-shadow:0 4px 8px rgba(34,197,94,0.2);"><i class="fas fa-plus"></i></div>
                     <i class="fas fa-wallet" style="color:var(--primary); margin-bottom:12px; font-size:1.5rem;"></i>
                     <div style="font-size:0.7rem; font-weight:800; color:var(--gray); text-transform:uppercase; letter-spacing:0.5px;">Hamyon</div>
@@ -80,7 +80,7 @@ export async function renderProfileView(data: any) {
                 ` : ''}
 
                 <!-- BALANCE TOP UP MENU ITEM -->
-                <div onclick="import('./payment.tsx').then(m => m.openPaymentView())" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                <div onclick="openPayment()" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
                     <div style="width:40px; height:40px; border-radius:12px; background:#f0fdf4; color:var(--primary); display:flex; align-items:center; justify-content:center;"><i class="fas fa-plus-circle"></i></div>
                     <span style="flex:1; font-weight:800; font-size:0.95rem;">Hisobni to'ldirish</span>
                     <i class="fas fa-chevron-right" style="font-size:0.8rem; color:#cbd5e1;"></i>
