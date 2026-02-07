@@ -52,16 +52,22 @@ async function loadCourierOrders() {
     }
 
     content.innerHTML = orders.map(o => `
-        <div class="card" style="padding:20px; border-radius:24px; margin-bottom:15px; border:1px solid #f1f5f9;">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <b style="font-size:1.1rem;">#ORD-${o.id}</b>
-                <b style="color:var(--primary);">${o.total_price.toLocaleString()} UZS</b>
+        <div class="card" style="padding:20px; border-radius:28px; margin-bottom:15px; border:1px solid #f1f5f9; box-shadow:var(--shadow-sm);">
+            <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
+                <b style="font-size:1.1rem; font-weight:900;">#ORD-${o.id.toString().substring(0,6)}</b>
+                <b style="color:var(--primary); font-size:1.1rem;">${o.total_price.toLocaleString()} UZS</b>
             </div>
-            <div style="font-size:0.85rem; margin-bottom:15px;">
-                <i class="fas fa-map-marker-alt"></i> ${o.address_text}
-                <div style="color:var(--gray); margin-top:5px;">Yetkazish: <b>${o.delivery_cost.toLocaleString()}</b></div>
+            <div style="font-size:0.85rem; margin-bottom:15px; font-weight:600;">
+                <div style="margin-bottom:8px;"><i class="fas fa-map-marker-alt" style="color:var(--danger);"></i> ${o.address_text}</div>
+                <div style="color:var(--gray);">Dostavka: <b>${o.delivery_cost.toLocaleString()} UZS</b></div>
+                
+                ${o.comment ? `
+                    <div style="margin-top:10px; padding:12px; background:#fff9db; border-radius:12px; border:1px dashed #ffeeba; color:#856404; font-size:0.8rem;">
+                        <i class="fas fa-sticky-note"></i> MIJOZ IZOHI: "${o.comment}"
+                    </div>
+                ` : ''}
             </div>
-            <button class="btn btn-primary" style="width:100%; height:45px;" onclick="acceptOrder(${o.id})">QABUL QILISH</button>
+            <button class="btn btn-primary" style="width:100%; height:55px; border-radius:18px; font-size:1rem;" onclick="acceptOrder(${o.id})">BUYURTMANI OLISH</button>
         </div>
     `).join('');
 }

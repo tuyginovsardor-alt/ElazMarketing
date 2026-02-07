@@ -36,13 +36,18 @@ export async function renderAdminOrders() {
                     </div>
                     
                     <div style="margin-bottom:15px; background:#f8fafc; padding:15px; border-radius:18px;">
-                        <div style="font-size:0.85rem; font-weight:700; display:flex; gap:10px; align-items:center;">
+                        <div style="font-size:0.85rem; font-weight:700; display:flex; gap:10px; align-items:center; margin-bottom:8px;">
                             <i class="fas fa-map-marker-alt" style="color:var(--danger);"></i> 
                             <span>${o.address_text || "Manzil ko'rsatilmagan"}</span>
                         </div>
-                        <div style="margin-top:10px; font-size:0.8rem; font-weight:800; color:var(--primary);">
+                        <div style="font-size:0.8rem; font-weight:800; color:var(--primary); margin-bottom:10px;">
                             <i class="fas fa-phone"></i> ${o.phone_number || 'Noma\'lum'}
                         </div>
+                        ${o.comment ? `
+                            <div style="padding:10px; background:#fff9db; border-radius:12px; font-size:0.8rem; font-weight:700; color:#856404; border:1px dashed #ffeeba;">
+                                <i class="fas fa-comment-alt" style="margin-right:6px;"></i> "${o.comment}"
+                            </div>
+                        ` : ''}
                     </div>
 
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:0 5px;">

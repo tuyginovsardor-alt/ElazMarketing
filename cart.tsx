@@ -8,7 +8,9 @@ let map: any = null;
 let marker: any = null;
 let selectedArea = "";
 let currentDistanceKm = 0;
-let selectedPaymentMethod = 'cash'; // 'cash', 'tspay', 'balance'
+let selectedPaymentMethod = 'cash'; 
+let selectedTransportType = 'walking'; // 'walking', 'bicycle', 'car'
+let deliveryRates: any = { walking_base: 5000, walking_km: 2000, bicycle_base: 7000, bicycle_km: 2500, car_base: 10000, car_km: 3000 };
 
 export async function renderCartView() {
     const container = document.getElementById('cartView');
@@ -73,14 +75,38 @@ export async function updateQty(pId: number, newQty: number) {
 }
 (window as any).updateQty = updateQty;
 
+function updateCheckoutSummary() {
+    const base = deliveryRates[`${selectedTransportType}_base`] || 5000;
+    const kmPrice = deliveryRates[`${selectedTransportType}_km`] || 2000;
+    const cost = base + (Math.max(0, currentDistanceKm - 1) * kmPrice);
+    
+    const delCostEl = document.getElementById('receiptDeliveryCost');
+    const totalEl = document.getElementById('receiptTotal');
+    if(delCostEl) delCostEl.innerText = Math.round(cost).toLocaleString() + " UZS";
+    if(totalEl) totalEl.innerText = (subtotalAmount + Math.round(cost)).toLocaleString() + " UZS";
+}
+
+(window as any).selectTransport = (type: string) => {
+    selectedTransportType = type;
+    document.querySelectorAll('.transport-select-card').forEach(el => {
+        (el as HTMLElement).style.borderColor = '#f1f5f9';
+        (el as HTMLElement).style.background = 'white';
+    });
+    const target = document.getElementById(`transport_${type}`);
+    if(target) {
+        target.style.borderColor = 'var(--primary)';
+        target.style.background = 'var(--primary-light)';
+    }
+    updateCheckoutSummary();
+};
+
 (window as any).openCheckout = async () => {
     openOverlay('checkoutOverlay');
     const placeholder = document.getElementById('checkoutPlaceholder')!;
     
-    // Savatdagi ma'lumotlarni qayta olish (summary uchun)
     const { data: items } = await supabase.from('cart_items').select('*, products(*)').eq('user_id', user.id);
     const { data: sets } = await supabase.from('app_settings').select('*');
-    const deliveryRates = sets?.find(s => s.key === 'delivery_rates')?.value || { walking_base: 5000, walking_km: 2000 };
+    deliveryRates = sets?.find(s => s.key === 'delivery_rates')?.value || deliveryRates;
     officePos = sets?.find(s => s.key === 'office_location')?.value || { lat: 40.5050, lng: 71.2215 };
 
     const currentPhone = profile?.phone || "";
@@ -92,7 +118,7 @@ export async function updateQty(pId: number, newQty: number) {
                 <h2 style="font-weight:900; font-size:1.4rem;">Buyurtmani tasdiqlash</h2>
             </div>
 
-            <!-- BUYURTMA XULOSASI (RO'YXAT) -->
+            <!-- BUYURTMA XULOSASI -->
             <div class="card" style="padding:20px; border-radius:28px; background:#f8fafc; border:none; margin-bottom:20px;">
                 <h4 style="font-weight:900; font-size:0.85rem; color:var(--gray); text-transform:uppercase; margin-bottom:15px; letter-spacing:0.5px;">Sizning xaridlaringiz:</h4>
                 <div style="display:flex; flex-direction:column; gap:10px;">
@@ -105,45 +131,41 @@ export async function updateQty(pId: number, newQty: number) {
                 </div>
             </div>
 
-            <!-- TEL RAQAM SECTION -->
-            <div class="card" style="border: 1.5px solid #f1f5f9; padding:20px; border-radius:24px; margin-bottom:20px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <h4 style="font-weight:900; color:var(--text); font-size:0.9rem;">Bog'lanish uchun raqam:</h4>
-                    <i class="fas fa-phone-alt" style="color:var(--primary);"></i>
+            <!-- TEL VA IZOH -->
+            <div class="card" style="border: 1.5px solid #f1f5f9; padding:20px; border-radius:28px; margin-bottom:20px;">
+                <div style="margin-bottom:20px;">
+                    <label style="font-weight:900; color:var(--text); font-size:0.85rem; display:block; margin-bottom:10px;">Telefon raqamingiz:</label>
+                    <input type="tel" id="checkoutPhone" value="${currentPhone}" placeholder="+998 90 123 45 67" 
+                           style="height:56px; border-radius:16px; border:2px solid #f1f5f9; padding:0 18px; font-weight:800; font-size:1.1rem; width:100%;">
                 </div>
-                <input type="tel" id="checkoutPhone" value="${currentPhone}" placeholder="+998 90 123 45 67" 
-                       style="height:56px; border-radius:16px; border:2.5px solid #f1f5f9; padding:0 18px; font-weight:800; font-size:1.1rem; width:100%;">
-                <p style="font-size:0.65rem; color:var(--gray); margin-top:8px; font-weight:700;">* Kuryer buyurtmani yetkazganda shu raqamga bog'lanadi.</p>
+                <div>
+                    <label style="font-weight:900; color:var(--text); font-size:0.85rem; display:block; margin-bottom:10px;">Kuryer uchun izoh (ixtiyoriy):</label>
+                    <textarea id="checkoutComment" placeholder="Masalan: Darvoza yonida qoldiring yoki qo'ng'iroq qilmang..." 
+                              style="width:100%; height:100px; border-radius:16px; border:2px solid #f1f5f9; padding:15px; font-weight:600; font-size:0.95rem; background:#f8fafc;"></textarea>
+                </div>
+            </div>
+
+            <!-- TRANSPORT TURINI TANLASH -->
+            <h4 style="font-weight:900; font-size:1rem; margin-bottom:15px; margin-left:10px;">YETKAZIB BERISH USULI</h4>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:25px;">
+                <div id="transport_walking" onclick="selectTransport('walking')" class="transport-select-card" style="padding:15px; border-radius:20px; border:2px solid var(--primary); background:var(--primary-light); text-align:center; cursor:pointer; transition:0.3s;">
+                    <i class="fas fa-walking" style="font-size:1.4rem; color:var(--primary); margin-bottom:8px;"></i>
+                    <div style="font-size:0.65rem; font-weight:900;">PIYODA</div>
+                </div>
+                <div id="transport_bicycle" onclick="selectTransport('bicycle')" class="transport-select-card" style="padding:15px; border-radius:20px; border:2px solid #f1f5f9; background:white; text-align:center; cursor:pointer; transition:0.3s;">
+                    <i class="fas fa-bicycle" style="font-size:1.4rem; color:#0ea5e9; margin-bottom:8px;"></i>
+                    <div style="font-size:0.65rem; font-weight:900;">VELO</div>
+                </div>
+                <div id="transport_car" onclick="selectTransport('car')" class="transport-select-card" style="padding:15px; border-radius:20px; border:2px solid #f1f5f9; background:white; text-align:center; cursor:pointer; transition:0.3s;">
+                    <i class="fas fa-car" style="font-size:1.4rem; color:#f97316; margin-bottom:8px;"></i>
+                    <div style="font-size:0.65rem; font-weight:900;">MASHINA</div>
+                </div>
             </div>
 
             <!-- MAP SECTION -->
-            <h4 style="font-weight:900; font-size:1rem; margin-bottom:15px; margin-left:10px;">YETKAZIB BERISH MANZILI</h4>
+            <h4 style="font-weight:900; font-size:1rem; margin-bottom:15px; margin-left:10px;">MANZILNI BELGILASH</h4>
             <div class="card" style="padding:0; border-radius:28px; overflow:hidden; border:1.5px solid #f1f5f9; margin-bottom:25px;">
                 <div id="deliveryMap" style="height:220px; width:100%;"></div>
-                <div style="padding:15px; background:#f8fafc; border-top:1px solid #f1f5f9; display:flex; gap:10px;">
-                    <button class="btn btn-outline" style="flex:1; height:45px; font-size:0.7rem; border-radius:12px;" onclick="selectCheckoutArea('Bag\\\'dod', 40.5050, 71.2215)">BAG'DOD</button>
-                    <button class="btn btn-outline" style="flex:1; height:45px; font-size:0.7rem; border-radius:12px;" onclick="selectCheckoutArea('Guliston', 40.4897, 68.7848)">GULISTON</button>
-                </div>
-            </div>
-
-            <!-- PAYMENT METHODS -->
-            <h4 style="font-weight:900; font-size:1rem; margin-bottom:15px; margin-left:10px;">TO'LOV USULI</h4>
-            <div style="display:grid; grid-template-columns: 1fr; gap:12px; margin-bottom:25px;">
-                <div onclick="selectPayment('cash')" id="pay_cash" class="payment-card active" style="display:flex; align-items:center; gap:15px; padding:18px; border-radius:20px; border:2px solid var(--primary); background:white; cursor:pointer;">
-                    <div style="width:45px; height:45px; border-radius:12px; background:#f0fdf4; color:#22c55e; display:flex; align-items:center; justify-content:center; font-size:1.2rem;"><i class="fas fa-money-bill-wave"></i></div>
-                    <div style="flex:1;"><div style="font-weight:900; font-size:0.95rem;">Naqd pul</div><div style="font-size:0.7rem; color:var(--gray); font-weight:700;">Kuryerga yetkazilganda</div></div>
-                    <i class="fas fa-check-circle" style="color:var(--primary);"></i>
-                </div>
-                <div onclick="selectPayment('tspay')" id="pay_tspay" class="payment-card" style="display:flex; align-items:center; gap:15px; padding:18px; border-radius:20px; border:2px solid #f1f5f9; background:white; cursor:pointer;">
-                    <div style="width:45px; height:45px; border-radius:12px; background:#eff6ff; color:#3b82f6; display:flex; align-items:center; justify-content:center; font-size:1.2rem;"><i class="fas fa-credit-card"></i></div>
-                    <div style="flex:1;"><div style="font-weight:900; font-size:0.95rem;">TsPay (Karta)</div><div style="font-size:0.7rem; color:var(--gray); font-weight:700;">Onlayn to'lov</div></div>
-                    <i class="far fa-circle" style="color:#cbd5e1;"></i>
-                </div>
-                <div onclick="selectPayment('balance')" id="pay_balance" class="payment-card" style="display:flex; align-items:center; gap:15px; padding:18px; border-radius:20px; border:2px solid #f1f5f9; background:white; cursor:pointer;">
-                    <div style="width:45px; height:45px; border-radius:12px; background:#fffbeb; color:#d97706; display:flex; align-items:center; justify-content:center; font-size:1.2rem;"><i class="fas fa-wallet"></i></div>
-                    <div style="flex:1;"><div style="font-weight:900; font-size:0.95rem;">Hamyon</div><div style="font-size:0.7rem; color:var(--gray); font-weight:700;">Balans: ${(profile?.balance || 0).toLocaleString()} UZS</div></div>
-                    <i class="far fa-circle" style="color:#cbd5e1;"></i>
-                </div>
             </div>
 
             <!-- TOTAL SUMMARY -->
@@ -165,39 +187,15 @@ export async function updateQty(pId: number, newQty: number) {
         // @ts-ignore
         marker = L.marker([officePos.lat, officePos.lng], {draggable: true}).addTo(map);
         
-        const updateReceipt = () => {
+        const onLocationChange = () => {
             const pos = marker.getLatLng();
             selectedPos = { lat: pos.lat, lng: pos.lng };
-            const dist = calculateDistance(officePos.lat, officePos.lng, pos.lat, pos.lng);
-            currentDistanceKm = dist;
-            const cost = deliveryRates.walking_base + (Math.max(0, dist - 1) * deliveryRates.walking_km);
-            document.getElementById('receiptDeliveryCost')!.innerText = Math.round(cost).toLocaleString() + " UZS";
-            document.getElementById('receiptTotal')!.innerText = (subtotalAmount + Math.round(cost)).toLocaleString() + " UZS";
+            currentDistanceKm = calculateDistance(officePos.lat, officePos.lng, pos.lat, pos.lng);
+            updateCheckoutSummary();
         };
-        marker.on('dragend', updateReceipt);
-        updateReceipt();
+        marker.on('dragend', onLocationChange);
+        onLocationChange();
     }, 200);
-};
-
-(window as any).selectPayment = (method: string) => {
-    selectedPaymentMethod = method;
-    document.querySelectorAll('.payment-card').forEach(el => {
-        (el as HTMLElement).style.borderColor = '#f1f5f9';
-        const icon = el.querySelector('.fa-check-circle, .fa-circle');
-        if(icon) {
-            icon.className = 'far fa-circle';
-            (icon as HTMLElement).style.color = '#cbd5e1';
-        }
-    });
-    const target = document.getElementById(`pay_${method}`);
-    if(target) {
-        target.style.borderColor = 'var(--primary)';
-        const icon = target.querySelector('i:last-child');
-        if(icon) {
-            icon.className = 'fas fa-check-circle';
-            (icon as HTMLElement).style.color = 'var(--primary)';
-        }
-    }
 };
 
 function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -208,16 +206,13 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
-(window as any).selectCheckoutArea = (area: string, lat: number, lng: number) => {
-    selectedArea = area;
-    if(map) map.setView([lat, lng], 15);
-    if(marker) marker.setLatLng([lat, lng]);
-};
-
 (window as any).placeOrderFinal = async () => {
     const btn = document.getElementById('btnPlaceOrder') as HTMLButtonElement;
     const phoneInput = document.getElementById('checkoutPhone') as HTMLInputElement;
-    const phone = phoneInput ? phoneInput.value.trim() : profile?.phone;
+    const commentInput = document.getElementById('checkoutComment') as HTMLTextAreaElement;
+    
+    const phone = phoneInput?.value.trim() || profile?.phone;
+    const comment = commentInput?.value.trim() || "";
 
     if(!phone) return showToast("Telefon raqami kiritilishi shart!");
     if(selectedPaymentMethod === 'balance' && (profile?.balance || 0) < subtotalAmount) return showToast("Hamyonda yetarli mablag' yo'q!");
@@ -225,7 +220,9 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> YUBORILMOQDA...';
 
-    const deliveryCost = 5000 + (Math.max(0, currentDistanceKm - 1) * 2000);
+    const base = deliveryRates[`${selectedTransportType}_base`] || 5000;
+    const kmPrice = deliveryRates[`${selectedTransportType}_km`] || 2000;
+    const deliveryCost = base + (Math.max(0, currentDistanceKm - 1) * kmPrice);
 
     try {
         if(!profile?.phone || profile.phone !== phone) {
@@ -239,9 +236,11 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
             longitude: selectedPos.lng,
             status: 'confirmed',
             phone_number: phone,
+            comment: comment, // Izohni saqlaymiz
             address_text: selectedArea || "Markaz",
             delivery_cost: Math.round(deliveryCost),
-            payment_method: selectedPaymentMethod
+            payment_method: selectedPaymentMethod,
+            requested_transport: selectedTransportType
         });
 
         if(!error) {
