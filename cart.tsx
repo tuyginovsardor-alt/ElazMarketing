@@ -131,34 +131,28 @@ function updateCheckoutSummary() {
                 </div>
             </div>
 
-            <!-- TEL VA IZOH -->
+            <!-- TEL VA TRANSPORT -->
             <div class="card" style="border: 1.5px solid #f1f5f9; padding:20px; border-radius:28px; margin-bottom:20px;">
                 <div style="margin-bottom:20px;">
                     <label style="font-weight:900; color:var(--text); font-size:0.85rem; display:block; margin-bottom:10px;">Telefon raqamingiz:</label>
                     <input type="tel" id="checkoutPhone" value="${currentPhone}" placeholder="+998 90 123 45 67" 
                            style="height:56px; border-radius:16px; border:2px solid #f1f5f9; padding:0 18px; font-weight:800; font-size:1.1rem; width:100%;">
                 </div>
-                <div>
-                    <label style="font-weight:900; color:var(--text); font-size:0.85rem; display:block; margin-bottom:10px;">Kuryer uchun izoh (ixtiyoriy):</label>
-                    <textarea id="checkoutComment" placeholder="Masalan: Darvoza yonida qoldiring yoki qo'ng'iroq qilmang..." 
-                              style="width:100%; height:100px; border-radius:16px; border:2px solid #f1f5f9; padding:15px; font-weight:600; font-size:0.95rem; background:#f8fafc;"></textarea>
-                </div>
-            </div>
 
-            <!-- TRANSPORT TURINI TANLASH -->
-            <h4 style="font-weight:900; font-size:1rem; margin-bottom:15px; margin-left:10px;">YETKAZIB BERISH USULI</h4>
-            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:25px;">
-                <div id="transport_walking" onclick="selectTransport('walking')" class="transport-select-card" style="padding:15px; border-radius:20px; border:2px solid var(--primary); background:var(--primary-light); text-align:center; cursor:pointer; transition:0.3s;">
-                    <i class="fas fa-walking" style="font-size:1.4rem; color:var(--primary); margin-bottom:8px;"></i>
-                    <div style="font-size:0.65rem; font-weight:900;">PIYODA</div>
-                </div>
-                <div id="transport_bicycle" onclick="selectTransport('bicycle')" class="transport-select-card" style="padding:15px; border-radius:20px; border:2px solid #f1f5f9; background:white; text-align:center; cursor:pointer; transition:0.3s;">
-                    <i class="fas fa-bicycle" style="font-size:1.4rem; color:#0ea5e9; margin-bottom:8px;"></i>
-                    <div style="font-size:0.65rem; font-weight:900;">VELO</div>
-                </div>
-                <div id="transport_car" onclick="selectTransport('car')" class="transport-select-card" style="padding:15px; border-radius:20px; border:2px solid #f1f5f9; background:white; text-align:center; cursor:pointer; transition:0.3s;">
-                    <i class="fas fa-car" style="font-size:1.4rem; color:#f97316; margin-bottom:8px;"></i>
-                    <div style="font-size:0.65rem; font-weight:900;">MASHINA</div>
+                <h4 style="font-weight:900; font-size:0.85rem; color:var(--gray); text-transform:uppercase; margin-bottom:15px; letter-spacing:0.5px;">Yetkazib berish usuli:</h4>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                    <div id="transport_walking" onclick="selectTransport('walking')" class="transport-select-card" style="padding:15px; border-radius:20px; border:2px solid var(--primary); background:var(--primary-light); text-align:center; cursor:pointer; transition:0.3s;">
+                        <i class="fas fa-walking" style="font-size:1.4rem; color:var(--primary); margin-bottom:8px;"></i>
+                        <div style="font-size:0.65rem; font-weight:900;">PIYODA</div>
+                    </div>
+                    <div id="transport_bicycle" onclick="selectTransport('bicycle')" class="transport-select-card" style="padding:15px; border-radius:20px; border:2px solid #f1f5f9; background:white; text-align:center; cursor:pointer; transition:0.3s;">
+                        <i class="fas fa-bicycle" style="font-size:1.4rem; color:#0ea5e9; margin-bottom:8px;"></i>
+                        <div style="font-size:0.65rem; font-weight:900;">VELO</div>
+                    </div>
+                    <div id="transport_car" onclick="selectTransport('car')" class="transport-select-card" style="padding:15px; border-radius:20px; border:2px solid #f1f5f9; background:white; text-align:center; cursor:pointer; transition:0.3s;">
+                        <i class="fas fa-car" style="font-size:1.4rem; color:#f97316; margin-bottom:8px;"></i>
+                        <div style="font-size:0.65rem; font-weight:900;">MASHINA</div>
+                    </div>
                 </div>
             </div>
 
@@ -209,10 +203,8 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 (window as any).placeOrderFinal = async () => {
     const btn = document.getElementById('btnPlaceOrder') as HTMLButtonElement;
     const phoneInput = document.getElementById('checkoutPhone') as HTMLInputElement;
-    const commentInput = document.getElementById('checkoutComment') as HTMLTextAreaElement;
     
     const phone = phoneInput?.value.trim() || profile?.phone;
-    const comment = commentInput?.value.trim() || "";
 
     if(!phone) return showToast("Telefon raqami kiritilishi shart!");
     if(selectedPaymentMethod === 'balance' && (profile?.balance || 0) < subtotalAmount) return showToast("Hamyonda yetarli mablag' yo'q!");
@@ -236,7 +228,6 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
             longitude: selectedPos.lng,
             status: 'confirmed',
             phone_number: phone,
-            comment: comment, // Izohni saqlaymiz
             address_text: selectedArea || "Markaz",
             delivery_cost: Math.round(deliveryCost),
             payment_method: selectedPaymentMethod,
