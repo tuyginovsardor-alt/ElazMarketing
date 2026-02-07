@@ -6,10 +6,9 @@ let selectedPos = { lat: 40.5050, lng: 71.2215 };
 let officePos = { lat: 40.5050, lng: 71.2215 };
 let map: any = null;
 let marker: any = null;
-let selectedArea = "";
 let currentDistanceKm = 0;
-let selectedPaymentMethod = 'cash'; 
-let selectedTransportType = 'walking'; // 'walking', 'bicycle', 'car'
+let selectedTransportType = 'walking';
+let selectedPaymentMethod = 'cash'; // 'cash' yoki 'wallet'
 let deliveryRates: any = { walking_base: 5000, walking_km: 2000, bicycle_base: 7000, bicycle_km: 2500, car_base: 10000, car_km: 3000 };
 
 export async function renderCartView() {
@@ -41,7 +40,7 @@ export async function renderCartView() {
             </div>
             <div id="cartItemsList">
                 ${cartItems.map(item => {
-                    const isKg = item.products.unit?.toLowerCase().trim() === 'kg';
+                    const isKg = item.products.unit?.toLowerCase().trim() === 'kg' || item.products.unit?.toLowerCase().trim() === 'ltr';
                     const step = isKg ? 0.1 : 1;
                     return `
                     <div class="card" style="display:flex; gap:15px; align-items:center; padding:15px; border-radius:24px; border:1px solid #f1f5f9; margin-bottom:12px;">
@@ -51,7 +50,7 @@ export async function renderCartView() {
                             <div style="color:var(--primary); font-weight:900; margin-top:4px;">${item.products.price.toLocaleString()} UZS</div>
                             <div style="display:flex; align-items:center; gap:15px; margin-top:8px;">
                                 <div style="display:flex; align-items:center; background:#f8fafc; padding:4px; border-radius:10px; border:1px solid #e2e8f0;">
-                                    <button onclick="updateQty(${item.product_id}, ${parseFloat((item.quantity - step).toFixed(2))})" style="border:none; background:white; width:28px; height:28px; border-radius:8px; box-shadow:var(--shadow-sm);">-</button>
+                                    <button onclick="updateQty(${item.product_id}, ${parseFloat((item.quantity - step).toFixed(2))})" style="border:none; background:white; width:28px; height:28px; border-radius:8px; box-shadow:var(--shadow-sm); cursor:pointer;">-</button>
                                     <span style="font-weight:900; margin:0 12px; font-size:0.9rem;">${item.quantity} ${item.products.unit}</span>
                                     <button onclick="updateQty(${item.product_id}, ${parseFloat((item.quantity + step).toFixed(2))})" style="border:none; background:white; width:28px; height:28px; border-radius:8px; box-shadow:var(--shadow-sm);">+</button>
                                 </div>
@@ -75,7 +74,7 @@ export async function removeFromCart(pId: number) {
 (window as any).removeFromCart = removeFromCart;
 
 export async function updateQty(pId: number, newQty: number) {
-    if(newQty < 0.1) return removeFromCart(pId);
+    if(newQty < 0.01) return removeFromCart(pId);
     await supabase.from('cart_items').update({ quantity: parseFloat(newQty.toFixed(2)) }).eq('user_id', user.id).eq('product_id', pId);
     renderCartView();
 }
@@ -89,7 +88,15 @@ function updateCheckoutSummary() {
     const delCostEl = document.getElementById('receiptDeliveryCost');
     const totalEl = document.getElementById('receiptTotal');
     if(delCostEl) delCostEl.innerText = Math.round(cost).toLocaleString() + " UZS";
-    if(totalEl) totalEl.innerText = (subtotalAmount + Math.round(cost)).toLocaleString() + " UZS";
+    const finalTotal = subtotalAmount + Math.round(cost);
+    if(totalEl) totalEl.innerText = finalTotal.toLocaleString() + " UZS";
+
+    // Hamyon tugmasidagi qoldiq rangini tekshirish
+    const walletText = document.getElementById('walletBalanceInfo');
+    if(walletText) {
+        const isNotEnough = selectedPaymentMethod === 'wallet' && (profile?.balance || 0) < finalTotal;
+        walletText.style.color = isNotEnough ? 'var(--danger)' : '#64748b';
+    }
 }
 
 (window as any).selectTransport = (type: string) => {
@@ -106,31 +113,48 @@ function updateCheckoutSummary() {
     updateCheckoutSummary();
 };
 
+(window as any).selectPaymentMethod = (method: string) => {
+    selectedPaymentMethod = method;
+    document.querySelectorAll('.payment-select-card').forEach(el => {
+        (el as HTMLElement).style.borderColor = '#f1f5f9';
+        (el as HTMLElement).style.background = 'white';
+    });
+    const target = document.getElementById(`pay_${method}`);
+    if(target) {
+        target.style.borderColor = 'var(--primary)';
+        target.style.background = 'var(--primary-light)';
+    }
+    updateCheckoutSummary();
+};
+
 (window as any).openCheckout = async () => {
     openOverlay('checkoutOverlay');
     const placeholder = document.getElementById('checkoutPlaceholder')!;
     
     const { data: items } = await supabase.from('cart_items').select('*, products(*)').eq('user_id', user.id);
     const { data: sets } = await supabase.from('app_settings').select('*');
-    deliveryRates = sets?.find(s => s.key === 'delivery_rates')?.value || deliveryRates;
-    officePos = sets?.find(s => s.key === 'office_location')?.value || { lat: 40.5050, lng: 71.2215 };
+    if(sets) {
+        deliveryRates = sets.find(s => s.key === 'delivery_rates')?.value || deliveryRates;
+        officePos = sets.find(s => s.key === 'office_location')?.value || officePos;
+    }
 
     const currentPhone = profile?.phone || "";
+    selectedPaymentMethod = 'cash'; // Reset to default
 
     placeholder.innerHTML = `
         <div style="padding-bottom:120px; animation: slideUp 0.3s ease-out;">
             <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px; position:sticky; top:0; background:white; z-index:10; padding:10px 0;">
-                <i class="fas fa-arrow-left" onclick="closeOverlay('checkoutOverlay')" style="font-size:1.4rem; cursor:pointer;"></i>
+                <i class="fas fa-arrow-left" onclick="closeOverlay('checkoutOverlay')" style="font-size:1.4rem; cursor:pointer; color:var(--text);"></i>
                 <h2 style="font-weight:900; font-size:1.4rem;">Buyurtmani tasdiqlash</h2>
             </div>
 
-            <!-- BUYURTMALAR RO'YXATI -->
+            <!-- MAHSULOTLAR RO'YXATI -->
             <div class="card" style="padding:20px; border-radius:28px; background:#f8fafc; border:none; margin-bottom:20px;">
-                <h4 style="font-weight:900; font-size:0.85rem; color:var(--gray); text-transform:uppercase; margin-bottom:15px; letter-spacing:0.5px;">Siz sotib olayotgan mahsulotlar:</h4>
+                <h4 style="font-weight:900; font-size:0.85rem; color:var(--gray); text-transform:uppercase; margin-bottom:15px; letter-spacing:0.5px;">Sizning buyurtmangiz:</h4>
                 <div style="display:flex; flex-direction:column; gap:12px;">
                     ${items?.map(item => `
                         <div style="display:flex; align-items:center; gap:12px;">
-                            <img src="${item.products.image_url || item.products.images?.[0]}" style="width:40px; height:40px; border-radius:10px; object-fit:cover; border:1px solid #e2e8f0;">
+                            <img src="${item.products.image_url || item.products.images?.[0]}" style="width:45px; height:45px; border-radius:12px; object-fit:cover; border:1px solid #e2e8f0;">
                             <div style="flex:1;">
                                 <div style="font-weight:700; font-size:0.9rem;">${item.products.name}</div>
                                 <div style="font-size:0.75rem; color:var(--gray); font-weight:800;">${item.quantity} ${item.products.unit} x ${item.products.price.toLocaleString()} UZS</div>
@@ -141,8 +165,7 @@ function updateCheckoutSummary() {
                 </div>
             </div>
 
-            <!-- ALOQA VA TRANSPORT -->
-            <div class="card" style="border: 1.5px solid #f1f5f9; padding:20px; border-radius:28px; margin-bottom:20px;">
+            <div class="card" style="border: 1.5px solid #f1f5f9; padding:25px; border-radius:28px; margin-bottom:20px;">
                 <div style="margin-bottom:20px;">
                     <label style="font-weight:900; font-size:0.85rem; display:block; margin-bottom:10px;">Telefon raqamingiz:</label>
                     <input type="tel" id="checkoutPhone" value="${currentPhone}" placeholder="+998 90 123 45 67" 
@@ -150,7 +173,7 @@ function updateCheckoutSummary() {
                 </div>
                 <div>
                     <label style="font-weight:900; font-size:0.85rem; display:block; margin-bottom:10px;">Kuryer uchun izoh (ixtiyoriy):</label>
-                    <textarea id="checkoutComment" placeholder="Masalan: Darvoza oldida qoldiring..." 
+                    <textarea id="checkoutComment" placeholder="Masalan: Darvoza oldida kuting..." 
                               style="width:100%; height:100px; border-radius:18px; border:2px solid #f1f5f9; padding:15px; font-weight:600; font-size:0.95rem; background:#f8fafc; resize:none;"></textarea>
                 </div>
             </div>
@@ -168,6 +191,19 @@ function updateCheckoutSummary() {
                 <div id="transport_car" onclick="selectTransport('car')" class="transport-select-card" style="padding:15px; border-radius:22px; border:2px solid #f1f5f9; background:white; text-align:center; cursor:pointer; transition:0.3s;">
                     <i class="fas fa-car" style="font-size:1.5rem; color:#f97316; margin-bottom:8px;"></i>
                     <div style="font-size:0.7rem; font-weight:900;">MASHINA</div>
+                </div>
+            </div>
+
+            <h4 style="font-weight:900; font-size:1rem; margin-bottom:15px; margin-left:10px;">TO'LOV USULI</h4>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:25px;">
+                <div id="pay_cash" onclick="selectPaymentMethod('cash')" class="payment-select-card" style="padding:15px; border-radius:22px; border:2px solid var(--primary); background:var(--primary-light); text-align:center; cursor:pointer; transition:0.3s;">
+                    <i class="fas fa-money-bill-wave" style="font-size:1.5rem; color:var(--primary); margin-bottom:8px;"></i>
+                    <div style="font-size:0.7rem; font-weight:900;">NAQD PUL</div>
+                </div>
+                <div id="pay_wallet" onclick="selectPaymentMethod('wallet')" class="payment-select-card" style="padding:15px; border-radius:22px; border:2px solid #f1f5f9; background:white; text-align:center; cursor:pointer; transition:0.3s;">
+                    <i class="fas fa-wallet" style="font-size:1.5rem; color:#6366f1; margin-bottom:8px;"></i>
+                    <div style="font-size:0.7rem; font-weight:900;">HAMYON</div>
+                    <div id="walletBalanceInfo" style="font-size:0.55rem; font-weight:800; color:#64748b; margin-top:2px;">(${(profile?.balance || 0).toLocaleString()})</div>
                 </div>
             </div>
 
@@ -222,12 +258,18 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
     if(!phone) return showToast("Telefon raqami kiritilishi shart!");
 
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> BUYURTMA YUBORILMOQDA...';
-
     const base = deliveryRates[`${selectedTransportType}_base`] || 5000;
     const kmPrice = deliveryRates[`${selectedTransportType}_km`] || 2000;
     const deliveryCost = base + (Math.max(0, currentDistanceKm - 1) * kmPrice);
+    const finalTotal = subtotalAmount + Math.round(deliveryCost);
+
+    // Hamyon balansini tekshirish
+    if(selectedPaymentMethod === 'wallet' && (profile?.balance || 0) < finalTotal) {
+        return showToast("Hamyoningizda yetarli mablag' yo'q!");
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> BUYURTMA YUBORILMOQDA...';
 
     try {
         if(!profile?.phone || profile.phone !== phone) {
@@ -249,6 +291,11 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
         });
 
         if(!error) {
+            // Agar hamyon orqali to'langan bo'lsa balansni kamaytirish
+            if(selectedPaymentMethod === 'wallet') {
+                await supabase.from('profiles').update({ balance: profile.balance - finalTotal }).eq('id', profile.id);
+            }
+
             await supabase.from('cart_items').delete().eq('user_id', user?.id);
             showToast("Buyurtma muvaffaqiyatli yuborildi! 🚀");
             closeOverlay('checkoutOverlay');
