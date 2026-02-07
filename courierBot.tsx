@@ -1,5 +1,5 @@
 
-import { supabase } from "./index.tsx";
+import { supabase, showToast } from "./index.tsx";
 import { sendMessage, answerCallback, editMessage } from "./botAPI.tsx";
 
 export const COURIER_MENU = {
@@ -21,22 +21,60 @@ export async function handleCourierMessage(chatId: number, text: string, token: 
         await sendMessage(chatId, "🔴 <b>SIZ OFLAYNSIZ.</b>", token, COURIER_MENU);
     } 
     else if (text.includes("Bo'sh buyurtmalar")) {
-        const { data: orders } = await supabase.from('orders').select('*').eq('status', 'confirmed').is('courier_id', null);
+        const { data: orders } = await supabase
+            .from('orders')
+            .select('*, profiles!user_id(first_name, last_name)')
+            .eq('status', 'confirmed')
+            .is('courier_id', null);
+
         if (!orders?.length) return sendMessage(chatId, "Hozircha bo'sh buyurtmalar yo'q.", token);
         
         for (const o of orders) {
-            await sendMessage(chatId, `📦 <b>BUYURTMA #ORD-${o.id.toString().substring(0,8)}</b>\n📍 Manzil: ${o.address_text}\n💰 Pul: ${o.delivery_cost.toLocaleString()}`, token, {
-                inline_keyboard: [[{ text: "✅ Qabul qilish", callback_data: `accept_${o.id}` }]]
+            const customer = (o as any).profiles;
+            const fullName = customer ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() : "Mijoz";
+            
+            const msg = `
+📦 <b>BUYURTMA #${o.id.toString().substring(0,8)}</b>
+👤 Mijoz: ${fullName}
+📞 Tel: ${o.phone_number}
+📍 Manzil: ${o.address_text}
+💰 Pul: ${o.delivery_cost.toLocaleString()} UZS
+            `;
+
+            await sendMessage(chatId, msg, token, {
+                inline_keyboard: [
+                    [{ text: "✅ Qabul qilish", callback_data: `accept_${o.id}` }],
+                    [{ text: "📍 Xarita", url: `https://www.google.com/maps?q=${o.latitude},${o.longitude}` }]
+                ]
             });
         }
     }
     else if (text.includes("Faol buyurtmalar")) {
-        const { data: active } = await supabase.from('orders').select('*').eq('courier_id', profile.id).eq('status', 'delivering');
+        const { data: active } = await supabase
+            .from('orders')
+            .select('*, profiles!user_id(first_name, last_name)')
+            .eq('courier_id', profile.id)
+            .eq('status', 'delivering');
+
         if (!active?.length) return sendMessage(chatId, "Sizda faol buyurtmalar yo'q.", token);
         
         for (const o of active) {
-            await sendMessage(chatId, `🚚 <b>YETKAZILMOQDA</b>\n#${o.id.toString().substring(0,8)}\n📍 ${o.address_text}`, token, {
-                inline_keyboard: [[{ text: "🏁 Yakunlash", callback_data: `finish_${o.id}` }, { text: "❌ Rad etish", callback_data: `reject_${o.id}` }]]
+            const customer = (o as any).profiles;
+            const fullName = customer ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() : "Mijoz";
+
+            const msg = `
+🚚 <b>YETKAZILMOQDA...</b>
+🆔 #${o.id.toString().substring(0,8)}
+👤 Mijoz: ${fullName}
+📞 Tel: ${o.phone_number}
+📍 ${o.address_text}
+            `;
+
+            await sendMessage(chatId, msg, token, {
+                inline_keyboard: [
+                    [{ text: "📞 TELEFON", url: `tel:${o.phone_number}` }],
+                    [{ text: "🏁 Yakunlash", callback_data: `finish_${o.id}` }, { text: "❌ Rad etish", callback_data: `reject_${o.id}` }]
+                ]
             });
         }
     }
