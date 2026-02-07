@@ -1,5 +1,5 @@
 
-import { supabase, showToast, user, profile, openOverlay, closeOverlay } from "./index.tsx";
+import { supabase, showToast, user, profile, openOverlay, closeOverlay, navTo } from "./index.tsx";
 
 let subtotalAmount = 0;
 let selectedPos = { lat: 40.5050, lng: 71.2215 };
@@ -35,7 +35,10 @@ export async function renderCartView() {
 
     container.innerHTML = `
         <div style="padding-bottom: 220px;">
-            <h2 style="font-weight: 900; font-size:1.8rem; margin-bottom:20px;">Mening Savatim</h2>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="font-weight: 900; font-size:1.8rem;">Mening Savatim</h2>
+                <div style="font-weight:800; color:var(--gray); font-size:0.9rem;">${cartItems.length} mahsulot</div>
+            </div>
             <div id="cartItemsList">
                 ${cartItems.map(item => {
                     const isKg = item.products.unit?.toLowerCase().trim() === 'kg';
@@ -58,7 +61,7 @@ export async function renderCartView() {
                     </div>
                 `}).join('')}
             </div>
-            <div style="position:fixed; bottom:90px; left:50%; transform:translateX(-50%); width:100%; max-width:450px; padding:20px; background:rgba(255,255,255,0.9); backdrop-filter:blur(20px);">
+            <div style="position:fixed; bottom:90px; left:50%; transform:translateX(-50%); width:100%; max-width:450px; padding:20px; background:rgba(255,255,255,0.9); backdrop-filter:blur(20px); border-top:1px solid #f1f5f9; z-index:100;">
                 <button class="btn btn-primary" style="width:100%; height:64px; border-radius:22px; font-size:1.1rem;" onclick="openCheckout()">RASMIYLASHTIRISH (${subtotalAmount.toLocaleString()})</button>
             </div>
         </div>
@@ -121,56 +124,64 @@ function updateCheckoutSummary() {
                 <h2 style="font-weight:900; font-size:1.4rem;">Buyurtmani tasdiqlash</h2>
             </div>
 
+            <!-- BUYURTMALAR RO'YXATI -->
             <div class="card" style="padding:20px; border-radius:28px; background:#f8fafc; border:none; margin-bottom:20px;">
-                <h4 style="font-weight:900; font-size:0.85rem; color:var(--gray); text-transform:uppercase; margin-bottom:15px;">Sizning xaridlaringiz:</h4>
-                <div style="display:flex; flex-direction:column; gap:10px;">
+                <h4 style="font-weight:900; font-size:0.85rem; color:var(--gray); text-transform:uppercase; margin-bottom:15px; letter-spacing:0.5px;">Siz sotib olayotgan mahsulotlar:</h4>
+                <div style="display:flex; flex-direction:column; gap:12px;">
                     ${items?.map(item => `
-                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
-                            <div style="flex:1; font-weight:700;">${item.products.name} <span style="color:var(--gray); font-size:0.75rem;">x ${item.quantity} ${item.products.unit}</span></div>
-                            <div style="font-weight:900;">${(item.products.price * item.quantity).toLocaleString()} UZS</div>
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <img src="${item.products.image_url || item.products.images?.[0]}" style="width:40px; height:40px; border-radius:10px; object-fit:cover; border:1px solid #e2e8f0;">
+                            <div style="flex:1;">
+                                <div style="font-weight:700; font-size:0.9rem;">${item.products.name}</div>
+                                <div style="font-size:0.75rem; color:var(--gray); font-weight:800;">${item.quantity} ${item.products.unit} x ${item.products.price.toLocaleString()} UZS</div>
+                            </div>
+                            <div style="font-weight:900; font-size:0.95rem; color:var(--text);">${(item.products.price * item.quantity).toLocaleString()} UZS</div>
                         </div>
                     `).join('')}
                 </div>
             </div>
 
+            <!-- ALOQA VA TRANSPORT -->
             <div class="card" style="border: 1.5px solid #f1f5f9; padding:20px; border-radius:28px; margin-bottom:20px;">
                 <div style="margin-bottom:20px;">
                     <label style="font-weight:900; font-size:0.85rem; display:block; margin-bottom:10px;">Telefon raqamingiz:</label>
-                    <input type="tel" id="checkoutPhone" value="${currentPhone}" placeholder="+998 90 123 45 67" style="height:56px; border-radius:16px; border:2px solid #f1f5f9; padding:0 18px; font-weight:800; font-size:1.1rem;">
+                    <input type="tel" id="checkoutPhone" value="${currentPhone}" placeholder="+998 90 123 45 67" 
+                           style="height:62px; border-radius:18px; border:2px solid #f1f5f9; padding:0 18px; font-weight:800; font-size:1.1rem; width:100%; background:white;">
                 </div>
                 <div>
                     <label style="font-weight:900; font-size:0.85rem; display:block; margin-bottom:10px;">Kuryer uchun izoh (ixtiyoriy):</label>
-                    <textarea id="checkoutComment" placeholder="Darvoza kodi, qavat yoki biron bir belgi..." style="width:100%; height:100px; border-radius:16px; border:2px solid #f1f5f9; padding:15px; font-weight:600; font-size:0.95rem; background:#f8fafc;"></textarea>
+                    <textarea id="checkoutComment" placeholder="Masalan: Darvoza oldida qoldiring..." 
+                              style="width:100%; height:100px; border-radius:18px; border:2px solid #f1f5f9; padding:15px; font-weight:600; font-size:0.95rem; background:#f8fafc; resize:none;"></textarea>
                 </div>
             </div>
 
             <h4 style="font-weight:900; font-size:1rem; margin-bottom:15px; margin-left:10px;">YETKAZIB BERISH USULI</h4>
-            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:25px;">
-                <div id="transport_walking" onclick="selectTransport('walking')" class="transport-select-card" style="padding:15px; border-radius:20px; border:2px solid var(--primary); background:var(--primary-light); text-align:center; cursor:pointer;">
-                    <i class="fas fa-walking" style="font-size:1.4rem; color:var(--primary); margin-bottom:8px;"></i>
-                    <div style="font-size:0.65rem; font-weight:900;">PIYODA</div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:25px;">
+                <div id="transport_walking" onclick="selectTransport('walking')" class="transport-select-card" style="padding:15px; border-radius:22px; border:2px solid var(--primary); background:var(--primary-light); text-align:center; cursor:pointer; transition:0.3s;">
+                    <i class="fas fa-walking" style="font-size:1.5rem; color:var(--primary); margin-bottom:8px;"></i>
+                    <div style="font-size:0.7rem; font-weight:900;">PIYODA</div>
                 </div>
-                <div id="transport_bicycle" onclick="selectTransport('bicycle')" class="transport-select-card" style="padding:15px; border-radius:20px; border:2px solid #f1f5f9; background:white; text-align:center; cursor:pointer;">
-                    <i class="fas fa-bicycle" style="font-size:1.4rem; color:#0ea5e9; margin-bottom:8px;"></i>
-                    <div style="font-size:0.65rem; font-weight:900;">VELO</div>
+                <div id="transport_bicycle" onclick="selectTransport('bicycle')" class="transport-select-card" style="padding:15px; border-radius:22px; border:2px solid #f1f5f9; background:white; text-align:center; cursor:pointer; transition:0.3s;">
+                    <i class="fas fa-bicycle" style="font-size:1.5rem; color:#0ea5e9; margin-bottom:8px;"></i>
+                    <div style="font-size:0.7rem; font-weight:900;">VELO</div>
                 </div>
-                <div id="transport_car" onclick="selectTransport('car')" class="transport-select-card" style="padding:15px; border-radius:20px; border:2px solid #f1f5f9; background:white; text-align:center; cursor:pointer;">
-                    <i class="fas fa-car" style="font-size:1.4rem; color:#f97316; margin-bottom:8px;"></i>
-                    <div style="font-size:0.65rem; font-weight:900;">MASHINA</div>
+                <div id="transport_car" onclick="selectTransport('car')" class="transport-select-card" style="padding:15px; border-radius:22px; border:2px solid #f1f5f9; background:white; text-align:center; cursor:pointer; transition:0.3s;">
+                    <i class="fas fa-car" style="font-size:1.5rem; color:#f97316; margin-bottom:8px;"></i>
+                    <div style="font-size:0.7rem; font-weight:900;">MASHINA</div>
                 </div>
             </div>
 
             <div class="card" style="padding:0; border-radius:28px; overflow:hidden; border:1.5px solid #f1f5f9; margin-bottom:25px;">
-                <div id="deliveryMap" style="height:220px; width:100%;"></div>
+                <div id="deliveryMap" style="height:240px; width:100%;"></div>
             </div>
 
-            <div class="card" style="padding:25px; border-radius:30px; background:var(--dark); color:white; border:none; margin-bottom:30px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:12px; opacity:0.7; font-size:0.85rem;"><span>Mahsulotlar:</span><span>${subtotalAmount.toLocaleString()} UZS</span></div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:12px; opacity:0.7; font-size:0.85rem;"><span>Yetkazib berish:</span><span id="receiptDeliveryCost">0 UZS</span></div>
-                <div style="display:flex; justify-content:space-between; margin-top:15px; padding-top:15px; border-top:1px solid rgba(255,255,255,0.1); font-weight:900; font-size:1.4rem;"><span>JAMI:</span><span id="receiptTotal" style="color:var(--primary);">${subtotalAmount.toLocaleString()} UZS</span></div>
+            <div class="card" style="padding:25px; border-radius:32px; background:var(--dark); color:white; border:none; margin-bottom:30px; box-shadow: 0 15px 35px rgba(0,0,0,0.2);">
+                <div style="display:flex; justify-content:space-between; margin-bottom:12px; opacity:0.8; font-size:0.85rem; font-weight:700;"><span>Mahsulotlar jami:</span><span>${subtotalAmount.toLocaleString()} UZS</span></div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:12px; opacity:0.8; font-size:0.85rem; font-weight:700;"><span>Yetkazib berish:</span><span id="receiptDeliveryCost">0 UZS</span></div>
+                <div style="display:flex; justify-content:space-between; margin-top:15px; padding-top:15px; border-top:1px solid rgba(255,255,255,0.1); font-weight:900; font-size:1.5rem;"><span>JAMI:</span><span id="receiptTotal" style="color:var(--primary);">${subtotalAmount.toLocaleString()} UZS</span></div>
             </div>
 
-            <button class="btn btn-primary" id="btnPlaceOrder" style="width:100%; height:65px; border-radius:24px; font-size:1.2rem;" onclick="placeOrderFinal()">TASDIQLASH</button>
+            <button class="btn btn-primary" id="btnPlaceOrder" style="width:100%; height:68px; border-radius:24px; font-size:1.2rem;" onclick="placeOrderFinal()">BUYURTMANI TASDIQLASH</button>
         </div>
     `;
 
@@ -212,7 +223,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     if(!phone) return showToast("Telefon raqami kiritilishi shart!");
 
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> KUTING...';
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> BUYURTMA YUBORILMOQDA...';
 
     const base = deliveryRates[`${selectedTransportType}_base`] || 5000;
     const kmPrice = deliveryRates[`${selectedTransportType}_km`] || 2000;
@@ -231,7 +242,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
             status: 'confirmed',
             phone_number: phone,
             comment: comment,
-            address_text: "Tanlangan manzil",
+            address_text: "Xaritadan tanlangan manzil",
             delivery_cost: Math.round(deliveryCost),
             payment_method: selectedPaymentMethod,
             requested_transport: selectedTransportType
@@ -239,13 +250,13 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
         if(!error) {
             await supabase.from('cart_items').delete().eq('user_id', user?.id);
-            showToast("Buyurtma qabul qilindi! 🚀");
+            showToast("Buyurtma muvaffaqiyatli yuborildi! 🚀");
             closeOverlay('checkoutOverlay');
-            (window as any).navTo('orders');
+            navTo('orders');
         } else throw error;
     } catch (e: any) {
         showToast("Xato: " + e.message);
         btn.disabled = false;
-        btn.innerText = "TASDIQLASH";
+        btn.innerText = "QAYTA URINISH";
     }
 };

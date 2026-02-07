@@ -1,23 +1,35 @@
 
-import { openOverlay, addToCart, closeOverlay } from "./index.tsx";
+import { openOverlay, addToCart, closeOverlay, supabase, user, navTo } from "./index.tsx";
 
 let currentQty = 1;
+let initialCartQty = 0;
 let productUnit = 'dona';
+let currentProduct: any = null;
 
-export function renderProductDetails(p: any) {
+export async function renderProductDetails(p: any) {
     const placeholder = document.getElementById('checkoutPlaceholder');
     if(!placeholder) return;
 
+    currentProduct = p;
     currentQty = 1;
+    initialCartQty = 0;
     productUnit = p.unit?.toLowerCase().trim() || 'dona';
     const isWeight = productUnit === 'kg';
     const step = isWeight ? 0.1 : 1;
 
+    // Savatda bor-yo'qligini tekshirish
+    if (user) {
+        const { data: cartItem } = await supabase.from('cart_items').select('quantity').eq('user_id', user.id).eq('product_id', p.id).maybeSingle();
+        if (cartItem) {
+            initialCartQty = cartItem.quantity;
+            currentQty = cartItem.quantity;
+        }
+    }
+
     const mainImg = p.image_url || p.images?.[0] || "https://via.placeholder.com/600";
-    const allImgs = Array.isArray(p.images) && p.images.length > 0 ? p.images : [mainImg];
 
     placeholder.innerHTML = `
-        <div style="padding-bottom:120px; animation: slideUp 0.3s cubic-bezier(0, 0, 0.2, 1); background:white;">
+        <div id="productDetailContainer" style="padding-bottom:120px; animation: slideUp 0.3s cubic-bezier(0, 0, 0.2, 1); background:white;">
             <!-- TOP BAR -->
             <div style="position:fixed; top:0; left:50%; transform:translateX(-50%); width:100%; max-width:450px; padding:20px; display:flex; justify-content:space-between; z-index:100;">
                 <div onclick="closeOverlay('checkoutOverlay')" style="width:45px; height:45px; background:white; border-radius:15px; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-lg); cursor:pointer;">
@@ -58,25 +70,73 @@ export function renderProductDetails(p: any) {
                 </div>
             </div>
 
-            <div style="position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:450px; background:rgba(255,255,255,0.8); backdrop-filter:blur(20px); padding:20px; border-top:1px solid #f1f5f9; z-index:200;">
-                <button class="btn btn-primary" style="width:100%; height:65px; border-radius:22px; font-size:1.1rem;" onclick="addToCart(${p.id}, currentQty)">
-                    SAVATGA QO'SHISH <i class="fas fa-cart-plus" style="margin-left:8px;"></i>
-                </button>
+            <!-- STICKY FOOTER -->
+            <div id="detailFooter" style="position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:450px; background:rgba(255,255,255,0.8); backdrop-filter:blur(20px); padding:20px; border-top:1px solid #f1f5f9; z-index:200;">
+                ${renderActionButton()}
             </div>
         </div>
     `;
     openOverlay('checkoutOverlay');
 }
 
+function renderActionButton() {
+    const isAlreadyInCartWithThisQty = (initialCartQty > 0 && Math.abs(currentQty - initialCartQty) < 0.01);
+    
+    if (isAlreadyInCartWithThisQty) {
+        return `
+            <button class="btn btn-primary" style="width:100%; height:65px; border-radius:22px; font-size:1.1rem; background:var(--dark);" onclick="goToCheckout()">
+                SAVATGA O'TISH <i class="fas fa-arrow-right" style="margin-left:8px;"></i>
+            </button>
+        `;
+    } else {
+        return `
+            <button class="btn btn-primary" style="width:100%; height:65px; border-radius:22px; font-size:1.1rem;" onclick="handleAddToCart()">
+                ${initialCartQty > 0 ? "MIQDORNI YANGILASH" : "SAVATGA QO'SHISH"} <i class="fas fa-cart-plus" style="margin-left:8px;"></i>
+            </button>
+        `;
+    }
+}
+
+(window as any).handleAddToCart = async () => {
+    const btn = document.querySelector('#detailFooter button') as HTMLButtonElement;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> SAVATGA QO\'SHILMOQDA...';
+    
+    // index.tsx dagi addToCart funksiyasi faqat qo'shadi, bizga update ham kerak bo'lishi mumkin
+    // Shuning uchun bu yerda to'g'ridan-to'g'ri update qilamiz yoki index.tsx dagi addToCart ni chaqiramiz
+    if (initialCartQty > 0) {
+        await supabase.from('cart_items').update({ quantity: currentQty }).eq('user_id', user.id).eq('product_id', currentProduct.id);
+    } else {
+        await addToCart(currentProduct.id, currentQty);
+    }
+    
+    initialCartQty = currentQty;
+    const footer = document.getElementById('detailFooter');
+    if (footer) footer.innerHTML = renderActionButton();
+};
+
+(window as any).goToCheckout = () => {
+    closeOverlay('checkoutOverlay');
+    navTo('cart');
+};
+
 (window as any).changeDetailQty = (delta: number) => {
     currentQty = parseFloat((currentQty + delta).toFixed(2));
     if(currentQty < 0.1) currentQty = 0.1;
     const input = document.getElementById('detailQtyInput') as HTMLInputElement;
     if(input) input.value = currentQty.toString();
+    
+    // Tugmani yangilash
+    const footer = document.getElementById('detailFooter');
+    if (footer) footer.innerHTML = renderActionButton();
 };
 
 (window as any).handleQtyManualChange = (val: string) => {
     let num = parseFloat(parseFloat(val).toFixed(2));
     if(isNaN(num) || num < 0.1) num = 0.1;
     currentQty = num;
+    
+    // Tugmani yangilash
+    const footer = document.getElementById('detailFooter');
+    if (footer) footer.innerHTML = renderActionButton();
 };
