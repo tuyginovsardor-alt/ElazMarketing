@@ -2,14 +2,15 @@
 import { openOverlay, addToCart, closeOverlay } from "./index.tsx";
 
 let currentQty = 1;
+let productUnit = 'dona';
 
 export function renderProductDetails(p: any) {
     const placeholder = document.getElementById('checkoutPlaceholder');
     if(!placeholder) return;
 
-    // Agar kg bo'lsa default 1 kg, dona bo'lsa 1 dona
     currentQty = 1;
-    const isWeight = p.unit?.toLowerCase() === 'kg';
+    productUnit = p.unit?.toLowerCase().trim() || 'dona';
+    const isWeight = productUnit === 'kg';
     const step = isWeight ? 0.1 : 1;
 
     const mainImg = p.image_url || p.images?.[0] || "https://via.placeholder.com/600";
@@ -22,61 +23,43 @@ export function renderProductDetails(p: any) {
                 <div onclick="closeOverlay('checkoutOverlay')" style="width:45px; height:45px; background:white; border-radius:15px; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-lg); cursor:pointer;">
                     <i class="fas fa-chevron-left" style="color:var(--text);"></i>
                 </div>
-                <div style="width:45px; height:45px; background:white; border-radius:15px; display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow-lg); cursor:pointer;">
-                    <i class="far fa-heart" style="color:var(--gray);"></i>
-                </div>
             </div>
 
-            <!-- MAIN IMAGE SLIDER -->
             <div style="position:relative; width:100%; aspect-ratio:1/1.1; overflow:hidden; background:#f8fafc;">
                 <img id="mainDetailImg" src="${mainImg}" style="width:100%; height:100%; object-fit:cover;">
-                ${p.marketing_tag ? `<div style="position:absolute; bottom:25px; left:20px; background:var(--danger); color:white; padding:6px 14px; border-radius:12px; font-weight:900; font-size:0.65rem; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);">${p.marketing_tag.toUpperCase()}</div>` : ''}
             </div>
 
             <div style="padding:25px; border-radius: 40px 40px 0 0; background:white; margin-top:-35px; position:relative; z-index:10;">
-                <!-- THUMBNAILS -->
-                <div style="display:flex; gap:12px; overflow-x:auto; margin-bottom:25px; scrollbar-width:none;">
-                    ${allImgs.map(img => `
-                        <div onclick="document.getElementById('mainDetailImg').src='${img}'" style="width:70px; height:70px; border-radius:18px; overflow:hidden; border:2px solid #f1f5f9; cursor:pointer; flex-shrink:0;">
-                            <img src="${img}" style="width:100%; height:100%; object-fit:cover;">
-                        </div>
-                    `).join('')}
-                </div>
-
-                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
                     <div style="flex:1;">
-                        <span style="font-size:0.65rem; font-weight:900; color:var(--primary); background:var(--primary-light); padding:4px 12px; border-radius:10px; text-transform:uppercase; letter-spacing:0.5px;">${p.category}</span>
-                        <h1 style="font-weight:900; font-size:1.7rem; color:var(--text); margin-top:10px; line-height:1.2;">${p.name}</h1>
+                        <h1 style="font-weight:900; font-size:1.7rem; color:var(--text); line-height:1.2;">${p.name}</h1>
+                        <span style="font-size:0.7rem; font-weight:800; color:var(--gray); text-transform:uppercase;">${p.category}</span>
                     </div>
                     <div style="text-align:right;">
-                        <div style="font-weight:900; font-size:1.5rem; color:var(--primary);">${p.price.toLocaleString()}</div>
-                        <div style="font-size:0.75rem; color:var(--gray); font-weight:800;">har bir ${p.unit} uchun</div>
+                        <div style="font-weight:900; font-size:1.5rem; color:var(--primary);">${p.price.toLocaleString()} UZS</div>
+                        <div style="font-size:0.75rem; color:var(--gray); font-weight:800;">1 ${p.unit} uchun</div>
+                    </div>
+                </div>
+
+                <div style="margin-top:30px; display:flex; align-items:center; justify-content:space-between; background:#f8fafc; padding:20px 25px; border-radius:24px;">
+                    <span style="font-weight:900; font-size:0.9rem; color:var(--text);">Miqdor (${p.unit}):</span>
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <button onclick="changeDetailQty(-${step})" style="width:44px; height:44px; border-radius:14px; background:white; border:1px solid #e2e8f0; cursor:pointer; font-size:1.2rem;"><i class="fas fa-minus"></i></button>
+                        <input type="number" id="detailQtyInput" value="${currentQty}" step="${step}" min="${step}" 
+                               style="width:70px; text-align:center; font-weight:900; font-size:1.2rem; background:transparent; border:none; margin:0;"
+                               onchange="handleQtyManualChange(this.value)">
+                        <button onclick="changeDetailQty(${step})" style="width:44px; height:44px; border-radius:14px; background:var(--primary); color:white; border:none; cursor:pointer; font-size:1.2rem;"><i class="fas fa-plus"></i></button>
                     </div>
                 </div>
 
                 <div style="margin-top:30px;">
                     <h3 style="font-size:0.9rem; font-weight:900; color:var(--text); margin-bottom:12px;">MAHSULOT HAQIDA</h3>
-                    <p style="font-size:0.95rem; color:var(--gray); line-height:1.7; font-weight:600;">
-                        ${p.description || "Ushbu mahsulot Bag'dod tumanidagi ELAZ MARKET do'konidan eng saralangan holda yetkazib beriladi. Sifat kafolatlangan."}
-                    </p>
-                </div>
-
-                <div style="margin-top:30px; display:flex; align-items:center; justify-content:space-between; background:#f8fafc; padding:20px 25px; border-radius:24px;">
-                    <span style="font-weight:900; font-size:0.9rem; color:var(--text);">Miqdorni tanlang:</span>
-                    <div style="display:flex; align-items:center; gap:15px;">
-                        <button onclick="changeDetailQty(-${step})" style="width:44px; height:44px; border-radius:14px; background:white; border:1px solid #e2e8f0; cursor:pointer; font-size:1.2rem;"><i class="fas fa-minus"></i></button>
-                        <input type="number" id="detailQtyInput" value="${currentQty}" step="${step}" min="${step}" 
-                               style="width:80px; text-align:center; font-weight:900; font-size:1.3rem; background:transparent; border:none; margin:0;"
-                               onchange="handleQtyManualChange(this.value)">
-                        <span style="font-weight:800; color:var(--gray); margin-left:-10px;">${p.unit}</span>
-                        <button onclick="changeDetailQty(${step})" style="width:44px; height:44px; border-radius:14px; background:var(--primary); color:white; border:none; cursor:pointer; font-size:1.2rem;"><i class="fas fa-plus"></i></button>
-                    </div>
+                    <p style="font-size:0.95rem; color:var(--gray); line-height:1.7; font-weight:600;">${p.description || "Saralangan va sifatli mahsulot."}</p>
                 </div>
             </div>
 
-            <!-- STICKY FOOTER -->
-            <div style="position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:450px; background:rgba(255,255,255,0.8); backdrop-filter:blur(20px); padding:20px; border-top:1px solid #f1f5f9; z-index:200; display:flex; gap:15px;">
-                <button class="btn btn-primary" style="flex:1; height:65px; border-radius:22px; font-size:1.1rem;" onclick="addToCart(${p.id}, currentQty)">
+            <div style="position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:450px; background:rgba(255,255,255,0.8); backdrop-filter:blur(20px); padding:20px; border-top:1px solid #f1f5f9; z-index:200;">
+                <button class="btn btn-primary" style="width:100%; height:65px; border-radius:22px; font-size:1.1rem;" onclick="addToCart(${p.id}, currentQty)">
                     SAVATGA QO'SHISH <i class="fas fa-cart-plus" style="margin-left:8px;"></i>
                 </button>
             </div>
