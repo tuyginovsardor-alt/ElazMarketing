@@ -15,7 +15,7 @@ export async function switchAdminTab(tab: string) {
                     </div>
                     <span style="letter-spacing:-0.5px;">ELAZ <span style="color:var(--primary); font-weight:600;">CONTROL</span></span>
                 </div>
-                <button class="btn" style="height:38px; padding:0 15px; font-size:0.7rem; background:#1e293b; color:white; border-radius:10px; font-weight:800; border:none;" onclick="navTo('profile')">
+                <button class="btn" style="height:38px; padding:0 15px; font-size:0.7rem; background:#1e293b; color:white; border-radius:10px; font-weight:800; border:none;" onclick="exitAdminPanel()">
                     CHIQISH <i class="fas fa-sign-out-alt" style="margin-left:6px;"></i>
                 </button>
             </header>
@@ -44,6 +44,14 @@ export async function switchAdminTab(tab: string) {
     renderTabContent(tab);
 }
 (window as any).switchAdminTab = switchAdminTab;
+
+(window as any).exitAdminPanel = () => {
+    const app = document.getElementById('appContainer');
+    const admin = document.getElementById('adminPanel');
+    if(app) app.style.display = 'flex';
+    if(admin) admin.style.display = 'none';
+    navTo('profile');
+};
 
 async function renderTabContent(tab: string) {
     const content = document.getElementById('adminTabContent');

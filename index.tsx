@@ -118,6 +118,43 @@ export async function checkAuth() {
 }
 window.onload = checkAuth;
 
+// --- GLOBAL NAV ACTIONS (FIXING LINKS) ---
+
+(window as any).enterAdminPanel = async () => {
+    const { switchAdminTab } = await import("./admin.tsx");
+    const app = document.getElementById('appContainer');
+    const admin = document.getElementById('adminPanel');
+    if(app) app.style.display = 'none';
+    if(admin) admin.style.display = 'flex';
+    switchAdminTab('dash');
+};
+
+(window as any).openPayment = async () => {
+    const { openPaymentView } = await import("./payment.tsx");
+    openPaymentView();
+};
+
+(window as any).openCourierDashboard = async () => {
+    navTo('orders');
+    const { renderCourierDashboard } = await import("./courierDashboard.tsx");
+    renderCourierDashboard();
+};
+
+(window as any).openCourierRegistration = async () => {
+    const { openCourierRegistrationForm } = await import("./courierRegistration.tsx");
+    openCourierRegistrationForm();
+};
+
+(window as any).openSupportCenter = async () => {
+    const { renderSupportView } = await import("./supportView.tsx");
+    renderSupportView();
+};
+
+(window as any).openProfileSecurity = async () => {
+    const { openProfileSecurity } = await import("./security.tsx");
+    openProfileSecurity();
+};
+
 export const addToCart = async (productId: number, qty: number = 1) => {
     if(!user) return showToast("Tizimga kiring");
     try {
