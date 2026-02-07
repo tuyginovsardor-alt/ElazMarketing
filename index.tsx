@@ -44,94 +44,6 @@ export function closeOverlay(id: string) {
 }
 (window as any).closeOverlay = closeOverlay;
 
-// --- PAYMENT FUNKSIYASI ---
-export async function openPayment() {
-    console.log("Payment requested...");
-    if(!user) return showToast("To'lov qilish uchun tizimga kiring");
-    
-    // Vizual feedback
-    const btn = document.querySelector('[onclick="openPayment()"]');
-    if(btn) (btn as HTMLElement).style.opacity = '0.5';
-    
-    showToast("Hamyon ochilmoqda...");
-    try {
-        const { openPaymentView } = await import("./payment.tsx");
-        await openPaymentView();
-        if(btn) (btn as HTMLElement).style.opacity = '1';
-    } catch (e) {
-        console.error("Payment load error:", e);
-        showToast("Xatolik: Sahifani yuklab bo'lmadi");
-        if(btn) (btn as HTMLElement).style.opacity = '1';
-    }
-}
-(window as any).openPayment = openPayment;
-
-// --- CART FUNKSIYALARI ---
-export async function addToCart(productId: number, qty: number = 1) {
-    if(!user) return showToast("Savatga qo'shish uchun tizimga kiring");
-    try {
-        const { data: existing } = await supabase
-            .from('cart_items')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('product_id', productId)
-            .maybeSingle();
-
-        if(existing) {
-            await supabase.from('cart_items').update({ quantity: existing.quantity + qty }).eq('id', existing.id);
-        } else {
-            await supabase.from('cart_items').insert([{ user_id: user.id, product_id: productId, quantity: qty }]);
-        }
-        showToast("Savatga qo'shildi! 🛒");
-    } catch (e: any) {
-        showToast("Xatolik yuz berdi");
-    }
-}
-(window as any).addToCart = addToCart;
-
-// --- GLOBAL BINDINGS ---
-(window as any).openCourierRegistration = async () => {
-    try {
-        const { openCourierRegistrationForm } = await import("./courierRegistration.tsx");
-        openCourierRegistrationForm();
-    } catch (e) { showToast("Xatolik!"); }
-};
-
-(window as any).openSupportCenter = async () => {
-    try {
-        const { renderSupportView } = await import("./supportView.tsx");
-        renderSupportView();
-    } catch (e) { showToast("Xatolik!"); }
-};
-
-(window as any).openCourierDashboard = async () => {
-    try {
-        const { renderCourierDashboard } = await import("./courierDashboard.tsx");
-        renderCourierDashboard();
-    } catch (e) { showToast("Xatolik!"); }
-};
-
-(window as any).enterAdminPanel = async () => {
-    if(!profile || (profile.role !== 'admin' && profile.role !== 'staff')) return;
-    const panel = document.getElementById('adminPanel');
-    const app = document.getElementById('appContainer');
-    if(panel && app) { 
-        panel.style.display = 'flex'; 
-        app.style.display = 'none'; 
-        const { switchAdminTab } = await import("./admin.tsx");
-        switchAdminTab('dash'); 
-    }
-};
-
-(window as any).connectToBot = async () => {
-    if(!profile) return;
-    const token = Math.random().toString(36).substring(2, 15);
-    const { error } = await supabase.from('profiles').update({ link_token: token }).eq('id', profile.id);
-    if(!error) {
-        window.open(`https://t.me/elaz_market_bot?start=${token}`, '_blank');
-    }
-};
-
 export async function loadProfileData() {
     const { data: { session } } = await supabase.auth.getSession();
     if(!session?.user) return;
@@ -149,11 +61,26 @@ export async function loadProfileData() {
             data = inserted;
         }
         profile = data;
+        
+        // --- DELAYED PHONE SUGGESTION ---
+        if(!profile.phone) {
+            setTimeout(() => {
+                if(!document.getElementById('profileEditOverlay')?.style.display || document.getElementById('profileEditOverlay')?.style.display === 'none') {
+                   // Faqat profil edit ochiq bo'lmasa ko'rsatamiz
+                   suggestPhoneLink();
+                }
+            }, 15000);
+        }
+
         const navIconContainer = document.getElementById('navProfileIconContainer');
         if (navIconContainer) {
             navIconContainer.innerHTML = profile?.avatar_url ? `<img src="${profile.avatar_url}" class="nav-profile-img">` : `<i class="far fa-user-circle" style="font-size: 1.6rem;"></i>`;
         }
     } catch (e) { console.error(e); }
+}
+
+function suggestPhoneLink() {
+    showToast("📞 Bog'lanish uchun telefon raqamingizni kiriting!");
 }
 
 export const navTo = (view: string) => {
@@ -204,3 +131,23 @@ export async function checkAuth() {
     }
 }
 window.onload = checkAuth;
+
+// --- CART & PAYMENT WRAPPERS ---
+// Added export to fix import errors in other modules
+export const openPayment = async () => {
+    const { openPaymentView } = await import("./payment.tsx");
+    openPaymentView();
+};
+(window as any).openPayment = openPayment;
+
+// Added export to fix: Module '"./index.tsx"' has no exported member 'addToCart'.
+export const addToCart = async (productId: number, qty: number = 1) => {
+    if(!user) return showToast("Tizimga kiring");
+    try {
+        const { data: existing } = await supabase.from('cart_items').select('*').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
+        if(existing) await supabase.from('cart_items').update({ quantity: existing.quantity + qty }).eq('id', existing.id);
+        else await supabase.from('cart_items').insert([{ user_id: user.id, product_id: productId, quantity: qty }]);
+        showToast("Savatga qo'shildi! 🛒");
+    } catch (e) { showToast("Xatolik!"); }
+};
+(window as any).addToCart = addToCart;
