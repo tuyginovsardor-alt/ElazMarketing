@@ -43,9 +43,9 @@ export async function renderCartView() {
                             <div style="color:var(--primary); font-weight:900; margin-top:4px;">${item.products.price.toLocaleString()} UZS</div>
                             <div style="display:flex; align-items:center; gap:15px; margin-top:8px;">
                                 <div style="display:flex; align-items:center; background:#f8fafc; padding:4px; border-radius:10px; border:1px solid #e2e8f0;">
-                                    <button onclick="updateQty(${item.product_id}, ${item.quantity - 1})" style="border:none; background:white; width:28px; height:28px; border-radius:8px; box-shadow:var(--shadow-sm);">-</button>
-                                    <span style="font-weight:900; margin:0 12px; font-size:0.9rem;">${item.quantity}</span>
-                                    <button onclick="updateQty(${item.product_id}, ${item.quantity + 1})" style="border:none; background:white; width:28px; height:28px; border-radius:8px; box-shadow:var(--shadow-sm);">+</button>
+                                    <button onclick="updateQty(${item.product_id}, ${item.quantity - (item.products.unit === 'kg' ? 0.1 : 1)})" style="border:none; background:white; width:28px; height:28px; border-radius:8px; box-shadow:var(--shadow-sm);">-</button>
+                                    <span style="font-weight:900; margin:0 12px; font-size:0.9rem;">${item.quantity} ${item.products.unit}</span>
+                                    <button onclick="updateQty(${item.product_id}, ${item.quantity + (item.products.unit === 'kg' ? 0.1 : 1)})" style="border:none; background:white; width:28px; height:28px; border-radius:8px; box-shadow:var(--shadow-sm);">+</button>
                                 </div>
                             </div>
                         </div>
@@ -67,8 +67,8 @@ export async function removeFromCart(pId: number) {
 (window as any).removeFromCart = removeFromCart;
 
 export async function updateQty(pId: number, newQty: number) {
-    if(newQty < 1) return removeFromCart(pId);
-    await supabase.from('cart_items').update({ quantity: newQty }).eq('user_id', user.id).eq('product_id', pId);
+    if(newQty < 0.1) return removeFromCart(pId);
+    await supabase.from('cart_items').update({ quantity: parseFloat(newQty.toFixed(2)) }).eq('user_id', user.id).eq('product_id', pId);
     renderCartView();
 }
 (window as any).updateQty = updateQty;
@@ -76,30 +76,49 @@ export async function updateQty(pId: number, newQty: number) {
 (window as any).openCheckout = async () => {
     openOverlay('checkoutOverlay');
     const placeholder = document.getElementById('checkoutPlaceholder')!;
+    
+    // Savatdagi ma'lumotlarni qayta olish (summary uchun)
+    const { data: items } = await supabase.from('cart_items').select('*, products(*)').eq('user_id', user.id);
     const { data: sets } = await supabase.from('app_settings').select('*');
     const deliveryRates = sets?.find(s => s.key === 'delivery_rates')?.value || { walking_base: 5000, walking_km: 2000 };
     officePos = sets?.find(s => s.key === 'office_location')?.value || { lat: 40.5050, lng: 71.2215 };
 
-    const needsPhone = !profile?.phone;
+    const currentPhone = profile?.phone || "";
 
     placeholder.innerHTML = `
         <div style="padding-bottom:120px; animation: slideUp 0.3s ease-out;">
             <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px; position:sticky; top:0; background:white; z-index:10; padding:10px 0;">
                 <i class="fas fa-arrow-left" onclick="closeOverlay('checkoutOverlay')" style="font-size:1.4rem; cursor:pointer;"></i>
-                <h2 style="font-weight:900; font-size:1.4rem;">Rasmiylashtirish</h2>
+                <h2 style="font-weight:900; font-size:1.4rem;">Buyurtmani tasdiqlash</h2>
             </div>
 
-            <!-- TEL RAQAM (AGAR YO'Q BO'LSA) -->
-            ${needsPhone ? `
-                <div class="card" style="border: 1.5px solid var(--primary); background: var(--primary-light); padding:20px; border-radius:24px; margin-bottom:20px;">
-                    <h4 style="font-weight:900; color:var(--primary); font-size:0.9rem; margin-bottom:10px;">TELEFON RAQAMINGIZ</h4>
-                    <input type="tel" id="checkoutPhone" placeholder="+998 90 123 45 67" style="height:56px; border-radius:16px; border:none; box-shadow:var(--shadow-sm); margin:0;">
-                    <p style="font-size:0.65rem; color:var(--primary); margin-top:8px; font-weight:700;">Buyurtmani tasdiqlash uchun telefon raqami majburiy.</p>
+            <!-- BUYURTMA XULOSASI (RO'YXAT) -->
+            <div class="card" style="padding:20px; border-radius:28px; background:#f8fafc; border:none; margin-bottom:20px;">
+                <h4 style="font-weight:900; font-size:0.85rem; color:var(--gray); text-transform:uppercase; margin-bottom:15px; letter-spacing:0.5px;">Sizning xaridlaringiz:</h4>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    ${items?.map(item => `
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.9rem;">
+                            <div style="flex:1; font-weight:700;">${item.products.name} <span style="color:var(--gray); font-size:0.75rem;">x ${item.quantity} ${item.products.unit}</span></div>
+                            <div style="font-weight:900; color:var(--text);">${(item.products.price * item.quantity).toLocaleString()} UZS</div>
+                        </div>
+                    `).join('')}
                 </div>
-            ` : ''}
+            </div>
+
+            <!-- TEL RAQAM SECTION -->
+            <div class="card" style="border: 1.5px solid #f1f5f9; padding:20px; border-radius:24px; margin-bottom:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <h4 style="font-weight:900; color:var(--text); font-size:0.9rem;">Bog'lanish uchun raqam:</h4>
+                    <i class="fas fa-phone-alt" style="color:var(--primary);"></i>
+                </div>
+                <input type="tel" id="checkoutPhone" value="${currentPhone}" placeholder="+998 90 123 45 67" 
+                       style="height:56px; border-radius:16px; border:2.5px solid #f1f5f9; padding:0 18px; font-weight:800; font-size:1.1rem; width:100%;">
+                <p style="font-size:0.65rem; color:var(--gray); margin-top:8px; font-weight:700;">* Kuryer buyurtmani yetkazganda shu raqamga bog'lanadi.</p>
+            </div>
 
             <!-- MAP SECTION -->
-            <div class="card" style="padding:0; border-radius:28px; overflow:hidden; border:1.5px solid #f1f5f9; margin-bottom:20px;">
+            <h4 style="font-weight:900; font-size:1rem; margin-bottom:15px; margin-left:10px;">YETKAZIB BERISH MANZILI</h4>
+            <div class="card" style="padding:0; border-radius:28px; overflow:hidden; border:1.5px solid #f1f5f9; margin-bottom:25px;">
                 <div id="deliveryMap" style="height:220px; width:100%;"></div>
                 <div style="padding:15px; background:#f8fafc; border-top:1px solid #f1f5f9; display:flex; gap:10px;">
                     <button class="btn btn-outline" style="flex:1; height:45px; font-size:0.7rem; border-radius:12px;" onclick="selectCheckoutArea('Bag\\\'dod', 40.5050, 71.2215)">BAG'DOD</button>
@@ -122,19 +141,19 @@ export async function updateQty(pId: number, newQty: number) {
                 </div>
                 <div onclick="selectPayment('balance')" id="pay_balance" class="payment-card" style="display:flex; align-items:center; gap:15px; padding:18px; border-radius:20px; border:2px solid #f1f5f9; background:white; cursor:pointer;">
                     <div style="width:45px; height:45px; border-radius:12px; background:#fffbeb; color:#d97706; display:flex; align-items:center; justify-content:center; font-size:1.2rem;"><i class="fas fa-wallet"></i></div>
-                    <div style="flex:1;"><div style="font-weight:900; font-size:0.95rem;">Hamyon</div><div style="font-size:0.7rem; color:var(--gray); font-weight:700;">Sizning balans: ${(profile?.balance || 0).toLocaleString()} UZS</div></div>
+                    <div style="flex:1;"><div style="font-weight:900; font-size:0.95rem;">Hamyon</div><div style="font-size:0.7rem; color:var(--gray); font-weight:700;">Balans: ${(profile?.balance || 0).toLocaleString()} UZS</div></div>
                     <i class="far fa-circle" style="color:#cbd5e1;"></i>
                 </div>
             </div>
 
-            <!-- ORDER SUMMARY -->
-            <div class="card" style="padding:25px; border-radius:30px; background:#f8fafc; border:none; margin-bottom:30px;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-weight:700; color:var(--gray); font-size:0.85rem;"><span>Mahsulotlar:</span><span>${subtotalAmount.toLocaleString()} UZS</span></div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-weight:700; color:var(--gray); font-size:0.85rem;"><span>Yetkazib berish:</span><span id="receiptDeliveryCost">0 UZS</span></div>
-                <div style="display:flex; justify-content:space-between; margin-top:15px; padding-top:15px; border-top:2px dashed #e2e8f0; font-weight:900; font-size:1.3rem;"><span>JAMI:</span><span id="receiptTotal" style="color:var(--primary);">${subtotalAmount.toLocaleString()} UZS</span></div>
+            <!-- TOTAL SUMMARY -->
+            <div class="card" style="padding:25px; border-radius:30px; background:var(--dark); color:white; border:none; margin-bottom:30px; box-shadow: 0 15px 35px rgba(15, 23, 42, 0.25);">
+                <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-weight:700; opacity:0.7; font-size:0.85rem;"><span>Mahsulotlar jami:</span><span>${subtotalAmount.toLocaleString()} UZS</span></div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-weight:700; opacity:0.7; font-size:0.85rem;"><span>Yetkazib berish:</span><span id="receiptDeliveryCost">0 UZS</span></div>
+                <div style="display:flex; justify-content:space-between; margin-top:15px; padding-top:15px; border-top:1px solid rgba(255,255,255,0.1); font-weight:900; font-size:1.4rem;"><span>TO'LOV SUMMASI:</span><span id="receiptTotal" style="color:var(--primary);">${subtotalAmount.toLocaleString()} UZS</span></div>
             </div>
 
-            <button class="btn btn-primary" id="btnPlaceOrder" style="width:100%; height:65px; border-radius:24px; font-size:1.2rem;" onclick="placeOrderFinal()">BUYURTMA BERISH</button>
+            <button class="btn btn-primary" id="btnPlaceOrder" style="width:100%; height:65px; border-radius:24px; font-size:1.2rem;" onclick="placeOrderFinal()">BUYURTMANI TASDIQLASH</button>
         </div>
     `;
 
@@ -209,8 +228,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     const deliveryCost = 5000 + (Math.max(0, currentDistanceKm - 1) * 2000);
 
     try {
-        // Agar tel raqami profilga saqlanmagan bo'lsa, saqlab qo'yamiz
-        if(!profile?.phone) {
+        if(!profile?.phone || profile.phone !== phone) {
             await supabase.from('profiles').update({ phone }).eq('id', profile.id);
         }
 
@@ -238,6 +256,6 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     } catch (e: any) {
         showToast("Xato: " + e.message);
         btn.disabled = false;
-        btn.innerText = "BUYURTMA BERISH";
+        btn.innerText = "TASDIQLASH";
     }
 };

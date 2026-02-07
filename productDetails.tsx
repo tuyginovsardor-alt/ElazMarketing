@@ -7,7 +7,11 @@ export function renderProductDetails(p: any) {
     const placeholder = document.getElementById('checkoutPlaceholder');
     if(!placeholder) return;
 
+    // Agar kg bo'lsa default 1 kg, dona bo'lsa 1 dona
     currentQty = 1;
+    const isWeight = p.unit?.toLowerCase() === 'kg';
+    const step = isWeight ? 0.1 : 1;
+
     const mainImg = p.image_url || p.images?.[0] || "https://via.placeholder.com/600";
     const allImgs = Array.isArray(p.images) && p.images.length > 0 ? p.images : [mainImg];
 
@@ -57,12 +61,15 @@ export function renderProductDetails(p: any) {
                     </p>
                 </div>
 
-                <div style="margin-top:30px; display:flex; align-items:center; gap:20px; background:#f8fafc; padding:15px 25px; border-radius:24px;">
-                    <span style="font-weight:900; font-size:0.9rem; color:var(--text);">Miqdor:</span>
-                    <div style="display:flex; align-items:center; gap:20px;">
-                        <button onclick="changeDetailQty(-1)" style="width:40px; height:40px; border-radius:12px; background:white; border:1px solid #e2e8f0; cursor:pointer;"><i class="fas fa-minus"></i></button>
-                        <span id="detailQtyDisplay" style="font-weight:900; font-size:1.3rem; min-width:30px; text-align:center;">1</span>
-                        <button onclick="changeDetailQty(1)" style="width:40px; height:40px; border-radius:12px; background:var(--primary); color:white; border:none; cursor:pointer;"><i class="fas fa-plus"></i></button>
+                <div style="margin-top:30px; display:flex; align-items:center; justify-content:space-between; background:#f8fafc; padding:20px 25px; border-radius:24px;">
+                    <span style="font-weight:900; font-size:0.9rem; color:var(--text);">Miqdorni tanlang:</span>
+                    <div style="display:flex; align-items:center; gap:15px;">
+                        <button onclick="changeDetailQty(-${step})" style="width:44px; height:44px; border-radius:14px; background:white; border:1px solid #e2e8f0; cursor:pointer; font-size:1.2rem;"><i class="fas fa-minus"></i></button>
+                        <input type="number" id="detailQtyInput" value="${currentQty}" step="${step}" min="${step}" 
+                               style="width:80px; text-align:center; font-weight:900; font-size:1.3rem; background:transparent; border:none; margin:0;"
+                               onchange="handleQtyManualChange(this.value)">
+                        <span style="font-weight:800; color:var(--gray); margin-left:-10px;">${p.unit}</span>
+                        <button onclick="changeDetailQty(${step})" style="width:44px; height:44px; border-radius:14px; background:var(--primary); color:white; border:none; cursor:pointer; font-size:1.2rem;"><i class="fas fa-plus"></i></button>
                     </div>
                 </div>
             </div>
@@ -79,7 +86,14 @@ export function renderProductDetails(p: any) {
 }
 
 (window as any).changeDetailQty = (delta: number) => {
-    currentQty = Math.max(1, currentQty + delta);
-    const display = document.getElementById('detailQtyDisplay');
-    if(display) display.innerText = currentQty.toString();
+    currentQty = parseFloat((currentQty + delta).toFixed(2));
+    if(currentQty < 0.1) currentQty = 0.1;
+    const input = document.getElementById('detailQtyInput') as HTMLInputElement;
+    if(input) input.value = currentQty.toString();
+};
+
+(window as any).handleQtyManualChange = (val: string) => {
+    let num = parseFloat(parseFloat(val).toFixed(2));
+    if(isNaN(num) || num < 0.1) num = 0.1;
+    currentQty = num;
 };
