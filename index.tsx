@@ -62,25 +62,11 @@ export async function loadProfileData() {
         }
         profile = data;
         
-        // --- DELAYED PHONE SUGGESTION ---
-        if(!profile.phone) {
-            setTimeout(() => {
-                if(!document.getElementById('profileEditOverlay')?.style.display || document.getElementById('profileEditOverlay')?.style.display === 'none') {
-                   // Faqat profil edit ochiq bo'lmasa ko'rsatamiz
-                   suggestPhoneLink();
-                }
-            }, 15000);
-        }
-
         const navIconContainer = document.getElementById('navProfileIconContainer');
         if (navIconContainer) {
             navIconContainer.innerHTML = profile?.avatar_url ? `<img src="${profile.avatar_url}" class="nav-profile-img">` : `<i class="far fa-user-circle" style="font-size: 1.6rem;"></i>`;
         }
     } catch (e) { console.error(e); }
-}
-
-function suggestPhoneLink() {
-    showToast("📞 Bog'lanish uchun telefon raqamingizni kiriting!");
 }
 
 export const navTo = (view: string) => {
@@ -119,20 +105,6 @@ export function showView(viewId: string) {
 }
 (window as any).showView = showView;
 
-// Admin panelga kirish funksiyasi
-export const enterAdminPanel = async () => {
-    const { switchAdminTab } = await import("./admin.tsx");
-    const app = document.getElementById('appContainer');
-    const admin = document.getElementById('adminPanel');
-    
-    if(app) app.style.display = 'none';
-    if(admin) {
-        admin.style.display = 'flex';
-        switchAdminTab('dash');
-    }
-};
-(window as any).enterAdminPanel = enterAdminPanel;
-
 export async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
@@ -146,15 +118,6 @@ export async function checkAuth() {
 }
 window.onload = checkAuth;
 
-// --- CART & PAYMENT WRAPPERS ---
-// Added export to fix import errors in other modules
-export const openPayment = async () => {
-    const { openPaymentView } = await import("./payment.tsx");
-    openPaymentView();
-};
-(window as any).openPayment = openPayment;
-
-// Added export to fix: Module '"./index.tsx"' has no exported member 'addToCart'.
 export const addToCart = async (productId: number, qty: number = 1) => {
     if(!user) return showToast("Tizimga kiring");
     try {
@@ -165,3 +128,16 @@ export const addToCart = async (productId: number, qty: number = 1) => {
     } catch (e) { showToast("Xatolik!"); }
 };
 (window as any).addToCart = addToCart;
+
+export const toggleFavorite = async (productId: number) => {
+    if(!user) return showToast("Tizimga kiring");
+    const { data: existing } = await supabase.from('favorites').select('id').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
+    if(existing) {
+        await supabase.from('favorites').delete().eq('id', existing.id);
+        showToast("Sevimli ro'yxatidan o'chirildi");
+    } else {
+        await supabase.from('favorites').insert({ user_id: user.id, product_id: productId });
+        showToast("Sevimli ro'yxatiga qo'shildi ❤️");
+    }
+};
+(window as any).toggleFavorite = toggleFavorite;
