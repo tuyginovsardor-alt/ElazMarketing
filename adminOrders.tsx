@@ -7,7 +7,11 @@ export async function renderAdminOrders() {
     
     container.innerHTML = `<div style="text-align:center; padding:3rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--primary);"></i></div>`;
 
-    const { data: orders, error } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+    // Mijoz ma'lumotlarini profiles jadvalidan qo'shib olish
+    const { data: orders, error } = await supabase
+        .from('orders')
+        .select('*, profiles:user_id(first_name, last_name, email)')
+        .order('created_at', { ascending: false });
 
     if(error) {
         container.innerHTML = `<div class="card" style="text-align:center; padding:2rem; color:var(--danger);">Ulanishda xatolik: ${error.message}</div>`;
@@ -21,7 +25,12 @@ export async function renderAdminOrders() {
 
     container.innerHTML = `
         <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap:20px; padding:10px 0;">
-            ${orders.map(o => `
+            ${orders.map(o => {
+                const customer = (o as any).profiles;
+                const fullName = customer ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() : "Noma'lum mijoz";
+                const email = customer?.email || "Email yo'q";
+
+                return `
                 <div class="card" style="padding:22px; border-radius:28px; background:white; border:1.5px solid #f1f5f9; box-shadow:var(--shadow-sm); position:relative; overflow:hidden;">
                     <div style="position:absolute; top:0; left:0; width:5px; height:100%; background:${o.status === 'delivered' ? '#22c55e' : (o.status === 'cancelled' ? '#ef4444' : '#3b82f6')};"></div>
 
@@ -32,6 +41,19 @@ export async function renderAdminOrders() {
                         </div>
                         <div style="padding:6px 14px; border-radius:12px; background:#f8fafc; font-size:0.65rem; font-weight:900; color:#64748b; border:1px solid #f1f5f9;">
                             ${o.status.toUpperCase()}
+                        </div>
+                    </div>
+
+                    <!-- MIJOZ MA'LUMOTLARI -->
+                    <div style="margin-bottom:15px; background:#eff6ff; padding:15px; border-radius:18px; border:1px solid #dbeafe;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div style="width:36px; height:36px; background:white; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#3b82f6;">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight:900; font-size:0.9rem; color:#1e40af;">${fullName}</div>
+                                <div style="font-size:0.7rem; color:#3b82f6; font-weight:700;">${email}</div>
+                            </div>
                         </div>
                     </div>
                     
@@ -70,7 +92,7 @@ export async function renderAdminOrders() {
                         </select>
                     </div>
                 </div>
-            `).join('')}
+            `}).join('')}
         </div>
     `;
 }

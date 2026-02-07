@@ -44,19 +44,37 @@ export async function renderCourierDashboard() {
 
 async function loadCourierOrders() {
     const content = document.getElementById('courierOrdersContent')!;
-    const { data: orders } = await supabase.from('orders').select('*').eq('status', 'confirmed').is('courier_id', null).order('created_at', { ascending: false });
+    
+    // Mijoz ma'lumotlari bilan birga yuklash
+    const { data: orders } = await supabase
+        .from('orders')
+        .select('*, profiles:user_id(first_name, last_name, email)')
+        .eq('status', 'confirmed')
+        .is('courier_id', null)
+        .order('created_at', { ascending: false });
 
     if(!orders?.length) {
         content.innerHTML = `<div style="text-align:center; padding:5rem; color:var(--gray);">Yangi buyurtmalar yo'q</div>`;
         return;
     }
 
-    content.innerHTML = orders.map(o => `
-        <div class="card" style="padding:20px; border-radius:28px; margin-bottom:15px; border:1px solid #f1f5f9; box-shadow:var(--shadow-sm);">
+    content.innerHTML = orders.map(o => {
+        const customer = (o as any).profiles;
+        const fullName = customer ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() : "Noma'lum mijoz";
+
+        return `
+        <div class="card" style="padding:20px; border-radius:28px; margin-bottom:15px; border:1.5px solid #f1f5f9; box-shadow:var(--shadow-sm);">
             <div style="display:flex; justify-content:space-between; margin-bottom:12px;">
                 <b style="font-size:1.1rem; font-weight:900;">#ORD-${o.id.toString().substring(0,6)}</b>
                 <b style="color:var(--primary); font-size:1.1rem;">${o.total_price.toLocaleString()} UZS</b>
             </div>
+
+            <!-- MIJOZ -->
+            <div style="background:#f8fafc; padding:12px 15px; border-radius:15px; margin-bottom:12px; display:flex; align-items:center; gap:10px; border:1px solid #e2e8f0;">
+                <i class="fas fa-user-circle" style="color:#64748b; font-size:1.2rem;"></i>
+                <div style="font-weight:800; font-size:0.85rem; color:var(--text);">${fullName}</div>
+            </div>
+
             <div style="font-size:0.85rem; margin-bottom:15px; font-weight:600;">
                 <div style="margin-bottom:8px;"><i class="fas fa-map-marker-alt" style="color:var(--danger);"></i> ${o.address_text}</div>
                 <div style="color:var(--gray);">Dostavka: <b>${o.delivery_cost.toLocaleString()} UZS</b></div>
@@ -69,7 +87,7 @@ async function loadCourierOrders() {
             </div>
             <button class="btn btn-primary" style="width:100%; height:55px; border-radius:18px; font-size:1rem;" onclick="acceptOrder(${o.id})">BUYURTMANI OLISH</button>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 (window as any).acceptOrder = async (id: number) => {
