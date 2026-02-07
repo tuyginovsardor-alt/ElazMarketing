@@ -5,7 +5,6 @@ import fetch from 'node-fetch';
 import fs from 'fs';
 import path from 'path';
 
-// .env faylini yuklaymiz (zaxira uchun)
 const envPaths = [
     path.resolve(process.cwd(), '.env'),
     path.resolve(process.cwd(), '.env.local')
@@ -23,49 +22,16 @@ export const VITE_SUPABASE_KEY = process.env.VITE_SUPABASE_KEY;
 
 export const supabase = createClient(VITE_SUPABASE_URL || '', VITE_SUPABASE_KEY || '');
 
-// ASOSIY SAYT URL MANZILI (Shu yerda o'zgartirilsa hamma joyda o'zgaradi)
 export const SITE_URL = "https://elaz-marketing.vercel.app";
 
-// Dinamik token o'zgaruvchisi
 export let BOT_TOKEN = process.env.BOT_TOKEN;
-
-/**
- * Bazadan tokenni yuklash (bot_configs jadvalidan)
- */
-export async function refreshBotToken() {
-    try {
-        console.log("🔍 [DB] Bot tokenini 'bot_configs' jadvalidan qidiryapman...");
-        const { data, error } = await supabase
-            .from('bot_configs')
-            .select('token')
-            .eq('is_active', true)
-            .limit(1)
-            .maybeSingle();
-
-        if (error) throw error;
-
-        if (data && data.token) {
-            BOT_TOKEN = data.token;
-            console.log(`✅ [DB] Aktiv token yuklandi: ${BOT_TOKEN.substring(0, 10)}...`);
-            return BOT_TOKEN;
-        } else {
-            console.warn("⚠️ [DB] Aktiv bot topilmadi. .env fayli tekshiriladi.");
-            return BOT_TOKEN;
-        }
-    } catch (e) {
-        console.error("❌ [DB ERROR] Tokenni yuklashda xato:", e.message);
-        return BOT_TOKEN;
-    }
-}
+export let BOT_USERNAME = "";
 
 /**
  * Telegram API so'rovi
  */
 export async function tg(method, body) {
-    if (!BOT_TOKEN) {
-        return { ok: false, description: "Bot tokeni topilmadi!" };
-    }
-    
+    if (!BOT_TOKEN) return { ok: false, description: "Token yo'q" };
     try {
         const url = `https://api.telegram.org/bot${BOT_TOKEN}/${method}`;
         const res = await fetch(url, {
@@ -73,9 +39,38 @@ export async function tg(method, body) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        const result = await res.json();
-        return result;
+        return await res.json();
     } catch (e) {
         return { ok: false, description: e.message };
+    }
+}
+
+/**
+ * Aktiv tokenni va bot username-ni yangilash
+ */
+export async function refreshBotToken() {
+    try {
+        const { data, error } = await supabase
+            .from('bot_configs')
+            .select('*')
+            .eq('is_active', true)
+            .maybeSingle();
+
+        if (error) throw error;
+
+        if (data && data.token) {
+            BOT_TOKEN = data.token;
+            // Bot username-ni Telegramdan olish
+            const me = await tg('getMe', {});
+            if (me.ok) {
+                BOT_USERNAME = me.result.username;
+                // Bazada username-ni yangilab qo'yamiz (agar kerak bo'lsa)
+                await supabase.from('bot_configs').update({ username: BOT_USERNAME }).eq('id', data.id);
+            }
+            return BOT_TOKEN;
+        }
+        return BOT_TOKEN;
+    } catch (e) {
+        return BOT_TOKEN;
     }
 }
