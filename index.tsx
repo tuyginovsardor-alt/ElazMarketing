@@ -119,6 +119,20 @@ export function showView(viewId: string) {
 }
 (window as any).showView = showView;
 
+// Admin panelga kirish funksiyasi
+export const enterAdminPanel = async () => {
+    const { switchAdminTab } = await import("./admin.tsx");
+    const app = document.getElementById('appContainer');
+    const admin = document.getElementById('adminPanel');
+    
+    if(app) app.style.display = 'none';
+    if(admin) {
+        admin.style.display = 'flex';
+        switchAdminTab('dash');
+    }
+};
+(window as any).enterAdminPanel = enterAdminPanel;
+
 export async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
