@@ -3,11 +3,19 @@ import { profile, user, openOverlay, showToast, supabase, loadProfileData, navTo
 
 export async function renderProfileView(data: any) {
     const container = document.getElementById('profileView');
+    // Agar profile null kelsa, qayta yuklashga harakat qilamiz
     if(!container || !user) return;
+    
+    let profileData = data;
+    if (!profileData) {
+        // Agar data null bo'lsa, index.tsx dagi profile'ni olamiz
+        const { profile: globalProfile } = await import("./index.tsx");
+        profileData = globalProfile;
+    }
 
-    const isAdmin = data?.role === 'admin' || data?.role === 'staff';
-    const isCourier = data?.role === 'courier';
-    const isLinked = !!data?.telegram_id;
+    const isAdmin = profileData?.role === 'admin' || profileData?.role === 'staff';
+    const isCourier = profileData?.role === 'courier';
+    const isLinked = !!profileData?.telegram_id;
 
     container.innerHTML = `
         <div style="padding-bottom:120px; animation: fadeIn 0.4s ease-out;">
@@ -16,16 +24,16 @@ export async function renderProfileView(data: any) {
                 <div style="position:absolute; top:-20px; right:-20px; width:150px; height:150px; background:rgba(255,255,255,0.1); border-radius:50%;"></div>
                 <div style="display:flex; align-items:center; gap:20px; position:relative; z-index:1;">
                     <div style="width:90px; height:90px; border-radius:32px; background:white; overflow:hidden; border:4px solid rgba(255,255,255,0.3); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                        ${data?.avatar_url ? `<img src="${data.avatar_url}" style="width:100%; height:100%; object-fit:cover;">` : `<i class="fas fa-user-circle" style="font-size:3.5rem; color:var(--primary);"></i>`}
+                        ${profileData?.avatar_url ? `<img src="${profileData.avatar_url}" style="width:100%; height:100%; object-fit:cover;">` : `<i class="fas fa-user-circle" style="font-size:3.5rem; color:var(--primary);"></i>`}
                     </div>
                     <div style="flex:1;">
                         <div style="display:flex; align-items:center; gap:8px;">
-                            <h2 style="font-weight:900; font-size:1.5rem; text-transform: capitalize;">${data?.first_name || 'foydalanuvchi'}</h2>
+                            <h2 style="font-weight:900; font-size:1.5rem; text-transform: capitalize;">${profileData?.first_name || 'Mijoz'}</h2>
                             <i class="fas fa-edit" onclick="openProfileEdit()" style="font-size:0.9rem; opacity:0.7; cursor:pointer;"></i>
                         </div>
                         <div style="font-size:0.75rem; font-weight:700; opacity:0.85; margin-top:2px;">${user.email}</div>
                         <div style="display:inline-block; margin-top:10px; padding:4px 12px; background:rgba(255,255,255,0.2); border-radius:10px; font-size:0.65rem; font-weight:900; text-transform:uppercase; letter-spacing:0.5px;">
-                            ${data?.role === 'admin' ? '💎 Administrator' : (data?.role === 'courier' ? '🛵 Rasmiy Kuryer' : '👤 Mijoz')}
+                            ${profileData?.role === 'admin' ? '💎 Administrator' : (profileData?.role === 'courier' ? '🛵 Rasmiy Kuryer' : '👤 Mijoz')}
                         </div>
                     </div>
                 </div>
@@ -63,7 +71,7 @@ export async function renderProfileView(data: any) {
                     <div style="width:42px; height:42px; border-radius:14px; background:#f0fdf4; color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.1rem;"><i class="fas fa-wallet"></i></div>
                     <div style="flex:1;">
                         <div style="font-weight:800; font-size:0.95rem;">Mening hamyonim</div>
-                        <div style="font-size:0.7rem; color:var(--primary); font-weight:900; margin-top:2px;">${(data?.balance || 0).toLocaleString()} UZS</div>
+                        <div style="font-size:0.7rem; color:var(--primary); font-weight:900; margin-top:2px;">${(profileData?.balance || 0).toLocaleString()} UZS</div>
                     </div>
                     <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
                 </div>
@@ -117,9 +125,10 @@ export async function renderProfileView(data: any) {
 
 (window as any).generateBotLink = async () => {
     try {
+        const { profile: currentProfile } = await import("./index.tsx");
         showToast("Havola yaratilmoqda...");
         const linkToken = Math.random().toString(36).substring(2, 15);
-        await supabase.from('profiles').update({ link_token: linkToken }).eq('id', profile.id);
+        await supabase.from('profiles').update({ link_token: linkToken }).eq('id', currentProfile.id);
         const { data: botConfig } = await supabase.from('bot_configs').select('username').eq('is_active', true).maybeSingle();
         const username = botConfig?.username || "elaz_market_bot";
         window.location.href = `https://t.me/${username}?start=${linkToken}`;
@@ -128,7 +137,6 @@ export async function renderProfileView(data: any) {
     }
 };
 
-// Fix: Replaced CommonJS 'require' with ESM dynamic 'import()' to fix 'require is not defined' error in Vite.
 (window as any).openProfileEdit = async () => {
     const { openProfileEdit } = await import("./profileEdit.tsx");
     openProfileEdit();
