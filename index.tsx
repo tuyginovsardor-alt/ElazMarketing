@@ -6,11 +6,6 @@ import { renderHomeView } from "./home.tsx";
 import { renderCartView } from "./cart.tsx";
 import { renderOrdersView } from "./ordersView.tsx";
 import { renderSavedView } from "./savedView.tsx";
-import { renderWelcomeView } from "./welcome.tsx";
-
-// Global modullarni import qilish
-import "./legal.tsx";
-import "./security.tsx";
 
 const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY = (import.meta as any).env?.VITE_SUPABASE_KEY || "";
@@ -19,6 +14,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 export let user: any = null;
 export let profile: any = null;
 
+// --- GLOBAL UTILS ---
 export function showToast(msg: string) {
     const t = document.getElementById('toast');
     if(t) {
@@ -44,6 +40,7 @@ export function closeOverlay(id: string) {
 }
 (window as any).closeOverlay = closeOverlay;
 
+// --- PROFILE LOADING ---
 export async function loadProfileData() {
     try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -51,32 +48,28 @@ export async function loadProfileData() {
         user = session.user;
 
         let { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
-        
         if (!data) {
             const newProfile = { 
-                id: user.id, 
-                email: user.email, 
+                id: user.id, email: user.email, 
                 first_name: user.user_metadata?.full_name || user.email?.split('@')[0],
-                role: 'user', 
-                balance: 0
+                role: 'user', balance: 0
             };
             const { data: inserted } = await supabase.from('profiles').insert([newProfile]).select().single();
             data = inserted;
         }
-        
         profile = data;
         
+        // Navigatsiyadagi profil rasmi
         const navIconContainer = document.getElementById('navProfileIconContainer');
         if (navIconContainer) {
             navIconContainer.innerHTML = profile?.avatar_url ? `<img src="${profile.avatar_url}" class="nav-profile-img">` : `<i class="far fa-user-circle" style="font-size: 1.6rem;"></i>`;
         }
-        
         return profile;
-    } catch (e) { 
-        return null;
-    }
+    } catch (e) { return null; }
 }
+(window as any).loadProfileData = loadProfileData;
 
+// --- NAVIGATION ---
 export const navTo = async (view: string) => {
     if (view === 'profile') await loadProfileData();
 
@@ -115,6 +108,7 @@ export function showView(viewId: string) {
 }
 (window as any).showView = showView;
 
+// --- INITIALIZATION ---
 export async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
@@ -128,7 +122,7 @@ export async function checkAuth() {
 }
 window.onload = checkAuth;
 
-// --- GLOBAL ATTACHMENTS (INDEXING) ---
+// --- ALL GLOBAL ATTACHMENTS (INDEXING) ---
 
 (window as any).enterAdminPanel = async () => {
     const { switchAdminTab } = await import("./admin.tsx");
@@ -169,7 +163,15 @@ window.onload = checkAuth;
     openProfileEdit();
 };
 
-export const addToCart = async (productId: number, qty: number = 1) => {
+(window as any).handleSignOut = async () => {
+    if(confirm("Tizimdan chiqmoqchimisiz?")) {
+        await supabase.auth.signOut();
+        window.location.reload();
+    }
+};
+
+// --- CART & FAVORITES (FIXED: EXPORTED) ---
+export async function addToCart(productId: number, qty: number = 1) {
     if(!user) return showToast("Tizimga kiring");
     try {
         const { data: existing } = await supabase.from('cart_items').select('*').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
@@ -177,18 +179,18 @@ export const addToCart = async (productId: number, qty: number = 1) => {
         else await supabase.from('cart_items').insert([{ user_id: user.id, product_id: productId, quantity: qty }]);
         showToast("Savatga qo'shildi! 🛒");
     } catch (e) { showToast("Xatolik!"); }
-};
+}
 (window as any).addToCart = addToCart;
 
-export const toggleFavorite = async (productId: number) => {
+export async function toggleFavorite(productId: number) {
     if(!user) return showToast("Tizimga kiring");
     const { data: existing } = await supabase.from('favorites').select('id').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
     if(existing) {
         await supabase.from('favorites').delete().eq('id', existing.id);
-        showToast("Sevimli ro'yxatidan o'chirildi");
+        showToast("O'chirildi");
     } else {
         await supabase.from('favorites').insert({ user_id: user.id, product_id: productId });
-        showToast("Sevimli ro'yxatiga qo'shildi ❤️");
+        showToast("Saqlandi ❤️");
     }
-};
+}
 (window as any).toggleFavorite = toggleFavorite;
