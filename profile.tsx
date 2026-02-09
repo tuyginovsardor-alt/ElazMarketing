@@ -3,12 +3,10 @@ import { profile, user, openOverlay, showToast, supabase, loadProfileData, navTo
 
 export async function renderProfileView(data: any) {
     const container = document.getElementById('profileView');
-    // Agar profile null kelsa, qayta yuklashga harakat qilamiz
     if(!container || !user) return;
     
     let profileData = data;
     if (!profileData) {
-        // Agar data null bo'lsa, index.tsx dagi profile'ni olamiz
         const { profile: globalProfile } = await import("./index.tsx");
         profileData = globalProfile;
     }
@@ -109,13 +107,6 @@ export async function renderProfileView(data: any) {
                 </div>
             </div>
 
-            <!-- OTHER LINKS -->
-            <div style="display:flex; gap:10px; margin-bottom:25px; padding:0 5px;">
-                <div onclick="window.openLegal('offer')" style="flex:1; background:white; padding:15px; border-radius:20px; text-align:center; font-size:0.65rem; font-weight:800; color:var(--gray); border:1px solid #f1f5f9;">OFERTA</div>
-                <div onclick="window.openLegal('privacy')" style="flex:1; background:white; padding:15px; border-radius:20px; text-align:center; font-size:0.65rem; font-weight:800; color:var(--gray); border:1px solid #f1f5f9;">MAXFIYLIK</div>
-                <div onclick="window.openLegal('rules')" style="flex:1; background:white; padding:15px; border-radius:20px; text-align:center; font-size:0.65rem; font-weight:800; color:var(--gray); border:1px solid #f1f5f9;">QOIDALAR</div>
-            </div>
-
             <button class="btn" style="width:100%; color:var(--danger); border:2.5px solid #fee2e2; height:65px; border-radius:28px; font-weight:900; background:white; box-shadow: 0 10px 20px rgba(239,68,68,0.05);" onclick="handleSignOut()">
                 <i class="fas fa-power-off"></i> TIZIMDAN CHIQISH
             </button>
@@ -129,8 +120,11 @@ export async function renderProfileView(data: any) {
         showToast("Havola yaratilmoqda...");
         const linkToken = Math.random().toString(36).substring(2, 15);
         await supabase.from('profiles').update({ link_token: linkToken }).eq('id', currentProfile.id);
+        
+        // BOT_CONFIG JADVALIDAN USERNAME-NI OLISH
         const { data: botConfig } = await supabase.from('bot_configs').select('username').eq('is_active', true).maybeSingle();
-        const username = botConfig?.username || "elaz_market_bot";
+        const username = botConfig?.username || "my_test_marketbot";
+        
         window.location.href = `https://t.me/${username}?start=${linkToken}`;
     } catch (e) {
         showToast("Xatolik!");

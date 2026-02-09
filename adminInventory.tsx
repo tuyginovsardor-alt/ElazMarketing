@@ -9,8 +9,6 @@ const CATEGORIES = [
 ];
 
 let selectedIds: number[] = [];
-let tempGallery: string[] = [];
-let tempMainImg: string = "";
 
 export async function renderAdminInventory() {
     const container = document.getElementById('adminTabContent');
@@ -85,7 +83,6 @@ async function loadAdminProducts(searchTerm = '') {
     const id = parseInt(cb.value);
     if(cb.checked) selectedIds.push(id);
     else selectedIds = selectedIds.filter(i => i !== id);
-    
     updateBulkUI();
 };
 
@@ -111,7 +108,7 @@ function updateBulkUI() {
 (window as any).bulkDeleteProducts = async () => {
     if(!confirm(`Tanlangan ${selectedIds.length} ta mahsulotni o'chirmoqchimisiz?`)) return;
     const { error } = await supabase.from('products').update({ is_archived: true }).in('id', selectedIds);
-    if(!error) { showToast("Muvaffaqiyatli o'chirildi! 🗑️"); renderAdminInventory(); }
+    if(!error) { showToast("O'chirildi! 🗑️"); renderAdminInventory(); }
 };
 
 (window as any).searchSklad = (val: string) => loadAdminProducts(val);
@@ -121,17 +118,18 @@ function updateBulkUI() {
     const placeholder = document.getElementById('checkoutPlaceholder');
     if(!placeholder) return;
 
-    let p: any = { name: '', price: '', category: 'grocery', unit: 'dona', stock_qty: 10, image_url: '', images: [], description: '' };
+    let p: any = { name: '', price: '', category: 'grocery', unit: 'dona', image_url: '', description: '' };
     if(id) {
         const { data } = await supabase.from('products').select('*').eq('id', id).single();
         if(data) p = data;
     }
-    tempMainImg = p.image_url;
-    tempGallery = p.images || [];
 
     placeholder.innerHTML = `
         <div style="padding-bottom:100px;">
-            <h2 style="font-weight:900; margin-bottom:20px;">${id ? 'Tahrirlash' : 'Yangi mahsulot'}</h2>
+            <div style="display:flex; align-items:center; gap:15px; margin-bottom:20px;">
+                <i class="fas fa-chevron-left" onclick="closeOverlay('checkoutOverlay')" style="cursor:pointer; font-size:1.2rem;"></i>
+                <h2 style="font-weight:900;">${id ? 'Tahrirlash' : 'Yangi mahsulot'}</h2>
+            </div>
             <div class="card">
                 <input type="text" id="p_name" value="${p.name}" placeholder="Nomi">
                 <input type="number" id="p_price" value="${p.price}" placeholder="Narxi">
@@ -140,10 +138,7 @@ function updateBulkUI() {
                 </select>
                 <input type="text" id="p_unit" value="${p.unit}" placeholder="O'lchov (kg, dona)">
                 <textarea id="p_desc" placeholder="Tavsif" style="height:100px;">${p.description || ''}</textarea>
-                
-                <p style="font-size:0.7rem; font-weight:800; color:var(--gray); margin-bottom:10px;">ASOSIY RASM URL</p>
-                <input type="text" id="p_img" value="${p.image_url}" placeholder="https://..." onchange="tempMainImg=this.value">
-                
+                <input type="text" id="p_img" value="${p.image_url}" placeholder="Rasm URL">
                 <button class="btn btn-primary" style="width:100%; margin-top:20px;" onclick="saveAdminProduct(${id || 'null'})">SAQLASH</button>
             </div>
         </div>
