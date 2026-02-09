@@ -1,16 +1,10 @@
 
-import { profile, user, openOverlay, showToast, supabase, loadProfileData, navTo } from "./index.tsx";
+import { user, showToast, supabase, navTo } from "./index.tsx";
 
-export async function renderProfileView(data: any) {
+export async function renderProfileView(profileData: any) {
     const container = document.getElementById('profileView');
     if(!container || !user) return;
     
-    let profileData = data;
-    if (!profileData) {
-        const { profile: globalProfile } = await import("./index.tsx");
-        profileData = globalProfile;
-    }
-
     const isAdmin = profileData?.role === 'admin' || profileData?.role === 'staff';
     const isCourier = profileData?.role === 'courier';
     const isLinked = !!profileData?.telegram_id;
@@ -27,7 +21,7 @@ export async function renderProfileView(data: any) {
                     <div style="flex:1;">
                         <div style="display:flex; align-items:center; gap:8px;">
                             <h2 style="font-weight:900; font-size:1.5rem; text-transform: capitalize;">${profileData?.first_name || 'Mijoz'}</h2>
-                            <i class="fas fa-edit" onclick="openProfileEdit()" style="font-size:0.9rem; opacity:0.7; cursor:pointer;"></i>
+                            <i class="fas fa-edit" onclick="window.openProfileEdit()" style="font-size:0.9rem; opacity:0.7; cursor:pointer;"></i>
                         </div>
                         <div style="font-size:0.75rem; font-weight:700; opacity:0.85; margin-top:2px;">${user.email}</div>
                         <div style="display:inline-block; margin-top:10px; padding:4px 12px; background:rgba(255,255,255,0.2); border-radius:10px; font-size:0.65rem; font-weight:900; text-transform:uppercase; letter-spacing:0.5px;">
@@ -39,7 +33,7 @@ export async function renderProfileView(data: any) {
 
             <!-- BOTGA ULASH (SMART CONNECT) -->
             ${!isLinked ? `
-                <div onclick="generateBotLink()" class="card" style="background:#eff6ff; border:1.5px solid #dbeafe; padding:20px; border-radius:30px; margin-bottom:25px; display:flex; align-items:center; gap:20px; cursor:pointer; transform: scale(1); transition: 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                <div onclick="window.generateBotLink()" class="card" style="background:#eff6ff; border:1.5px solid #dbeafe; padding:20px; border-radius:30px; margin-bottom:25px; display:flex; align-items:center; gap:20px; cursor:pointer;">
                     <div style="width:55px; height:55px; border-radius:20px; background:white; color:#3b82f6; display:flex; align-items:center; justify-content:center; font-size:1.6rem; box-shadow:0 8px 20px rgba(59,130,246,0.15);"><i class="fab fa-telegram"></i></div>
                     <div style="flex:1;">
                         <div style="font-weight:900; font-size:1rem; color:#1e40af;">Telegram botni ulash</div>
@@ -50,7 +44,7 @@ export async function renderProfileView(data: any) {
             ` : `
                 <div class="card" style="background:#f0fdf4; border:1.5px solid #dcfce7; padding:15px; border-radius:25px; margin-bottom:25px; text-align:center; display:flex; align-items:center; justify-content:center; gap:10px;">
                     <i class="fas fa-check-circle" style="color:#16a34a;"></i>
-                    <div style="color:#16a34a; font-weight:900; font-size:0.75rem; letter-spacing:0.5px;">BOT MUVAFFAQIYATLI ULANGAN</div>
+                    <div style="color:#16a34a; font-weight:900; font-size:0.75rem;">BOT MUVAFFAQIYATLI ULANGAN</div>
                 </div>
             `}
 
@@ -58,10 +52,10 @@ export async function renderProfileView(data: any) {
             <div class="card" style="padding:10px; border-radius:35px; border:1.5px solid #f1f5f9; background:white; margin-bottom:25px; box-shadow:var(--shadow-sm);">
                 
                 ${isAdmin ? `
-                    <div onclick="enterAdminPanel()" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                    <div onclick="window.enterAdminPanel()" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
                         <div style="width:42px; height:42px; border-radius:14px; background:#1e293b; color:white; display:flex; align-items:center; justify-content:center; font-size:1.1rem;"><i class="fas fa-shield-halved"></i></div>
                         <span style="flex:1; font-weight:800; font-size:0.95rem; color:#1e293b;">Boshqaruv Paneli (Admin)</span>
-                        <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
+                        <i class="fas fa-chevron-right" style="color:#cbd5e1;"></i>
                     </div>
                 ` : ''}
 
@@ -69,15 +63,15 @@ export async function renderProfileView(data: any) {
                     <div style="width:42px; height:42px; border-radius:14px; background:#f0fdf4; color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.1rem;"><i class="fas fa-wallet"></i></div>
                     <div style="flex:1;">
                         <div style="font-weight:800; font-size:0.95rem;">Mening hamyonim</div>
-                        <div style="font-size:0.7rem; color:var(--primary); font-weight:900; margin-top:2px;">${(profileData?.balance || 0).toLocaleString()} UZS</div>
+                        <div style="font-size:0.7rem; color:var(--primary); font-weight:900;">${(profileData?.balance || 0).toLocaleString()} UZS</div>
                     </div>
-                    <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
+                    <i class="fas fa-chevron-right" style="color:#cbd5e1;"></i>
                 </div>
 
-                <div onclick="navTo('orders')" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                <div onclick="window.navTo('orders')" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
                     <div style="width:42px; height:42px; border-radius:14px; background:#f1f5f9; color:#64748b; display:flex; align-items:center; justify-content:center; font-size:1.1rem;"><i class="fas fa-shopping-bag"></i></div>
                     <span style="flex:1; font-weight:800; font-size:0.95rem;">Buyurtmalar tarixi</span>
-                    <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
+                    <i class="fas fa-chevron-right" style="color:#cbd5e1;"></i>
                 </div>
 
                 ${isCourier ? `
@@ -90,24 +84,24 @@ export async function renderProfileView(data: any) {
                     <div onclick="window.openCourierRegistration()" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
                         <div style="width:42px; height:42px; border-radius:14px; background:#fff7ed; color:#f97316; display:flex; align-items:center; justify-content:center; font-size:1.1rem;"><i class="fas fa-truck-fast"></i></div>
                         <span style="flex:1; font-weight:800; font-size:0.95rem;">Kuryer bo'lib ishlash</span>
-                        <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
+                        <i class="fas fa-chevron-right" style="color:#cbd5e1;"></i>
                     </div>
                 `}
 
                 <div onclick="window.openSupportCenter()" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
                     <div style="width:42px; height:42px; border-radius:14px; background:#eff6ff; color:#3b82f6; display:flex; align-items:center; justify-content:center; font-size:1.1rem;"><i class="fas fa-headset"></i></div>
                     <span style="flex:1; font-weight:800; font-size:0.95rem;">Yordam markazi</span>
-                    <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
+                    <i class="fas fa-chevron-right" style="color:#cbd5e1;"></i>
                 </div>
 
                 <div onclick="window.openProfileSecurity()" style="display:flex; align-items:center; gap:15px; padding:18px 20px; cursor:pointer;">
                     <div style="width:42px; height:42px; border-radius:14px; background:#fef2f2; color:#ef4444; display:flex; align-items:center; justify-content:center; font-size:1.1rem;"><i class="fas fa-shield-halved"></i></div>
-                    <span style="flex:1; font-weight:800; font-size:0.95rem;">Xavfsizlik va Maxfiylik</span>
-                    <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
+                    <span style="flex:1; font-weight:800; font-size:0.95rem;">Xavfsizlik sozlamalari</span>
+                    <i class="fas fa-chevron-right" style="color:#cbd5e1;"></i>
                 </div>
             </div>
 
-            <button class="btn" style="width:100%; color:var(--danger); border:2.5px solid #fee2e2; height:65px; border-radius:28px; font-weight:900; background:white; box-shadow: 0 10px 20px rgba(239,68,68,0.05);" onclick="handleSignOut()">
+            <button class="btn" style="width:100%; color:var(--danger); border:2.5px solid #fee2e2; height:65px; border-radius:28px; font-weight:900; background:white;" onclick="window.handleSignOut()">
                 <i class="fas fa-power-off"></i> TIZIMDAN CHIQISH
             </button>
         </div>
@@ -129,11 +123,6 @@ export async function renderProfileView(data: any) {
     } catch (e) {
         showToast("Xatolik!");
     }
-};
-
-(window as any).openProfileEdit = async () => {
-    const { openProfileEdit } = await import("./profileEdit.tsx");
-    openProfileEdit();
 };
 
 (window as any).handleSignOut = async () => {

@@ -50,47 +50,22 @@ export async function loadProfileData() {
         if(!session?.user) return null;
         user = session.user;
 
-        // Profilni olishga harakat qilamiz
         let { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
         
-        if (error) {
-            console.error("Profile fetch error:", error);
-            // Agar RLS xatosi bo'lsa, sessiyani yangilashga urinib ko'ramiz
-            if (error.code === 'PGRST116') {
-                console.warn("Profile not found, creating new one...");
-            } else {
-                return null;
-            }
-        }
-
-        // Agar profil yo'q bo'lsa, yangi yaratamiz
         if (!data) {
             const newProfile = { 
                 id: user.id, 
                 email: user.email, 
-                first_name: user.user_metadata?.full_name || user.user_metadata?.first_name || user.email?.split('@')[0],
+                first_name: user.user_metadata?.full_name || user.email?.split('@')[0],
                 role: 'user', 
                 balance: 0
             };
-            
-            const { data: inserted, error: insError } = await supabase
-                .from('profiles')
-                .insert([newProfile])
-                .select()
-                .single();
-            
-            if (insError) {
-                console.error("Profile insert error:", insError);
-                // Agar insert xatosi bo'lsa, xatolikni ko'rsatamiz
-                showToast("Profilni yaratib bo'lmadi. Sahifani yangilang.");
-                return null;
-            }
+            const { data: inserted } = await supabase.from('profiles').insert([newProfile]).select().single();
             data = inserted;
         }
         
         profile = data;
         
-        // Navigatsiya ikonkasini yangilash
         const navIconContainer = document.getElementById('navProfileIconContainer');
         if (navIconContainer) {
             navIconContainer.innerHTML = profile?.avatar_url ? `<img src="${profile.avatar_url}" class="nav-profile-img">` : `<i class="far fa-user-circle" style="font-size: 1.6rem;"></i>`;
@@ -98,16 +73,12 @@ export async function loadProfileData() {
         
         return profile;
     } catch (e) { 
-        console.error("Global Profile Load Error:", e);
         return null;
     }
 }
 
 export const navTo = async (view: string) => {
-    // Har safar navigatsiya bo'lganda profilni yangilab olish xavfsizroq
-    if (view === 'profile') {
-        await loadProfileData();
-    }
+    if (view === 'profile') await loadProfileData();
 
     showView(view);
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -148,14 +119,8 @@ export async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
         user = session.user;
-        const prof = await loadProfileData();
-        if (prof) {
-            navTo('home');
-        } else {
-            // Agar profilni o'qib bo'lmasa, authga qaytaramiz yoki xato beramiz
-            showView('auth');
-            renderAuthView('login');
-        }
+        await loadProfileData();
+        navTo('home');
     } else {
         showView('auth');
         renderAuthView('login');
@@ -163,7 +128,7 @@ export async function checkAuth() {
 }
 window.onload = checkAuth;
 
-// --- GLOBAL NAV ACTIONS ---
+// --- GLOBAL ATTACHMENTS (INDEXING) ---
 
 (window as any).enterAdminPanel = async () => {
     const { switchAdminTab } = await import("./admin.tsx");
@@ -180,7 +145,6 @@ window.onload = checkAuth;
 };
 
 (window as any).openCourierDashboard = async () => {
-    navTo('orders');
     const { renderCourierDashboard } = await import("./courierDashboard.tsx");
     renderCourierDashboard();
 };
@@ -198,6 +162,11 @@ window.onload = checkAuth;
 (window as any).openProfileSecurity = async () => {
     const { openProfileSecurity } = await import("./security.tsx");
     openProfileSecurity();
+};
+
+(window as any).openProfileEdit = async () => {
+    const { openProfileEdit } = await import("./profileEdit.tsx");
+    openProfileEdit();
 };
 
 export const addToCart = async (productId: number, qty: number = 1) => {
