@@ -18,7 +18,7 @@ export async function renderHomeView() {
     if(!container) return;
 
     container.innerHTML = `
-        <div style="display:flex; flex-direction:column; gap:20px; padding-bottom:100px; animation: fadeIn 0.4s ease-out;">
+        <div style="display:flex; flex-direction:column; gap:20px; padding-bottom:120px; animation: fadeIn 0.4s ease-out;">
             <div style="position: sticky; top: -1px; background: white; z-index: 100; padding: 10px 0; display:flex; flex-direction:column; gap:15px;">
                 <div style="display:flex; gap:10px; align-items:center;">
                     <div style="flex:1; position: relative;">
@@ -72,7 +72,13 @@ async function loadProducts() {
     if(activeSort === 'newest') query = query.order('created_at', { ascending: false });
     else query = query.order('price', { ascending: true });
 
-    const { data: prods } = await query;
+    let { data: prods } = await query;
+    
+    // BARCHASI TANLANGANDA ARALASHTIRIB KO'RSATISH
+    if(activeCategory === 'all' && prods) {
+        prods = prods.sort(() => Math.random() - 0.5);
+    }
+
     const { data: favs } = user ? await supabase.from('favorites').select('product_id').eq('user_id', user.id) : { data: [] };
     const favIds = favs?.map(f => f.product_id) || [];
     

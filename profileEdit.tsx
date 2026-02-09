@@ -8,7 +8,7 @@ export const BAGDOD_MAHALLALARI = [
 ];
 
 export const openProfileEdit = () => {
-    if(!profile) return showToast("Profil ma'lumotlari mavjud emas");
+    if(!profile) return showToast("Profil ma'lumotlari yuklanmoqda...");
     const placeholder = document.getElementById('profileEditPlaceholder');
     if(!placeholder) return;
     
@@ -25,7 +25,7 @@ export const openProfileEdit = () => {
             <div style="text-align:center; margin-bottom:30px;">
                 <div style="position:relative; width:120px; height:120px; margin:0 auto;">
                     <div style="width:120px; height:120px; border-radius:40px; background:#f8fafc; overflow:hidden; border:4px solid white; box-shadow:var(--shadow-lg); display:flex; align-items:center; justify-content:center;">
-                        <img id="editAvatarPreview" src="${profile.avatar_url || 'https://via.placeholder.com/150'}" style="width:100%; height:100%; object-fit:cover;">
+                        <img id="editAvatarPreview" src="${profile.avatar_url || 'https://via.placeholder.com/150?text=Avatar'}" style="width:100%; height:100%; object-fit:cover;">
                         <div id="avatarLoading" style="display:none; position:absolute; inset:0; background:rgba(255,255,255,0.7); align-items:center; justify-content:center; border-radius:40px;">
                             <i class="fas fa-sync fa-spin" style="color:var(--primary); font-size:1.5rem;"></i>
                         </div>
@@ -35,34 +35,33 @@ export const openProfileEdit = () => {
                     </label>
                     <input type="file" id="avatarInput" accept="image/*" style="display:none;" onchange="handleAvatarUpload(this)">
                 </div>
-                <p style="font-size:0.7rem; font-weight:800; color:var(--gray); margin-top:15px; text-transform:uppercase;">Suratni o'zgartirish</p>
             </div>
 
             <div class="card" style="border-radius: 35px; padding: 25px; border:1.5px solid #f1f5f9; background:white;">
                 <div style="margin-bottom:20px;">
                     <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Ismingiz</label>
-                    <input type="text" id="editFName" value="${profile.first_name || ''}" placeholder="Masalan: Azizbek" style="height:62px; font-weight:700; font-size:1rem; border-radius:18px;">
+                    <input type="text" id="editFName" value="${profile.first_name || ''}" placeholder="Ism" style="height:62px; font-weight:700;">
                 </div>
 
                 <div style="margin-bottom:20px;">
                     <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Familiyangiz</label>
-                    <input type="text" id="editLName" value="${profile.last_name || ''}" placeholder="Masalan: To'rayev" style="height:62px; font-weight:700; font-size:1rem; border-radius:18px;">
+                    <input type="text" id="editLName" value="${profile.last_name || ''}" placeholder="Familiya" style="height:62px; font-weight:700;">
                 </div>
                 
                 <div style="margin-bottom:20px;">
                     <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Telefon raqami</label>
-                    <input type="tel" id="editPhone" value="${profile.phone || ''}" placeholder="+998 90 123 45 67" style="height:62px; font-weight:700; font-size:1rem; border-radius:18px;">
+                    <input type="tel" id="editPhone" value="${profile.phone || ''}" placeholder="+998" style="height:62px; font-weight:700;">
                 </div>
 
                 <div style="margin-bottom:30px;">
-                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Hududni tanlang</label>
-                    <select id="editMahalla" style="height:62px; font-weight:700; font-size:1rem; border-radius:18px;">
+                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; display:block; margin-bottom:8px;">Hudud</label>
+                    <select id="editMahalla" style="height:62px; font-weight:700;">
                         <option value="">Tanlang...</option>
-                        ${BAGDOD_MAHALLALARI.map(m => `<option value="${m}" ${currentMahalla.includes(m) ? 'selected' : ''}>${m}</option>`).join('')}
+                        ${BAGDOD_MAHALLALARI.map(m => `<option value="${m}" ${currentMahalla === m ? 'selected' : ''}>${m}</option>`).join('')}
                     </select>
                 </div>
 
-                <button class="btn btn-primary" id="btnSaveProfile" style="width: 100%; height:65px; font-size:1.1rem; border-radius:24px;" onclick="saveProfileChanges()">
+                <button class="btn btn-primary" id="btnSaveProfile" style="width: 100%; height:65px; border-radius:24px;" onclick="saveProfileChanges()">
                     SAQLASH <i class="fas fa-check-circle" style="margin-left:8px;"></i>
                 </button>
             </div>
@@ -73,7 +72,7 @@ export const openProfileEdit = () => {
 
 (window as any).handleAvatarUpload = async (input: HTMLInputElement) => {
     const file = input.files?.[0];
-    if(!file) return;
+    if(!file || !profile) return;
 
     if(file.size > 2 * 1024 * 1024) return showToast("Rasm hajmi 2MB dan kichik bo'lishi kerak");
 
@@ -82,11 +81,13 @@ export const openProfileEdit = () => {
 
     try {
         const fileExt = file.name.split('.').pop();
-        const fileName = `${profile.id}-${Math.random()}.${fileExt}`;
+        const fileName = `${profile.id}/${Date.now()}.${fileExt}`;
         const filePath = `avatars/${fileName}`;
 
-        // Supabase Storage-ga yuklash (Bucket nomi 'products' yoki 'avatars' bo'lishi kerak)
-        const { error: uploadError } = await supabase.storage.from('products').upload(filePath, file);
+        // Supabase-da 'products' bucket ishlatilyapti
+        const { error: uploadError } = await supabase.storage.from('products').upload(filePath, file, {
+            upsert: true
+        });
 
         if (uploadError) throw uploadError;
 
@@ -95,12 +96,12 @@ export const openProfileEdit = () => {
         const preview = document.getElementById('editAvatarPreview') as HTMLImageElement;
         if(preview) preview.src = publicUrl;
         
-        // Keyinchalik saqlash uchun profile ob'ektiga vaqtinchalik yozib qo'yamiz
         (window as any).tempAvatarUrl = publicUrl;
-        showToast("Rasm yuklandi! 📸");
+        showToast("Rasm tayyor! Saqlash tugmasini bosing.");
 
     } catch (e: any) {
-        showToast("Yuklashda xato: " + e.message);
+        console.error("Upload Error:", e);
+        showToast("Rasm yuklashda xato! (RLS bo'lishi mumkin)");
     } finally {
         if(loading) loading.style.display = 'none';
     }
@@ -130,16 +131,18 @@ export const openProfileEdit = () => {
             district: fullDistrict 
         }).eq('id', profile.id);
         
-        if(!error) {
-            showToast("Ma'lumotlar yangilandi! ✨");
-            await loadProfileData();
-            closeOverlay('profileEditOverlay');
-            const { renderProfileView } = await import("./profile.tsx");
-            renderProfileView(profile);
-        } else throw error;
+        if(error) throw error;
+
+        showToast("Ma'lumotlar saqlandi! ✨");
+        await loadProfileData();
+        closeOverlay('profileEditOverlay');
+        const { renderProfileView } = await import("./profile.tsx");
+        renderProfileView(profile);
     } catch (e: any) {
-        showToast("Xatolik: " + e.message);
+        console.error("Update Profile Error:", e);
+        showToast("Saqlashda xato: " + e.message);
+    } finally {
         btn.disabled = false;
-        btn.innerText = "QAYTA URINISH";
+        btn.innerText = "SAQLASH";
     }
 };
