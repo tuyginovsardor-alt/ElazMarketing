@@ -20,14 +20,14 @@ export async function switchAdminTab(tab: string) {
                 </button>
             </header>
             
-            <!-- ADMIN TABS -->
+            <!-- ADMIN TABS (YANGILANDI: MIJOZLAR QO'SHILDI) -->
             <nav style="display:flex; background:white; border-bottom:1px solid #e2e8f0; overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none; padding: 0 10px;">
                 <div class="admin-tab" onclick="window.switchAdminTab('dash')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'dash' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'dash' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">ANALITIKA</div>
+                <div class="admin-tab" onclick="window.switchAdminTab('users')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'users' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'users' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">MIJOZLAR</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('inv')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'inv' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'inv' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">SKLAD</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('orders')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'orders' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'orders' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">BUYURTMALAR</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('couriers')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'couriers' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'couriers' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">KURYERLAR</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('ads')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'ads' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'ads' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">MARKETING</div>
-                <div class="admin-tab" onclick="window.switchAdminTab('bot')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'bot' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'bot' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">BOT TIZIMI</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('fin')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'fin' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'fin' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">MOLIYA</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('settings')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'settings' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'settings' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;"><i class="fas fa-cog"></i></div>
             </nav>
@@ -54,6 +54,9 @@ async function renderTabContent(tab: string) {
         if(tab === 'dash') {
             const { renderAdminDashboard } = await import("./adminDashboard.tsx");
             renderAdminDashboard();
+        } else if(tab === 'users') {
+            const { renderAdminUsers } = await import("./adminUsers.tsx");
+            renderAdminUsers();
         } else if(tab === 'inv') {
             const { renderAdminInventory } = await import("./adminInventory.tsx");
             renderAdminInventory();

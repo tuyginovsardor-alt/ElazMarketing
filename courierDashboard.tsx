@@ -14,7 +14,7 @@ export async function renderCourierDashboard() {
     container.innerHTML = `
         <div style="padding-bottom:120px; animation: fadeIn 0.4s ease-out;">
             <!-- STATUS HEADER -->
-            <div style="background:white; padding:20px; border-radius:30px; border:1.5|px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; box-shadow:var(--shadow-sm);">
+            <div style="background:white; padding:20px; border-radius:30px; border:1.5px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; box-shadow:var(--shadow-sm);">
                 <div>
                     <h2 style="font-weight:900; font-size:1.3rem;">Kuryer Terminali</h2>
                     <div style="display:flex; align-items:center; gap:8px; margin-top:5px;">
@@ -50,6 +50,7 @@ function startGeoTracking() {
     if (!navigator.geolocation) return;
     if (watchId) navigator.geolocation.clearWatch(watchId);
 
+    // Kuryerning joylashuvini real vaqtda kuzatish
     watchId = navigator.geolocation.watchPosition(
         async (pos) => {
             const { latitude, longitude } = pos.coords;
@@ -60,9 +61,8 @@ function startGeoTracking() {
             }).eq('id', user.id);
             console.log("Location synced:", latitude, longitude);
         },
-        (err) => console.error(err),
-        // Fix: removed 'distanceFilter' as it is not a valid property for PositionOptions in the standard Web API
-        { enableHighAccuracy: true }
+        (err) => console.error("GPS Error:", err),
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
     );
 }
 
@@ -148,7 +148,7 @@ function renderOrderCard(o: any, type: 'available' | 'active') {
                 </div>
             </div>
 
-            <div style="background:#f8fafc; padding:15px; border-radius:22px; border:1.5px solid #f1f5f9; margin-bottom:15px;">
+            <div style="background:#f8fafc; padding:15px; border-radius:22px; border:1px solid #f1f5f9; margin-bottom:15px;">
                 <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
                     <div style="width:36px; height:36px; border-radius:10px; background:white; display:flex; align-items:center; justify-content:center; color:var(--primary);"><i class="fas fa-user"></i></div>
                     <div style="flex:1;">
@@ -181,10 +181,14 @@ function renderOrderCard(o: any, type: 'available' | 'active') {
         const { error } = await supabase.from('orders').update({ courier_id: user.id, status: 'delivering' }).eq('id', oid).is('courier_id', null);
         if(error) throw error;
 
-        // Kuryer holatini band qilish
+        // Kuryer holatini BAND qilish va statusni oflayn qilish
         await supabase.from('profiles').update({ is_busy: true, active_status: false }).eq('id', user.id);
         
-        await supabase.from('courier_logs').insert({ courier_id: user.id, order_id: oid, action_text: "Yangi buyurtmani qabul qildi" });
+        await supabase.from('courier_logs').insert({ 
+            courier_id: user.id, 
+            order_id: parseInt(oid), 
+            action_text: "Yangi buyurtmani qabul qildi" 
+        });
         
         showToast("Buyurtma qabul qilindi! Holatingiz 'BAND'ga o'zgardi. 🛵");
         renderCourierDashboard();
@@ -201,14 +205,19 @@ function renderOrderCard(o: any, type: 'available' | 'active') {
         const { data: p } = await supabase.from('profiles').select('balance').eq('id', user.id).single();
 
         await supabase.from('orders').update({ status: 'delivered' }).eq('id', oid);
-        // Kuryerni yana bo'shatish va onlayn qilish
+        
+        // Kuryerni yana BO'SHATISH va ONLAYN qilish
         await supabase.from('profiles').update({ 
             balance: (p.balance || 0) + order.delivery_cost,
             is_busy: false,
             active_status: true
         }).eq('id', user.id);
         
-        await supabase.from('courier_logs').insert({ courier_id: user.id, order_id: oid, action_text: "Buyurtmani muvaffaqiyatli yetkazdi ✅" });
+        await supabase.from('courier_logs').insert({ 
+            courier_id: user.id, 
+            order_id: parseInt(oid), 
+            action_text: "Buyurtmani muvaffaqiyatli yetkazdi ✅" 
+        });
 
         showToast("Baraka toping! Siz yana onlaynsiz. 💰");
         renderCourierDashboard();

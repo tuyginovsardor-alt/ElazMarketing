@@ -107,12 +107,12 @@ export async function renderOrdersView() {
         <style>
             .pulse-icon { animation: pulse 1.5s infinite; }
             @keyframes pulse { 0% { transform: scale(0.9); opacity: 0.7; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.7; } }
+            /* Silliq animatsiya uchun transition */
             .smooth-marker { transition: transform 0.5s linear !important; }
         </style>
     `;
 
     setTimeout(async () => {
-        // Fix: accessing Leaflet via window to resolve "Cannot find name 'L'" error
         const L = (window as any).L;
         if (!L) return;
 
@@ -127,7 +127,7 @@ export async function renderOrdersView() {
             }) 
         }).addTo(trackingMap).bindPopup("Sizning manzilingiz");
 
-        // Kuryer uchun initial marker
+        // Kuryer uchun dastlabki joylashuv
         const { data: cData } = await supabase.from('profiles').select('live_lat, live_lng').eq('id', courierId).single();
         
         const courierIcon = L.divIcon({ 
@@ -142,7 +142,7 @@ export async function renderOrdersView() {
             trackingMap.panTo([cData.live_lat, cData.live_lng]);
         }
 
-        // REALTIME SUBSCRIPTION
+        // REALTIME SUBSCRIPTION (JONLI KUZATISH)
         trackingSubscription = supabase
             .channel(`courier_${courierId}`)
             .on('postgres_changes', { 
@@ -153,11 +153,11 @@ export async function renderOrdersView() {
             }, (payload) => {
                 const { live_lat, live_lng } = payload.new;
                 if (live_lat && live_lng && courierMarker) {
-                    // Silliq harakatlanish uchun markerni yangilash
+                    // Silliq harakatlanish (144 FPS effekti CSS orqali)
                     courierMarker.setLatLng([live_lat, live_lng]);
                     trackingMap.panTo([live_lat, live_lng]);
                     const info = document.getElementById('trackingInfo');
-                    if(info) info.innerHTML = `<span style="font-weight:800; color:var(--primary);">Kuryer harakatlanmoqda (Jonli) ✅</span>`;
+                    if(info) info.innerHTML = `<span style="font-weight:800; color:var(--primary);"><i class="fas fa-motorcycle"></i> Kuryer harakatlanmoqda (Jonli) ✅</span>`;
                 }
             })
             .subscribe();
