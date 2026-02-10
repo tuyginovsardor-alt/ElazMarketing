@@ -92,13 +92,28 @@ async function loadTerminalData() {
             const customer = (o as any).profiles;
             const fullName = customer ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() : "Mijoz";
             const isBusy = courierProfile?.is_busy;
+            
+            // Vaqtni chiroyli formatlash
+            const orderDate = new Date(o.created_at);
+            const timeStr = orderDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateStr = orderDate.toLocaleDateString();
+
+            // Mahsulotlarni ro'yxat ko'rinishida chiqarish
+            const itemsList = o.items ? o.items.split('|').map(item => `
+                <div style="display:flex; align-items:center; gap:8px; padding:6px 12px; background:white; border-radius:10px; border:1px solid #f1f5f9; font-size:0.75rem; font-weight:800; color:var(--text);">
+                    <i class="fas fa-check-circle" style="color:var(--primary); font-size:0.6rem;"></i>
+                    ${item}
+                </div>
+            `).join('') : '<span style="color:var(--gray); font-size:0.75rem;">Ma\'lumot kiritilmagan</span>';
 
             return `
-            <div class="card" style="padding:22px; border-radius:28px; border:1.5px solid #f1f5f9; background:white; margin-bottom:15px; position:relative; overflow:hidden;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <div class="card" style="padding:22px; border-radius:28px; border:1.5px solid #f1f5f9; background:white; margin-bottom:15px; position:relative; overflow:hidden; box-shadow:var(--shadow-sm);">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
                     <div>
-                        <div style="font-weight:900; font-size:0.85rem; color:var(--gray);">#ORD-${o.id.toString().substring(0,6)}</div>
-                        <div style="font-weight:900; font-size:1.1rem; color:var(--text);">${o.total_price.toLocaleString()} so'm</div>
+                        <div style="font-weight:900; font-size:0.8rem; color:var(--gray); display:flex; align-items:center; gap:5px;">
+                            <i class="fas fa-clock"></i> ${dateStr} ${timeStr}
+                        </div>
+                        <div style="font-weight:900; font-size:1.1rem; color:var(--text); margin-top:4px;">${o.total_price.toLocaleString()} so'm</div>
                     </div>
                     <div style="text-align:right;">
                         <div style="font-weight:900; color:var(--primary); font-size:0.9rem;">+${o.delivery_cost.toLocaleString()} so'm</div>
@@ -107,14 +122,18 @@ async function loadTerminalData() {
                 </div>
 
                 <!-- MAHSULOTLAR RO'YXATI -->
-                <div style="background:#f8fafc; padding:15px; border-radius:18px; margin-bottom:15px; border:1px solid #e2e8f0;">
-                    <div style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:8px;">Mahsulotlar:</div>
-                    <div style="font-size:0.85rem; font-weight:700; color:var(--text); line-height:1.4;">${o.items || 'Ma\'lumot yo\'q'}</div>
+                <div style="background:#f8fafc; padding:15px; border-radius:20px; margin-bottom:15px; border:1.5px solid #e2e8f0;">
+                    <div style="font-size:0.65rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:5px;">
+                        <i class="fas fa-shopping-bag"></i> Buyurtma tarkibi:
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                        ${itemsList}
+                    </div>
                 </div>
 
                 <div style="background:#eff6ff; padding:15px; border-radius:20px; margin-bottom:15px; border:1px solid #dbeafe;">
-                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
-                         <div style="width:36px; height:36px; border-radius:10px; background:white; display:flex; align-items:center; justify-content:center; color:#3b82f6;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+                         <div style="width:36px; height:36px; border-radius:10px; background:white; display:flex; align-items:center; justify-content:center; color:#3b82f6; box-shadow:0 4px 10px rgba(0,0,0,0.05);">
                             <i class="fas fa-user"></i>
                          </div>
                          <div>
@@ -122,8 +141,11 @@ async function loadTerminalData() {
                             <div style="font-size:0.75rem; color:#3b82f6; font-weight:800;">${o.phone_number}</div>
                          </div>
                     </div>
-                    <div style="font-size:0.8rem; font-weight:700; color:var(--gray);"><i class="fas fa-map-marker-alt" style="color:var(--danger);"></i> ${o.address_text}</div>
-                    ${o.comment ? `<div style="margin-top:10px; padding-top:10px; border-top:1px dashed #dbeafe; font-size:0.75rem; font-weight:700; color:#1e40af;">💬 Izoh: ${o.comment}</div>` : ''}
+                    <div style="font-size:0.8rem; font-weight:700; color:var(--gray); display:flex; align-items:flex-start; gap:8px;">
+                        <i class="fas fa-map-marker-alt" style="color:var(--danger); margin-top:3px;"></i> 
+                        <span>${o.address_text}</span>
+                    </div>
+                    ${o.comment ? `<div style="margin-top:12px; padding-top:12px; border-top:1px dashed #dbeafe; font-size:0.75rem; font-weight:700; color:#1e40af; line-height:1.4;">💬 Izoh: ${o.comment}</div>` : ''}
                 </div>
 
                 <div style="display:flex; gap:10px;">
@@ -135,19 +157,18 @@ async function loadTerminalData() {
                             ${isBusy ? 'BANDSIZ' : 'QABUL QILISH'}
                         </button>
                     ` : currentTab === 'active' ? `
-                        <button onclick="window.terminalFinishOrder(${o.id})" class="btn btn-primary" style="flex:1.5; height:50px; border-radius:14px;">
-                            YAKUNLASH (TOPSHIRILDI)
+                        <button onclick="window.terminalFinishOrder(${o.id})" class="btn btn-primary" style="flex:1.5; height:50px; border-radius:14px; background:var(--primary);">
+                            YETKAZILDI ✅
                         </button>
                         <button onclick="window.terminalTransferOrder(${o.id})" class="btn" style="flex:1; height:50px; border-radius:14px; background:#fff1f2; color:#ef4444; border:none; font-weight:800; font-size:0.75rem;">
                             RAD ETISH
                         </button>
                     ` : `
-                        <div style="flex:1; text-align:center; font-weight:900; color:#22c55e; font-size:0.8rem;">
+                        <div style="flex:1; text-align:center; font-weight:900; color:#22c55e; font-size:0.8rem; padding:15px;">
                             <i class="fas fa-check-circle"></i> YETKAZIB BERILGAN
                         </div>
                     `}
                     
-                    <!-- Google Maps Havolasi -->
                     <button onclick="window.open('https://www.google.com/maps?q=${o.latitude},${o.longitude}', '_blank')" 
                             class="btn btn-outline" 
                             style="width:50px; height:50px; border-radius:14px; background:#f0f9ff; color:#0ea5e9; border-color:#e0f2fe;">

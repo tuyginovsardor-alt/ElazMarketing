@@ -262,7 +262,9 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
     try {
         const { data: items } = await supabase.from('cart_items').select('*, products(*)').eq('user_id', user.id);
-        const itemsSummary = items?.map(i => `${i.products.name} (${i.quantity} ${i.products.unit})`).join(", ") || "";
+        
+        // Yangi: mahsulotlarni '|' va '*' belgilaridan foydalanib yanada tushunarliroq formatda saqlash
+        const itemsSummary = items?.map(i => `${i.products.name} (${i.quantity} ${i.products.unit})`).join("|") || "";
 
         const { data: newOrder, error } = await supabase.from('orders').insert({
             user_id: user?.id,
@@ -276,7 +278,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
             delivery_cost: Math.round(deliveryCost),
             payment_method: selectedPaymentMethod,
             requested_transport: selectedTransportType,
-            items: itemsSummary // Yangi: mahsulotlar ro'yxati
+            items: itemsSummary 
         }).select().single();
 
         if(error) throw error;

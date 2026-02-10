@@ -36,6 +36,17 @@ export async function renderAdminOrders() {
                 const fullName = customer ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() : "Noma'lum mijoz";
                 const isUnassigned = !o.courier_id && o.status !== 'cancelled' && o.status !== 'delivered';
 
+                // Vaqt formati
+                const oDate = new Date(o.created_at);
+                const fullDateTime = `${oDate.toLocaleDateString()} ${oDate.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'})}`;
+
+                // Mahsulotlar ro'yxatini formatlash
+                const itemsMarkup = o.items ? o.items.split('|').map(item => `
+                    <div style="display:inline-block; margin-right:5px; margin-bottom:5px; padding:5px 12px; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0; font-size:0.75rem; font-weight:800; color:var(--text);">
+                        ${item}
+                    </div>
+                `).join('') : '<span style="color:var(--gray); font-size:0.75rem;">Ma\'lumot kiritilmagan</span>';
+
                 return `
                 <div class="card" style="padding:22px; border-radius:28px; background:white; border:1.5px solid #f1f5f9; box-shadow:var(--shadow-sm); position:relative; overflow:hidden;">
                     <div style="position:absolute; top:0; left:0; width:6px; height:100%; background:${o.status === 'delivered' ? '#22c55e' : (o.status === 'cancelled' ? '#ef4444' : (o.status === 'pending' ? '#f59e0b' : '#3b82f6'))};"></div>
@@ -43,7 +54,9 @@ export async function renderAdminOrders() {
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                         <div>
                             <div style="font-weight:900; font-size:1.1rem; color:var(--text);">#ORD-${o.id.toString().substring(0,6)}</div>
-                            <div style="font-size:0.7rem; color:var(--gray); font-weight:800;">${new Date(o.created_at).toLocaleString()}</div>
+                            <div style="font-size:0.7rem; color:var(--gray); font-weight:800; display:flex; align-items:center; gap:5px; margin-top:2px;">
+                                <i class="fas fa-clock"></i> ${fullDateTime}
+                            </div>
                         </div>
                         <div style="padding:6px 14px; border-radius:12px; background:${o.status === 'pending' ? '#fff7ed' : (isUnassigned ? '#fef2f2' : '#f8fafc')}; font-size:0.65rem; font-weight:900; color:${o.status === 'pending' ? '#ea580c' : (isUnassigned ? '#ef4444' : '#64748b')}; border:1px solid ${o.status === 'pending' ? '#ffedd5' : (isUnassigned ? '#fee2e2' : '#f1f5f9')};">
                             ${o.status === 'pending' ? 'KUTILMOQDA' : (isUnassigned ? 'KURYER KUTILMOQDA' : o.status.toUpperCase())}
@@ -52,7 +65,7 @@ export async function renderAdminOrders() {
 
                     <div style="margin-bottom:15px; background:#eff6ff; padding:15px; border-radius:18px; border:1px solid #dbeafe;">
                         <div style="display:flex; align-items:center; gap:10px;">
-                            <div style="width:36px; height:36px; background:white; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#3b82f6;">
+                            <div style="width:36px; height:36px; background:white; border-radius:10px; display:flex; align-items:center; justify-content:center; color:#3b82f6; box-shadow:0 4px 10px rgba(0,0,0,0.05);">
                                 <i class="fas fa-user"></i>
                             </div>
                             <div style="overflow:hidden;">
@@ -62,17 +75,26 @@ export async function renderAdminOrders() {
                         </div>
                     </div>
                     
-                    <div style="margin-bottom:15px; background:#f8fafc; padding:15px; border-radius:18px; border:1px solid #e2e8f0;">
-                        <div style="font-size:0.65rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:5px;">Mahsulotlar:</div>
-                        <div style="font-size:0.8rem; font-weight:700; color:var(--text);">${o.items || 'Ma\'lumot kiritilmagan'}</div>
-                        ${o.comment ? `<div style="margin-top:10px; border-top:1px dashed #cbd5e1; padding-top:8px; font-size:0.75rem; font-style:italic; color:var(--gray);">"${o.comment}"</div>` : ''}
+                    <div style="margin-bottom:15px; background:#fcfcfd; padding:15px; border-radius:18px; border:1.5px solid #f1f5f9;">
+                        <div style="font-size:0.65rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:5px;">
+                            <i class="fas fa-shopping-basket"></i> Mahsulotlar ro'yxati:
+                        </div>
+                        <div style="display:block;">
+                            ${itemsMarkup}
+                        </div>
+                        ${o.comment ? `<div style="margin-top:12px; border-top:1px dashed #cbd5e1; padding-top:10px; font-size:0.75rem; font-style:italic; color:var(--gray); line-height:1.4;">💬 " ${o.comment} "</div>` : ''}
                     </div>
 
                     <div style="margin-bottom:15px; background:#f8fafc; padding:15px; border-radius:18px;">
-                        <div style="font-size:0.85rem; font-weight:700; display:flex; gap:10px; align-items:center;">
-                            <i class="fas fa-map-marker-alt" style="color:var(--danger);"></i> 
+                        <div style="font-size:0.85rem; font-weight:700; display:flex; gap:10px; align-items:flex-start;">
+                            <i class="fas fa-map-marker-alt" style="color:var(--danger); margin-top:3px;"></i> 
                             <span>${o.address_text || "Xaritada belgilangan"}</span>
                         </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:0 5px;">
+                         <div style="font-weight:900; font-size:1.2rem; color:var(--text);">${o.total_price.toLocaleString()} <small style="font-size:0.6rem; color:var(--gray);">UZS</small></div>
+                         <div style="font-size:0.7rem; font-weight:800; color:var(--primary);">Dostavka: ${o.delivery_cost.toLocaleString()}</div>
                     </div>
 
                     ${isUnassigned ? `
