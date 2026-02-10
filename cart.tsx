@@ -38,12 +38,13 @@ export async function renderCartView() {
                 <h2 style="font-weight: 900; font-size:1.8rem;">Savatim</h2>
                 <div style="font-weight:800; color:var(--gray); font-size:0.9rem;">${cartItems.length} mahsulot</div>
             </div>
+            
             <div id="cartItemsList">
                 ${cartItems.map(item => `
-                    <div class="card" style="display:flex; gap:15px; align-items:center; padding:15px; border-radius:24px; border:1px solid #f1f5f9; margin-bottom:12px;">
+                    <div class="card" style="display:flex; gap:15px; align-items:center; padding:15px; border-radius:24px; border:1px solid #f1f5f9; margin-bottom:12px; background:white;">
                         <img src="${item.products.image_url || item.products.images?.[0]}" style="width:70px; height:70px; border-radius:18px; object-fit:cover;">
                         <div style="flex:1;">
-                            <h4 style="font-weight:800; font-size:0.9rem;">${item.products.name}</h4>
+                            <h4 style="font-weight:800; font-size:0.9rem; color:var(--text);">${item.products.name}</h4>
                             <div style="color:var(--primary); font-weight:900; margin-top:4px;">${item.products.price.toLocaleString()} UZS</div>
                             <div style="display:flex; align-items:center; gap:10px; margin-top:8px;">
                                 <div style="display:flex; align-items:center; background:#f8fafc; padding:4px; border-radius:10px; border:1px solid #e2e8f0;">
@@ -53,18 +54,29 @@ export async function renderCartView() {
                                 </div>
                             </div>
                         </div>
-                        <button onclick="removeFromCart(${item.product_id})" style="border:none; background:none; color:var(--gray); padding:10px;"><i class="fas fa-trash-alt"></i></button>
+                        <button onclick="removeFromCart(${item.product_id})" style="border:none; background:#fef2f2; color:var(--danger); width:38px; height:38px; border-radius:10px; cursor:pointer;"><i class="fas fa-trash-alt"></i></button>
                     </div>
                 `).join('')}
             </div>
-            <div style="position:fixed; bottom:calc(90px + env(safe-area-inset-bottom, 0px)); left:50%; transform:translateX(-50%); width:100%; max-width:450px; padding:20px; background:rgba(255,255,255,0.9); backdrop-filter:blur(20px); border-top:1px solid #f1f5f9; z-index:100;">
-                <button class="btn btn-primary" style="width:100%; height:64px; border-radius:22px; font-size:1.1rem;" onclick="openCheckout()">DAVOM ETISH (${subtotalAmount.toLocaleString()})</button>
+
+            <!-- MARKETING PROMO -->
+            <div class="card" style="background:var(--gradient); color:white; border:none; border-radius:25px; padding:20px; display:flex; align-items:center; gap:15px; margin-top:10px;">
+                <div style="font-size:2rem;"><i class="fas fa-gift"></i></div>
+                <div>
+                    <div style="font-weight:900; font-size:0.9rem;">BEPUL DOSTAVKA!</div>
+                    <p style="font-size:0.7rem; font-weight:700; opacity:0.9;">150,000 UZS dan yuqori xaridlar uchun yetkazish bepul.</p>
+                </div>
+            </div>
+
+            <div style="position:fixed; bottom:calc(90px + env(safe-area-inset-bottom, 0px)); left:50%; transform:translateX(-50%); width:100%; max-width:450px; padding:20px; background:rgba(255,255,255,0.9); backdrop-filter:blur(20px); border-top:1px solid #f1f5f9; z-index:100; border-radius:25px 25px 0 0; box-shadow:0 -10px 30px rgba(0,0,0,0.05);">
+                <button class="btn btn-primary" style="width:100%; height:64px; border-radius:22px; font-size:1.1rem;" onclick="openCheckout()">RASMIYLASHTIRISH (${subtotalAmount.toLocaleString()})</button>
             </div>
         </div>
     `;
 }
 
 export async function removeFromCart(pId: number) {
+    if(!confirm("Mahsulotni savatdan o'chirmoqchimisiz?")) return;
     await supabase.from('cart_items').delete().eq('user_id', user.id).eq('product_id', pId);
     renderCartView();
 }
@@ -80,11 +92,14 @@ export async function updateQty(pId: number, newQty: number) {
 function updateCheckoutSummary() {
     const base = deliveryRates[`${selectedTransportType}_base`] || 5000;
     const kmPrice = deliveryRates[`${selectedTransportType}_km`] || 2000;
-    const cost = base + (Math.max(0, currentDistanceKm - 1) * kmPrice);
+    let cost = base + (Math.max(0, currentDistanceKm - 1) * kmPrice);
     
+    // Marketing rule: Free delivery for orders > 150,000
+    if(subtotalAmount >= 150000) cost = 0;
+
     const delCostEl = document.getElementById('receiptDeliveryCost');
     const totalEl = document.getElementById('receiptTotal');
-    if(delCostEl) delCostEl.innerText = Math.round(cost).toLocaleString() + " UZS";
+    if(delCostEl) delCostEl.innerText = cost === 0 ? "BEPUL" : Math.round(cost).toLocaleString() + " UZS";
     const finalTotal = subtotalAmount + Math.round(cost);
     if(totalEl) totalEl.innerText = finalTotal.toLocaleString() + " UZS";
 }
@@ -218,7 +233,10 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
     const btn = document.getElementById('btnPlaceOrder') as HTMLButtonElement;
     const base = deliveryRates[`${selectedTransportType}_base`] || 5000;
     const kmPrice = deliveryRates[`${selectedTransportType}_km`] || 2000;
-    const deliveryCost = base + (Math.max(0, currentDistanceKm - 1) * kmPrice);
+    let deliveryCost = base + (Math.max(0, currentDistanceKm - 1) * kmPrice);
+    
+    if(subtotalAmount >= 150000) deliveryCost = 0;
+
     const finalTotal = subtotalAmount + Math.round(deliveryCost);
 
     btn.disabled = true;
@@ -228,7 +246,6 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
         const { data: cartItems } = await supabase.from('cart_items').select('*, products(*)').eq('user_id', user.id);
         if(!cartItems?.length) throw new Error("Savat bo'sh");
 
-        // Format: rasm_url:::nom (miqdor)
         const itemsSummary = cartItems.map(i => {
             const img = i.products.image_url || "";
             return `${img}:::${i.products.name} (${i.quantity} ${i.products.unit})`;

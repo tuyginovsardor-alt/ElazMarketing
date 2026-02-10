@@ -20,7 +20,13 @@ export function showToast(msg: string) {
     if(t) {
         t.innerText = msg;
         t.style.display = 'block';
-        setTimeout(() => { if(t) t.style.display = 'none'; }, 3000);
+        t.style.animation = 'fadeIn 0.3s forwards';
+        setTimeout(() => { 
+            if(t) {
+                t.style.animation = 'fadeOut 0.3s forwards';
+                setTimeout(() => t.style.display = 'none', 300);
+            }
+        }, 3000);
     }
 }
 (window as any).showToast = showToast;
@@ -72,7 +78,6 @@ export async function loadProfileData() {
 export const navTo = async (view: string) => {
     if (view === 'profile') await loadProfileData();
 
-    // Kuryer bo'lsa 'orders' tabini bosganda terminal ochilsin
     if(view === 'orders' && profile?.role === 'courier') {
         const { renderCourierDashboard } = await import("./courierDashboard.tsx");
         showView('orders');
@@ -124,7 +129,6 @@ export function showView(viewId: string) {
 }
 (window as any).showView = showView;
 
-// --- INITIALIZATION ---
 export async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
@@ -138,7 +142,54 @@ export async function checkAuth() {
 }
 window.onload = checkAuth;
 
-// --- GLOBAL ATTACHMENTS ---
+(window as any).handleSignOut = async () => {
+    if(confirm("Tizimdan chiqmoqchimisiz?")) {
+        await supabase.auth.signOut();
+        window.location.reload();
+    }
+};
+
+export async function addToCart(productId: number, qty: number = 1) {
+    if(!user) return showToast("Iltimos, avval tizimga kiring 🔑");
+    
+    try {
+        const { data: existing } = await supabase.from('cart_items').select('*').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
+        if(existing) {
+            await supabase.from('cart_items').update({ quantity: existing.quantity + qty }).eq('id', existing.id);
+        } else {
+            await supabase.from('cart_items').insert([{ user_id: user.id, product_id: productId, quantity: qty }]);
+        }
+        showToast("Savatga qo'shildi! 🛒");
+        
+        // Agar savat sahifasida bo'lsak, uni yangilaymiz
+        const cartView = document.getElementById('cartView');
+        if(cartView?.classList.contains('active')) renderCartView();
+        
+    } catch (e) { showToast("Xatolik yuz berdi!"); }
+}
+(window as any).addToCart = addToCart;
+
+export async function toggleFavorite(productId: number) {
+    if(!user) return showToast("Tizimga kiring");
+    const { data: existing } = await supabase.from('favorites').select('id').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
+    if(existing) {
+        await supabase.from('favorites').delete().eq('id', existing.id);
+        showToast("O'chirildi");
+    } else {
+        await supabase.from('favorites').insert({ user_id: user.id, product_id: productId });
+        showToast("Saqlandi ❤️");
+    }
+}
+(window as any).toggleFavorite = toggleFavorite;
+
+(window as any).openProductDetailsById = async (id: number) => {
+    const { data } = await supabase.from('products').select('*').eq('id', id).single();
+    if(data) {
+        const { renderProductDetails } = await import("./productDetails.tsx");
+        renderProductDetails(data);
+    }
+};
+
 (window as any).enterAdminPanel = async () => {
     const { switchAdminTab } = await import("./admin.tsx");
     const app = document.getElementById('appContainer');
@@ -156,12 +207,6 @@ window.onload = checkAuth;
 (window as any).openPayment = async () => {
     const { openPaymentView } = await import("./payment.tsx");
     openPaymentView();
-};
-
-(window as any).openCourierDashboard = async () => {
-    const { renderCourierDashboard } = await import("./courierDashboard.tsx");
-    navTo('orders'); // View almashishi uchun navTo ishlatamiz
-    renderCourierDashboard();
 };
 
 (window as any).openCourierRegistration = async () => {
@@ -183,34 +228,3 @@ window.onload = checkAuth;
     const { openProfileEdit } = await import("./profileEdit.tsx");
     openProfileEdit();
 };
-
-(window as any).handleSignOut = async () => {
-    if(confirm("Tizimdan chiqmoqchimisiz?")) {
-        await supabase.auth.signOut();
-        window.location.reload();
-    }
-};
-
-export async function addToCart(productId: number, qty: number = 1) {
-    if(!user) return showToast("Tizimga kiring");
-    try {
-        const { data: existing } = await supabase.from('cart_items').select('*').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
-        if(existing) await supabase.from('cart_items').update({ quantity: existing.quantity + qty }).eq('id', existing.id);
-        else await supabase.from('cart_items').insert([{ user_id: user.id, product_id: productId, quantity: qty }]);
-        showToast("Savatga qo'shildi! 🛒");
-    } catch (e) { showToast("Xatolik!"); }
-}
-(window as any).addToCart = addToCart;
-
-export async function toggleFavorite(productId: number) {
-    if(!user) return showToast("Tizimga kiring");
-    const { data: existing } = await supabase.from('favorites').select('id').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
-    if(existing) {
-        await supabase.from('favorites').delete().eq('id', existing.id);
-        showToast("O'chirildi");
-    } else {
-        await supabase.from('favorites').insert({ user_id: user.id, product_id: productId });
-        showToast("Saqlandi ❤️");
-    }
-}
-(window as any).toggleFavorite = toggleFavorite;
