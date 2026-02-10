@@ -8,6 +8,7 @@ import { handleCourier, handleCallbacks } from './bot-courier.js';
 const sessions = {};
 let lastId = 0;
 let currentActiveToken = "";
+let isMonitoring = false;
 
 async function router(update) {
     if (update.callback_query) return handleCallbacks(update.callback_query);
@@ -20,27 +21,17 @@ async function router(update) {
     if (!sessions[chatId]) sessions[chatId] = { step: 'idle' };
     const session = sessions[chatId];
 
-    // --- DEEP LINKING TIZIMI ---
+    // --- DEEP LINKING ---
     if (text?.startsWith("/start ")) {
         const token = text.split(" ")[1];
         if (token) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('link_token', token)
-                .maybeSingle();
-
+            const { data: profile } = await supabase.from('profiles').select('*').eq('link_token', token).maybeSingle();
             if (profile) {
-                // Foydalanuvchini botga bog'laymiz
-                await supabase.from('profiles').update({ 
-                    telegram_id: chatId, 
-                    link_token: null 
-                }).eq('id', profile.id);
-
+                await supabase.from('profiles').update({ telegram_id: chatId, link_token: null }).eq('id', profile.id);
                 const kb = profile.role === 'courier' ? KB.courier : KB.user;
                 return tg('sendMessage', { 
                     chat_id: chatId, 
-                    text: `✅ <b>TABRIKLAYMIZ, ${profile.first_name.toUpperCase()}!</b>\n\nProfilingiz muvaffaqiyatli botga ulandi. Endi barcha bildirishnomalar shu yerga keladi! 🚀`, 
+                    text: `✅ <b>TABRIKLAYMIZ, ${profile.first_name.toUpperCase()}!</b>\n\nBot muvaffaqiyatli ulandi.`, 
                     parse_mode: 'HTML', 
                     reply_markup: kb 
                 });
@@ -55,7 +46,7 @@ async function router(update) {
             const kb = profile.role === 'courier' ? KB.courier : KB.user;
             return tg('sendMessage', { chat_id: chatId, text: `👋 Xush kelibsiz, <b>${profile.first_name}</b>!`, parse_mode: 'HTML', reply_markup: kb });
         }
-        return tg('sendMessage', { chat_id: chatId, text: "🏪 <b>ELAZ MARKET: Bag'dod</b>\n\nPlatformaga xush kelibsiz! Botni ilova orqali ulashing yoki login qiling:", parse_mode: 'HTML', reply_markup: KB.welcome });
+        return tg('sendMessage', { chat_id: chatId, text: "🏪 <b>ELAZ MARKET</b>\n\nBotga xush kelibsiz!", parse_mode: 'HTML', reply_markup: KB.welcome });
     }
 
     if (session.step !== 'idle' || text === "🔑 Kirish" || text === "📝 Ro'yxatdan o'tish") {
@@ -69,42 +60,46 @@ async function router(update) {
     }
 }
 
-async function monitorToken() {
-    setInterval(async () => {
-        const oldToken = currentActiveToken;
-        const newToken = await refreshBotToken();
-        if (newToken && newToken !== oldToken) {
-            currentActiveToken = newToken;
-            lastId = 0;
-            tg('sendMessage', { chat_id: 8021115446, text: "🚀 <b>Bot Engine:</b> Token yangilandi va bot username aniqlandi!" }).catch(() => {});
-        }
-    }, 5000);
-}
-
 async function start() {
-    const initialToken = await refreshBotToken();
-    currentActiveToken = initialToken || "";
-    monitorToken();
+    console.log("🚀 ELAZ BOT ENGINE STARTING...");
     
+    // Monitoringni faqat bir marta ishga tushiramiz
+    if(!isMonitoring) {
+        isMonitoring = true;
+        setInterval(async () => {
+            const newToken = await refreshBotToken();
+            if (newToken && newToken !== currentActiveToken) {
+                console.log("🔄 NEW TOKEN DETECTED, RESTARTING POLLER...");
+                currentActiveToken = newToken;
+                lastId = 0; // Reset offset for new bot
+            }
+        }, 5000);
+    }
+
+    // Polling Loop
     while (true) {
         if (!currentActiveToken) {
-            await new Promise(r => setTimeout(r, 5000));
+            currentActiveToken = await refreshBotToken() || "";
+            await new Promise(r => setTimeout(r, 2000));
             continue;
         }
+
         try {
-            const res = await tg('getUpdates', { offset: lastId, timeout: 30 });
+            const res = await tg('getUpdates', { offset: lastId, timeout: 20 });
             if (res && res.ok && res.result.length) {
                 for (const u of res.result) {
                     await router(u);
                     lastId = u.update_id + 1;
                 }
-            } else if (res && !res.ok && (res.error_code === 401)) {
+            } else if (res && !res.ok && res.error_code === 401) {
+                console.error("🚫 TOKEN EXPIRED OR INVALID");
                 currentActiveToken = "";
             }
-            await new Promise(r => setTimeout(r, 100));
         } catch (e) {
             await new Promise(r => setTimeout(r, 5000));
         }
+        await new Promise(r => setTimeout(r, 100));
     }
 }
+
 start();
