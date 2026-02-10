@@ -72,14 +72,17 @@ export async function loadProfileData() {
 export const navTo = async (view: string) => {
     if (view === 'profile') await loadProfileData();
 
+    // Kuryer bo'lsa 'orders' tabini bosganda terminal ochilsin
+    if(view === 'orders' && profile?.role === 'courier') {
+        const { renderCourierDashboard } = await import("./courierDashboard.tsx");
+        showView('orders');
+        renderCourierDashboard();
+        updateNavActive('orders');
+        return;
+    }
+
     showView(view);
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const navItems = document.querySelectorAll('.nav-item');
-    if(view === 'home') navItems[0]?.classList.add('active');
-    if(view === 'saved') navItems[1]?.classList.add('active');
-    if(view === 'cart') navItems[2]?.classList.add('active');
-    if(view === 'orders') navItems[3]?.classList.add('active');
-    if(view === 'profile') navItems[4]?.classList.add('active');
+    updateNavActive(view);
     
     if(view === 'home') renderHomeView();
     if(view === 'saved') renderSavedView();
@@ -88,6 +91,16 @@ export const navTo = async (view: string) => {
     if(view === 'profile') renderProfileView(profile);
 };
 (window as any).navTo = navTo;
+
+function updateNavActive(view: string) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const navItems = document.querySelectorAll('.nav-item');
+    if(view === 'home') navItems[0]?.classList.add('active');
+    if(view === 'saved') navItems[1]?.classList.add('active');
+    if(view === 'cart') navItems[2]?.classList.add('active');
+    if(view === 'orders') navItems[3]?.classList.add('active');
+    if(view === 'profile') navItems[4]?.classList.add('active');
+}
 
 export function showView(viewId: string) {
     const app = document.getElementById('appContainer');
@@ -147,6 +160,7 @@ window.onload = checkAuth;
 
 (window as any).openCourierDashboard = async () => {
     const { renderCourierDashboard } = await import("./courierDashboard.tsx");
+    navTo('orders'); // View almashishi uchun navTo ishlatamiz
     renderCourierDashboard();
 };
 

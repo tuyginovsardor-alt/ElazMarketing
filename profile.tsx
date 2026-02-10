@@ -77,6 +77,15 @@ export async function renderProfileView(profileData: any) {
                     </div>
                 ` : ''}
 
+                <div onclick="window.openProfileEdit()" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                    <div style="width:40px; height:40px; border-radius:12px; background:#f8fafc; color:var(--text); display:flex; align-items:center; justify-content:center;"><i class="fas fa-user-edit"></i></div>
+                    <div style="flex:1;">
+                        <div style="font-weight:800; font-size:0.9rem;">Profilni tahrirlash</div>
+                        <div style="font-size:0.7rem; color:var(--gray); font-weight:700;">Ism, telefon va hududni o'zgartirish</div>
+                    </div>
+                    <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
+                </div>
+
                 <div onclick="window.openPayment()" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
                     <div style="width:40px; height:40px; border-radius:12px; background:#f0fdf4; color:var(--primary); display:flex; align-items:center; justify-content:center;"><i class="fas fa-wallet"></i></div>
                     <div style="flex:1;">
@@ -87,9 +96,9 @@ export async function renderProfileView(profileData: any) {
                 </div>
 
                 ${isCourier ? `
-                    <div onclick="window.openCourierDashboard()" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer;">
+                    <div onclick="navTo('orders')" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer; background:#f5f3ff;">
                         <div style="width:40px; height:40px; border-radius:12px; background:#eef2ff; color:#4f46e5; display:flex; align-items:center; justify-content:center;"><i class="fas fa-motorcycle"></i></div>
-                        <span style="flex:1; font-weight:800; font-size:0.9rem;">Kuryer Terminali</span>
+                        <span style="flex:1; font-weight:900; color:#4338ca; font-size:0.9rem;">KURYER TERMINALI</span>
                         <span style="background:var(--primary); color:white; padding:2px 8px; border-radius:8px; font-size:0.6rem; font-weight:900;">LIVE</span>
                     </div>
                 ` : `

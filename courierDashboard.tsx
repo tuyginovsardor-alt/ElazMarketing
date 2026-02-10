@@ -1,11 +1,14 @@
 
-import { supabase, showToast, profile, user, loadProfileData } from "./index.tsx";
+import { supabase, showToast, profile, user, loadProfileData, showView } from "./index.tsx";
 
 let watchId: number | null = null;
 
 export async function renderCourierDashboard() {
     const container = document.getElementById('ordersView');
     if(!container || !user) return;
+
+    // Viewni almashtirish
+    showView('orders');
 
     const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
     const isOnline = p?.active_status || false;
