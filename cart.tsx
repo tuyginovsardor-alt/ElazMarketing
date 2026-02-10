@@ -263,8 +263,11 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     try {
         const { data: cartItems } = await supabase.from('cart_items').select('*, products(*)').eq('user_id', user.id);
         
-        // Items stringini shakllantirish: "Nomi (Soni Birligi)"
-        const itemsSummary = cartItems?.map(i => `${i.products.name} (${i.quantity} ${i.products.unit})`).join("|") || "";
+        // Items format: "URL:::Nomi (Soni Birligi)"
+        const itemsSummary = cartItems?.map(i => {
+            const img = i.products.image_url || (i.products.images && i.products.images[0]) || "";
+            return `${img}:::${i.products.name} (${i.quantity} ${i.products.unit})`;
+        }).join("|") || "";
 
         const { data: newOrder, error } = await supabase.from('orders').insert({
             user_id: user?.id,
@@ -278,12 +281,11 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
             delivery_cost: Math.round(deliveryCost),
             payment_method: selectedPaymentMethod,
             requested_transport: selectedTransportType,
-            items: itemsSummary // Barcha mahsulotlar mana shu yerda saqlanadi
+            items: itemsSummary
         }).select().single();
 
         if(error) throw error;
 
-        // TsPay mantiqi (agar bo'lsa)
         if (selectedPaymentMethod === 'tspay') {
             const { data: tsData, error: tsError } = await supabase.functions.invoke('clever-api', {
                 body: { action: 'create', amount: finalTotal, user_id: user.id }

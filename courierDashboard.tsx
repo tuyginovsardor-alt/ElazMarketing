@@ -10,7 +10,6 @@ export async function renderCourierDashboard() {
 
     showView('orders');
     
-    // Profilni har safar yuklash kuryer holatini to'g'ri ko'rsatish uchun shart
     const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
     if(!p) return;
     courierProfile = p;
@@ -98,12 +97,20 @@ async function loadTerminalData() {
             const timeStr = orderDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             const dateStr = orderDate.toLocaleDateString();
 
-            // Mahsulotlarni chiroyli chiqaramiz
-            const itemsMarkup = o.items ? o.items.split('|').map(item => `
-                <div style="display:inline-flex; align-items:center; gap:6px; padding:5px 10px; background:white; border:1px solid #f1f5f9; border-radius:10px; font-size:0.7rem; font-weight:800; color:var(--text);">
-                    <i class="fas fa-check-circle" style="color:var(--primary); font-size:0.6rem;"></i> ${item}
-                </div>
-            `).join('') : '<span style="color:var(--gray); font-size:0.75rem;">Mahsulot ma\'lumoti yo\'q</span>';
+            // Mahsulotlarni chiroyli chiqaramiz (Rasm bilan)
+            const itemsMarkup = o.items ? o.items.split('|').map(itemStr => {
+                const parts = itemStr.split(':::');
+                const hasImg = parts.length > 1;
+                const imgUrl = hasImg ? parts[0] : "";
+                const label = hasImg ? parts[1] : parts[0];
+
+                return `
+                    <div style="display:inline-flex; align-items:center; gap:8px; padding:6px 12px; background:white; border:1px solid #f1f5f9; border-radius:14px; font-size:0.7rem; font-weight:800; color:var(--text); box-shadow:var(--shadow-sm);">
+                        ${imgUrl ? `<img src="${imgUrl}" style="width:24px; height:24px; border-radius:6px; object-fit:cover;">` : '<i class="fas fa-check-circle" style="color:var(--primary); font-size:0.6rem;"></i>'}
+                        <span>${label}</span>
+                    </div>
+                `;
+            }).join('') : '<span style="color:var(--gray); font-size:0.75rem;">Mahsulot ma\'lumoti yo\'q</span>';
 
             return `
             <div class="card" style="padding:22px; border-radius:28px; border:1.5px solid #f1f5f9; background:white; margin-bottom:15px; position:relative; overflow:hidden; box-shadow:var(--shadow-sm);">
@@ -122,7 +129,7 @@ async function loadTerminalData() {
 
                 <div style="background:#f8fafc; padding:15px; border-radius:20px; margin-bottom:15px; border:1.5px solid #e2e8f0;">
                     <div style="font-size:0.65rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:10px;">Buyurtma tarkibi:</div>
-                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                    <div style="display:flex; flex-wrap:wrap; gap:8px;">
                         ${itemsMarkup}
                     </div>
                 </div>
@@ -235,14 +242,13 @@ function updateTabUI() {
         const { data: p } = await supabase.from('profiles').select('balance').eq('id', user.id).single();
 
         await supabase.from('orders').update({ status: 'delivered' }).eq('id', oid);
-        // Kuryer balansini oshirish va "is_busy"ni false qilish
         await supabase.from('profiles').update({ 
             balance: (p.balance || 0) + (order.delivery_cost || 0), 
             is_busy: false 
         }).eq('id', user.id);
 
         showToast("Ishingiz uchun rahmat! 💰");
-        renderCourierDashboard(); // UI va is_busy holatini yangilash uchun
+        renderCourierDashboard();
         switchCourierTab('history');
     } catch(e) {
         showToast("Xatolik yuz berdi.");
@@ -254,11 +260,10 @@ function updateTabUI() {
 
     try {
         await supabase.from('orders').update({ courier_id: null, status: 'confirmed' }).eq('id', oid);
-        // Kuryerni bo'shatish
         await supabase.from('profiles').update({ is_busy: false }).eq('id', user.id);
 
         showToast("Buyurtma bo'shatildi.");
-        renderCourierDashboard(); // is_busy ni yangilash uchun
+        renderCourierDashboard();
         switchCourierTab('new');
     } catch(e) {
         showToast("Xatolik yuz berdi.");
