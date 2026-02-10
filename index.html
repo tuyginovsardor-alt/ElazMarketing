@@ -4,109 +4,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ELAZ MARKET - Professional Delivery</title>
+    <title>ELAZ MARKET - Bag'dod</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Titan+One&family=Fredoka:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap');
 
         :root {
             --primary: #22c55e;
+            --primary-dark: #16a34a;
             --primary-light: #f0fdf4;
             --bg: #f8fafc;
             --text: #0f172a;
+            --gray: #64748b;
             --white: #ffffff;
             --danger: #ef4444;
-            --gray: #64748b;
             --dark: #1e293b;
-            --elaz-red-orange: linear-gradient(180deg, #ff7e00 0%, #ff3d00 100%);
-            --elaz-yellow: linear-gradient(180deg, #ffd200 0%, #ffaa00 100%);
-            --elaz-green: linear-gradient(180deg, #88e200 0%, #449100 100%);
-            --elaz-red: linear-gradient(180deg, #ff5f5f 0%, #e60000 100%);
+            --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.03);
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
+            --gradient: linear-gradient(135deg, #22c55e, #10b981);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Fredoka', sans-serif; -webkit-tap-highlight-color: transparent; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        body { background: var(--bg); color: var(--text); height: 100dvh; overflow: hidden; }
+        body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
 
-        /* BULLETPROOF GRID LAYOUT */
         #appContainer {
-            max-width: 450px; margin: 0 auto; background: var(--white); height: 100dvh;
-            display: grid;
-            grid-template-rows: auto 1fr auto;
-            position: relative;
-            box-shadow: 0 0 50px rgba(0,0,0,0.1);
+            max-width: 450px; margin: 0 auto; background: var(--white); height: 100vh;
+            position: relative; box-shadow: 0 0 100px rgba(0,0,0,0.1);
+            display: flex; flex-direction: column; overflow: hidden; z-index: 10;
         }
 
-        #appHeader {
-            display: none; padding: 0 1.2rem; background: white; border-bottom: 1px solid #f1f5f9;
-            justify-content: space-between; align-items: center; height: 70px; z-index: 1000;
+        #adminPanel {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #f1f5f9; z-index: 5000; flex-direction: row;
         }
 
-        /* O'rtadagi kontent maydoni */
-        .view-section { 
-            display: none; 
-            overflow-y: auto; 
-            background: white; 
-            padding: 1.2rem;
-            -webkit-overflow-scrolling: touch;
-        }
-        .view-section.active { display: block; }
+        .view-section { display: none; flex: 1; padding: 1.2rem; animation: fadeIn 0.4s ease-out; overflow-y: auto; }
+        .view-section.active { display: flex; flex-direction: column; }
 
-        /* LOGO STYLING */
-        .elaz-brand-container { display: inline-flex; align-items: center; gap: 4px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1)); }
-        .elaz-letters { display: flex; align-items: flex-end; font-family: 'Titan One', cursive; }
-        .l-char { font-size: 3.2rem; line-height: 0.8; -webkit-background-clip: text; -webkit-text-fill-color: transparent; position: relative; letter-spacing: -3px; filter: drop-shadow(2px 2px 0px white); }
-        .l-e { background-image: var(--elaz-red-orange); transform: rotate(-5deg); }
-        .l-l { background-image: var(--elaz-yellow); margin-left: -2px; }
-        .l-a { background-image: var(--elaz-green); transform: rotate(3deg); margin-left: -3px; }
-        .l-z { background-image: var(--elaz-red); transform: rotate(8deg); margin-left: -2px; }
-        .a-icon { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -10%); font-size: 1.1rem; color: white; -webkit-text-fill-color: white; }
-        .market-chip { background: var(--dark); color: white; padding: 3px 12px; border-radius: 50px; font-size: 0.7rem; font-weight: 900; letter-spacing: 1px; margin-left: -10px; margin-bottom: 4px; align-self: flex-end; transform: rotate(-3deg); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-        .mini-brand-scale { transform: scale(0.4); transform-origin: left center; width: 130px; }
+        .btn { height: 56px; border-radius: 18px; border: none; font-weight: 700; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: all 0.3s; }
+        .btn-primary { background: var(--gradient); color: white; box-shadow: 0 8px 20px rgba(34, 197, 94, 0.25); }
+        .btn-outline { background: white; border: 2.5px solid #f1f5f9; color: var(--text); }
 
-        /* BOTTOM MENU */
+        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 14px; z-index: 9999; font-weight: 700; display: none; box-shadow: var(--shadow-lg); font-size: 0.9rem; }
+
+        /* BOTTOM NAV REDMI VA IPHONE UCHUN BALANDROQ QILINDI */
         .bottom-nav { 
-            background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(20px);
-            display: none; justify-content: space-around; 
-            padding: 10px 0 calc(10px + env(safe-area-inset-bottom, 10px)); 
-            border-top: 1px solid #f1f5f9; width: 100%; z-index: 1000;
+            background: rgba(255, 255, 255, 0.95); 
+            backdrop-filter: blur(10px);
+            display: none; 
+            justify-content: space-around; 
+            padding: 12px 5px calc(25px + env(safe-area-inset-bottom, 10px)); 
+            border-top: 1px solid #f1f5f9; 
+            position: sticky; 
+            bottom: 0; 
+            width: 100%; 
+            z-index: 100; 
+            box-shadow: 0 -5px 25px rgba(0,0,0,0.05); 
         }
-        .nav-item { color: #94a3b8; text-align: center; font-size: 0.65rem; font-weight: 800; flex: 1; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-        .nav-item i { font-size: 1.3rem; transition: 0.2s; }
+        .nav-item { color: #94a3b8; text-align: center; font-size: 0.65rem; font-weight: 800; flex: 1; cursor: pointer; transition: 0.2s; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .nav-item i { font-size: 1.5rem; display: block; margin-bottom: 4px; }
         .nav-item.active { color: var(--primary); }
-        .nav-item.active i { transform: translateY(-3px); }
 
-        .nav-profile-img { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 2px solid var(--primary); }
+        .nav-profile-img {
+            width: 28px; height: 28px; min-width: 28px; min-height: 28px;
+            border-radius: 10px; object-fit: cover; display: block; margin: 0 auto 4px;
+            border: 2px solid transparent; flex-shrink: 0; aspect-ratio: 1/1;
+        }
+        .nav-item.active .nav-profile-img { border-color: var(--primary); box-shadow: 0 0 12px rgba(34, 197, 94, 0.3); }
 
-        .btn { height: 56px; border-radius: 18px; border: none; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; cursor: pointer; }
-        .btn-primary { background: linear-gradient(135deg, #22c55e, #10b981); color: white; box-shadow: 0 10px 20px rgba(34,197,94,0.2); }
+        .overlay { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 450px; height: 100%; background: white; z-index: 6000; display: none; padding: 20px; overflow-y: auto; animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        input, select, textarea { width: 100%; padding: 15px 18px; border-radius: 16px; border: 2.5px solid #f1f5f9; background: #f8fafc; margin-bottom: 12px; font-weight: 700; outline: none; transition: 0.2s; }
+        input:focus { border-color: var(--primary); background: white; }
         
-        .overlay { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 450px; height: 100%; background: white; z-index: 6000; display: none; overflow-y: auto; }
-        
-        input, select, textarea { width: 100%; padding: 15px; border: 2px solid #f1f5f9; background: #f8fafc; border-radius: 16px; font-size: 0.95rem; font-weight: 600; outline: none; margin-bottom: 12px; }
-        
-        .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--dark); color: white; padding: 12px 24px; border-radius: 14px; z-index: 9999; font-weight: 700; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-        
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        .card { background: white; border: 1.5px solid #f1f5f9; border-radius: 24px; padding: 20px; margin-bottom: 15px; }
     </style>
 <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.93.3",
-    "path": "https://esm.sh/path@^0.12.7",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.3",
     "url": "https://esm.sh/url@^0.11.4",
     "node-fetch": "https://esm.sh/node-fetch@^3.3.2",
-    "dotenv": "https://esm.sh/dotenv@^17.2.4",
-    "fs": "https://esm.sh/fs@^0.0.1-security",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4"
+    "dotenv": "https://esm.sh/dotenv@^17.2.3",
+    "path": "https://esm.sh/path@^0.12.7",
+    "fs": "https://esm.sh/fs@^0.0.1-security"
   }
 }
 </script>
@@ -114,50 +107,43 @@
 <body>
     <div id="toast" class="toast"></div>
     <div id="appContainer">
-        <!-- HEADER -->
-        <header id="appHeader">
-            <div class="elaz-brand-container mini-brand-scale">
-                <div class="elaz-letters">
-                    <span class="l-char l-e">E</span>
-                    <span class="l-char l-l">L</span>
-                    <span class="l-char l-a">A<i class="fas fa-shopping-basket a-icon"></i></span>
-                    <span class="l-char l-z">Z</span>
-                </div>
-                <div class="market-chip">MARKET</div>
+        <section id="welcomeView" class="view-section" style="padding:0;"></section>
+        <section id="authView" class="view-section"></section>
+        
+        <header id="appHeader" style="display:none; padding:1.2rem 1.5rem; background:white; border-bottom:1px solid #f1f5f9; justify-content:space-between; align-items:center;">
+            <div style="font-weight:900; font-size:1.3rem; color:var(--text); display:flex; align-items:center; gap:10px;">
+                <div style="width:38px; height:38px; background:var(--gradient); border-radius:10px; display:flex; align-items:center; justify-content:center; color:white;"><i class="fas fa-shopping-bag"></i></div>
+                ELAZ <span style="color:var(--primary); font-weight:400; margin-left:-5px;">MARKET</span>
             </div>
-            <div id="headerActions" style="display:flex; gap:8px;"></div>
+            <div id="headerActions"></div>
         </header>
 
-        <!-- MAIN VIEW (Stretches) -->
-        <main style="overflow-y: auto; height: 100%;">
-            <section id="welcomeView" class="view-section" style="padding:0;"></section>
-            <section id="authView" class="view-section"></section>
-            <section id="homeView" class="view-section"></section>
-            <section id="savedView" class="view-section"></section>
-            <section id="cartView" class="view-section"></section>
-            <section id="ordersView" class="view-section"></section>
-            <section id="profileView" class="view-section"></section>
-        </main>
+        <section id="homeView" class="view-section"></section>
+        <section id="savedView" class="view-section"></section>
+        <section id="cartView" class="view-section"></section>
+        <section id="ordersView" class="view-section"></section>
+        <section id="profileView" class="view-section"></section>
         
-        <!-- BOTTOM NAV -->
         <nav id="bottomNav" class="bottom-nav">
-            <div class="nav-item active" onclick="navTo('home')"><i class="fas fa-store"></i>Market</div>
+            <div class="nav-item active" onclick="navTo('home')"><i class="fas fa-layer-group"></i>Market</div>
             <div class="nav-item" onclick="navTo('saved')"><i class="far fa-heart"></i>Sevimlilar</div>
-            <div class="nav-item" onclick="navTo('cart')"><i class="fas fa-shopping-cart"></i>Savat</div>
+            <div class="nav-item" onclick="navTo('cart')"><i class="fas fa-shopping-basket"></i>Savat</div>
             <div class="nav-item" onclick="navTo('orders')"><i class="fas fa-receipt"></i>Tarix</div>
             <div class="nav-item" id="navProfileItem" onclick="navTo('profile')">
-                <div id="navProfileIconContainer" style="width:24px; height:24px; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:50%; background:#f1f5f9;">
+                <div id="navProfileIconContainer" style="display: flex; align-items: center; justify-content: center; min-height: 32px;">
                     <i class="far fa-user-circle"></i>
                 </div>
                 Profil
             </div>
         </nav>
     </div>
-    
     <div id="locationOverlay" class="overlay"><div id="locationFormContainer"></div></div>
     <div id="checkoutOverlay" class="overlay"><div id="checkoutPlaceholder"></div></div>
     <div id="profileEditOverlay" class="overlay"><div id="profileEditPlaceholder"></div></div>
-    <div id="adminPanel" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:7000;"></div>
+    <div id="profileSecurityOverlay" class="overlay"><div id="profileSecurityPlaceholder"></div></div>
+    <div id="paymentOverlay" class="overlay"><div id="paymentPlaceholder"></div></div>
+    
+    <div id="adminPanel" class="admin-panel-ui"></div>
 
     <script src="index.tsx" type="module"></script>
 </body>
