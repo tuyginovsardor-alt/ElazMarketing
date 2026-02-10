@@ -7,7 +7,6 @@ export async function switchAdminTab(tab: string) {
 
     panel.innerHTML = `
         <div style="width:100%; height:100%; display:flex; flex-direction:column; background:#f8fafc;">
-            <!-- ADMIN HEADER -->
             <header style="padding:1rem 1.5rem; background:white; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 10px rgba(0,0,0,0.02); z-index:100;">
                 <div style="font-weight:900; font-size:1rem; color:#0f172a; display:flex; align-items:center; gap:10px;">
                     <div style="width:32px; height:32px; background:var(--gradient); border-radius:10px; display:flex; align-items:center; justify-content:center; color:white;">
@@ -20,20 +19,18 @@ export async function switchAdminTab(tab: string) {
                 </button>
             </header>
             
-            <!-- ADMIN TABS (YANGILANDI: MIJOZLAR QO'SHILDI) -->
             <nav style="display:flex; background:white; border-bottom:1px solid #e2e8f0; overflow-x:auto; scrollbar-width:none; -ms-overflow-style:none; padding: 0 10px;">
                 <div class="admin-tab" onclick="window.switchAdminTab('dash')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'dash' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'dash' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">ANALITIKA</div>
+                <div class="admin-tab" onclick="window.switchAdminTab('apps')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'apps' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'apps' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">ARIZALAR <span id="appBadge" style="display:none; background:var(--danger); color:white; padding:1px 5px; border-radius:5px; font-size:0.5rem; margin-left:3px;">!</span></div>
                 <div class="admin-tab" onclick="window.switchAdminTab('users')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'users' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'users' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">MIJOZLAR</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('inv')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'inv' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'inv' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">SKLAD</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('orders')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'orders' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'orders' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">BUYURTMALAR</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('couriers')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'couriers' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'couriers' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">KURYERLAR</div>
-                <div class="admin-tab" onclick="window.switchAdminTab('ads')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'ads' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'ads' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">MARKETING</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('fin')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'fin' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'fin' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">MOLIYA</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('settings')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'settings' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'settings' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;"><i class="fas fa-cog"></i></div>
             </nav>
 
             <div id="adminTabContent" style="flex:1; overflow-y:auto; padding:25px; background:#f8fafc; animation: fadeIn 0.3s ease-out;">
-                <!-- Loading State -->
                 <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; opacity:0.5;">
                     <i class="fas fa-circle-notch fa-spin fa-2x" style="color:var(--primary); margin-bottom:15px;"></i>
                     <p style="font-weight:800; font-size:0.7rem; letter-spacing:1px;">YUKLANMOQDA...</p>
@@ -43,8 +40,18 @@ export async function switchAdminTab(tab: string) {
     `;
 
     renderTabContent(tab);
+    checkApplicationsCount();
 }
 (window as any).switchAdminTab = switchAdminTab;
+
+async function checkApplicationsCount() {
+    const { count } = await supabase.from('courier_applications').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+    const badge = document.getElementById('appBadge');
+    if(badge && count && count > 0) {
+        badge.style.display = 'inline-block';
+        badge.innerText = count.toString();
+    }
+}
 
 async function renderTabContent(tab: string) {
     const content = document.getElementById('adminTabContent');
@@ -54,6 +61,9 @@ async function renderTabContent(tab: string) {
         if(tab === 'dash') {
             const { renderAdminDashboard } = await import("./adminDashboard.tsx");
             renderAdminDashboard();
+        } else if(tab === 'apps') {
+            const { renderAdminApplications } = await import("./adminApplications.tsx");
+            renderAdminApplications();
         } else if(tab === 'users') {
             const { renderAdminUsers } = await import("./adminUsers.tsx");
             renderAdminUsers();
@@ -66,12 +76,6 @@ async function renderTabContent(tab: string) {
         } else if(tab === 'couriers') {
             const { renderAdminCouriers } = await import("./adminCouriers.tsx");
             renderAdminCouriers();
-        } else if(tab === 'ads') {
-            const { renderAdminAds } = await import("./adminAds.tsx");
-            renderAdminAds();
-        } else if(tab === 'bot') {
-            const { renderAdminBot } = await import("./adminBot.tsx");
-            renderAdminBot();
         } else if(tab === 'fin') {
             const { renderAdminFinance } = await import("./adminFinance.tsx");
             renderAdminFinance();
