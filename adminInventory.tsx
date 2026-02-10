@@ -91,7 +91,9 @@ async function loadAdminProducts(searchTerm = '') {
 
     placeholder.innerHTML = `<div style="text-align:center; padding:10rem;"><i class="fas fa-spinner fa-spin fa-3x" style="color:var(--primary);"></i></div>`;
 
+    // Bu "p" obyekti hozirgi tahrirlash sessiyasining asosiy xotirasi (Source of truth)
     let p: any = { name: '', price: '', category: 'grocery', unit: 'dona', image_url: '', description: '', images: [], stock: 100, discount: 0 };
+    
     if(id) {
         const { data } = await supabase.from('products').select('*').eq('id', id).single();
         if(data) p = data;
@@ -100,28 +102,46 @@ async function loadAdminProducts(searchTerm = '') {
     currentEditingImages = p.images || [];
     activeEditorTab = 'general';
 
+    // Muhim: DOMdagi inputlardan qiymatlarni olib, "p" obyektini yangilash funksiyasi
+    const syncPFromDOM = () => {
+        const nameEl = document.getElementById('p_name') as HTMLInputElement;
+        const priceEl = document.getElementById('p_price') as HTMLInputElement;
+        const unitEl = document.getElementById('p_unit') as HTMLInputElement;
+        const catEl = document.getElementById('p_cat') as HTMLSelectElement;
+        const descEl = document.getElementById('p_desc') as HTMLTextAreaElement;
+        const imgEl = document.getElementById('p_img') as HTMLInputElement;
+        const stockEl = document.getElementById('p_stock') as HTMLInputElement;
+        const discEl = document.getElementById('p_discount') as HTMLInputElement;
+
+        if(nameEl) p.name = nameEl.value;
+        if(priceEl) p.price = Number(priceEl.value);
+        if(unitEl) p.unit = unitEl.value;
+        if(catEl) p.category = catEl.value;
+        if(descEl) p.description = descEl.value;
+        if(imgEl) p.image_url = imgEl.value;
+        if(stockEl) p.stock = Number(stockEl.value);
+        if(discEl) p.discount = Number(discEl.value);
+        
+        p.images = currentEditingImages;
+    };
+
     const renderEditorContent = () => {
         placeholder.innerHTML = `
             <div style="padding-bottom:120px; animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);">
                 <div style="display:flex; align-items:center; gap:20px; margin-bottom:25px; position:sticky; top:0; background:white; z-index:100; padding:15px 0; border-bottom:2px solid #f8fafc;">
                     <div onclick="closeOverlay('checkoutOverlay')" style="width:45px; height:45px; border-radius:15px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; cursor:pointer;"><i class="fas fa-chevron-left"></i></div>
-                    <h2 style="font-weight:900; font-size:1.4rem; letter-spacing:-0.5px;">${id ? 'Mahsulotni tahrirlash' : 'Yangi mahsulot qo\'shish'}</h2>
+                    <h2 style="font-weight:900; font-size:1.4rem; letter-spacing:-0.5px;">${id ? 'Mahsulotni tahrirlash' : 'Yangi mahsulot'}</h2>
                 </div>
 
-                <!-- TABS -->
                 <div style="display:flex; background:#f1f5f9; padding:6px; border-radius:18px; margin-bottom:25px; gap:5px;">
                     <button onclick="window.switchEditorTab('general')" style="flex:1; height:42px; border-radius:14px; border:none; font-weight:800; font-size:0.7rem; cursor:pointer; transition:0.3s; background:${activeEditorTab === 'general' ? 'white' : 'transparent'}; color:${activeEditorTab === 'general' ? 'var(--primary)' : 'var(--gray)'}; box-shadow:${activeEditorTab === 'general' ? 'var(--shadow-sm)' : 'none'};">ASOSIY</button>
                     <button onclick="window.switchEditorTab('media')" style="flex:1; height:42px; border-radius:14px; border:none; font-weight:800; font-size:0.7rem; cursor:pointer; transition:0.3s; background:${activeEditorTab === 'media' ? 'white' : 'transparent'}; color:${activeEditorTab === 'media' ? 'var(--primary)' : 'var(--gray)'}; box-shadow:${activeEditorTab === 'media' ? 'var(--shadow-sm)' : 'none'};">RASMLAR</button>
                     <button onclick="window.switchEditorTab('stock')" style="flex:1; height:42px; border-radius:14px; border:none; font-weight:800; font-size:0.7rem; cursor:pointer; transition:0.3s; background:${activeEditorTab === 'stock' ? 'white' : 'transparent'}; color:${activeEditorTab === 'stock' ? 'var(--primary)' : 'var(--gray)'}; box-shadow:${activeEditorTab === 'stock' ? 'var(--shadow-sm)' : 'none'};">OMBOR</button>
                 </div>
 
-                <div id="editorTabBody" style="min-height:400px;">
+                <div id="editorTabBody">
                     ${activeEditorTab === 'general' ? `
                         <div class="card" style="border-radius:28px; padding:25px; border:2px solid #f1f5f9; background:white;">
-                            <div style="background:var(--primary-light); padding:15px; border-radius:18px; margin-bottom:25px; border-left:5px solid var(--primary);">
-                                <p style="font-size:0.75rem; color:var(--primary); font-weight:800; line-height:1.5;"><i class="fas fa-lightbulb"></i> MASLAHAT: Mahsulot nomini qisqa va tushunarli yozing. Masalan: "Olma (Qizil, shirin)".</p>
-                            </div>
-                            
                             <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:10px; display:block;">Mahsulot nomi *</label>
                             <input type="text" id="p_name" value="${p.name}" placeholder="Masalan: Pepsi 1.5L" style="height:60px; font-size:1rem; border-radius:18px;">
                             
@@ -131,52 +151,48 @@ async function loadAdminProducts(searchTerm = '') {
                                     <input type="number" id="p_price" value="${p.price}" placeholder="12000" style="height:60px; font-size:1rem; border-radius:18px;">
                                 </div>
                                 <div>
-                                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:10px; display:block;">O'lchov birligi *</label>
-                                    <input type="text" id="p_unit" value="${p.unit}" placeholder="kg, dona, litr" style="height:60px; font-size:1rem; border-radius:18px;">
+                                    <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:10px; display:block;">Birligi *</label>
+                                    <input type="text" id="p_unit" value="${p.unit}" placeholder="kg, dona" style="height:60px; font-size:1rem; border-radius:18px;">
                                 </div>
                             </div>
 
-                            <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:10px; display:block; margin-top:10px;">Kategoriya *</label>
-                            <select id="p_cat" style="height:60px; border-radius:18px; background-image:none;">
+                            <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:10px; display:block; margin-top:10px;">Kategoriya</label>
+                            <select id="p_cat" style="height:60px; border-radius:18px;">
                                 ${CATEGORIES.map(c => `<option value="${c.id}" ${p.category === c.id ? 'selected' : ''}>${c.label}</option>`).join('')}
                             </select>
 
-                            <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:10px; display:block; margin-top:10px;">Batafsil tavsif</label>
-                            <textarea id="p_desc" placeholder="Mahsulot haqida ko'proq ma'lumot bering..." style="height:150px; border-radius:18px; padding:20px;">${p.description || ''}</textarea>
+                            <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:10px; display:block; margin-top:10px;">Tavsif</label>
+                            <textarea id="p_desc" style="height:120px; border-radius:18px; padding:15px;">${p.description || ''}</textarea>
                         </div>
                     ` : ''}
 
                     ${activeEditorTab === 'media' ? `
                         <div class="card" style="border-radius:28px; padding:25px; border:2px solid #f1f5f9; background:white;">
-                            <div style="background:#fff9db; padding:15px; border-radius:18px; margin-bottom:25px; border-left:5px solid #f59e0b;">
-                                <p style="font-size:0.75rem; color:#856404; font-weight:800; line-height:1.5;"><i class="fas fa-camera"></i> MASLAHAT: Sifatli rasmlar savdoni 70% ga oshiradi. Oq fondagi rasmlardan foydalaning.</p>
-                            </div>
-
-                            <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:15px; display:block;">Asosiy rasm (Muqova)</label>
-                            <div style="display:flex; gap:15px; align-items:center; margin-bottom:30px;">
-                                <div id="mainImgPreview" style="width:120px; height:120px; border-radius:24px; background:#f8fafc; border:2px dashed #cbd5e1; overflow:hidden; display:flex; align-items:center; justify-content:center; position:relative;">
-                                    ${p.image_url ? `<img src="${p.image_url}" style="width:100%; height:100%; object-fit:cover;">` : `<i class="fas fa-image fa-2x" style="color:#cbd5e1;"></i>`}
+                            <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:15px; display:block;">Asosiy rasm URL</label>
+                            <div style="display:flex; gap:15px; align-items:center; margin-bottom:25px;">
+                                <div id="mainImgPreview" style="width:100px; height:100px; border-radius:20px; background:#f8fafc; border:2px dashed #cbd5e1; overflow:hidden; display:flex; align-items:center; justify-content:center;">
+                                    ${p.image_url ? `<img src="${p.image_url}" style="width:100%; height:100%; object-fit:cover;">` : `<i class="fas fa-image" style="color:#cbd5e1;"></i>`}
                                 </div>
                                 <div style="flex:1;">
-                                    <input type="text" id="p_img" value="${p.image_url}" placeholder="Rasm URL manzili" style="height:50px; font-size:0.8rem; margin-bottom:10px; border-radius:12px;">
-                                    <label class="btn btn-outline" style="height:50px; border-radius:12px; cursor:pointer; font-size:0.8rem; border-color:var(--primary); color:var(--primary);">
+                                    <input type="text" id="p_img" value="${p.image_url}" placeholder="URL..." style="height:50px; font-size:0.8rem; margin-bottom:10px;">
+                                    <label class="btn btn-outline" style="height:45px; border-radius:12px; cursor:pointer; font-size:0.7rem; border-color:var(--primary); color:var(--primary); width:100%; display:flex; align-items:center; justify-content:center;">
                                         <input type="file" style="display:none;" onchange="window.uploadProdImageToUrl(this, 'p_img')">
-                                        <i class="fas fa-cloud-arrow-up"></i> RASM YUKLASH
+                                        YUKLASH
                                     </label>
                                 </div>
                             </div>
 
-                            <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:15px; display:block;">Qo'shimcha rasmlar (Galereya)</label>
-                            <div id="additionalImagesCont" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;">
+                            <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:15px; display:block;">Galereya</label>
+                            <div id="additionalImagesCont" style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
                                 ${currentEditingImages.map((img, i) => `
-                                    <div style="position:relative; aspect-ratio:1/1; border-radius:18px; overflow:hidden; border:2px solid #f1f5f9; box-shadow:var(--shadow-sm);">
+                                    <div style="position:relative; aspect-ratio:1/1; border-radius:15px; overflow:hidden; border:2px solid #f1f5f9;">
                                         <img src="${img}" style="width:100%; height:100%; object-fit:cover;">
-                                        <button onclick="window.removeEditorImg(${i})" style="position:absolute; top:5px; right:5px; width:28px; height:28px; border-radius:8px; background:rgba(239,68,68,0.9); color:white; border:none; cursor:pointer;"><i class="fas fa-times"></i></button>
+                                        <button onclick="window.removeEditorImg(${i})" style="position:absolute; top:2px; right:2px; width:22px; height:22px; border-radius:5px; background:rgba(239,68,68,0.9); color:white; border:none; cursor:pointer;"><i class="fas fa-times" style="font-size:0.6rem;"></i></button>
                                     </div>
                                 `).join('')}
-                                <label class="btn btn-outline" style="aspect-ratio:1/1; height:auto; border-radius:18px; border:2px dashed #cbd5e1; background:#f8fafc; color:var(--gray); cursor:pointer; display:flex; flex-direction:column; gap:8px; font-size:0.7rem; justify-content:center;">
+                                <label class="btn btn-outline" style="aspect-ratio:1/1; height:auto; border-radius:15px; border:2px dashed #cbd5e1; background:#f8fafc; color:var(--gray); cursor:pointer; display:flex; flex-direction:column; gap:5px; font-size:0.6rem; justify-content:center; align-items:center;">
                                     <input type="file" style="display:none;" onchange="window.uploadProdImageToGallery(this)">
-                                    <i class="fas fa-plus-circle fa-2x"></i>
+                                    <i class="fas fa-plus"></i>
                                     <span>QO'SHISH</span>
                                 </label>
                             </div>
@@ -185,27 +201,18 @@ async function loadAdminProducts(searchTerm = '') {
 
                     ${activeEditorTab === 'stock' ? `
                         <div class="card" style="border-radius:28px; padding:25px; border:2px solid #f1f5f9; background:white;">
-                            <div style="background:#eef2ff; padding:15px; border-radius:18px; margin-bottom:25px; border-left:5px solid #4f46e5;">
-                                <p style="font-size:0.75rem; color:#4338ca; font-weight:800; line-height:1.5;"><i class="fas fa-warehouse"></i> OMBOR TIZIMI: Miqdor 0 bo'lganda mahsulot avtomatik ravishda "Tugagan" deb belgilanadi.</p>
-                            </div>
-
                             <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:10px; display:block;">Ombordagi miqdor</label>
-                            <input type="number" id="p_stock" value="${p.stock || 0}" placeholder="Masalan: 50" style="height:60px; font-size:1rem; border-radius:18px; margin-bottom:20px;">
+                            <input type="number" id="p_stock" value="${p.stock}" style="height:60px; font-size:1rem; border-radius:18px;">
 
-                            <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:10px; display:block;">Chegirma foizi (%)</label>
-                            <input type="number" id="p_discount" value="${p.discount || 0}" placeholder="Masalan: 10" style="height:60px; font-size:1rem; border-radius:18px;">
-                            
-                            <div style="margin-top:25px; padding:20px; background:#f8fafc; border-radius:20px; border:1px solid #f1f5f9;">
-                                <h4 style="font-weight:900; font-size:0.8rem; margin-bottom:10px;">Xavfsiz qoldiq:</h4>
-                                <p style="font-size:0.7rem; color:var(--gray); font-weight:700;">Agar omborda miqdor 5 tadan kam qolsa, tizim sizga xabar beradi.</p>
-                            </div>
+                            <label style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:10px; display:block; margin-top:20px;">Chegirma foizi (%)</label>
+                            <input type="number" id="p_discount" value="${p.discount}" style="height:60px; font-size:1rem; border-radius:18px;">
                         </div>
                     ` : ''}
                 </div>
 
                 <div style="position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:450px; background:rgba(255,255,255,0.9); backdrop-filter:blur(20px); padding:20px; z-index:1000; border-top:1px solid #f1f5f9;">
-                    <button class="btn btn-primary" id="btnSaveProd" style="width:100%; height:65px; border-radius:22px; font-size:1.1rem; box-shadow:0 10px 25px rgba(34,197,94,0.3);" onclick="window.saveAdminProduct(${id || 'null'})">
-                        TIZIMGA SAQLASH <i class="fas fa-check-double" style="margin-left:8px;"></i>
+                    <button class="btn btn-primary" id="btnSaveProd" style="width:100%; height:65px; border-radius:22px; font-size:1.1rem;" onclick="window.saveAdminProduct(${id || 'null'})">
+                        SAQLASH <i class="fas fa-check-double" style="margin-left:8px;"></i>
                     </button>
                 </div>
             </div>
@@ -213,8 +220,31 @@ async function loadAdminProducts(searchTerm = '') {
     };
 
     (window as any).switchEditorTab = (tab: string) => {
+        syncPFromDOM(); // Tabni o'zgartirishdan oldin ma'lumotlarni saqlaymiz
         activeEditorTab = tab;
         renderEditorContent();
+    };
+
+    (window as any).saveAdminProduct = async (prodId: any) => {
+        syncPFromDOM(); // Saqlashdan oldin hammasini o'qib olamiz
+        const btn = document.getElementById('btnSaveProd') as HTMLButtonElement;
+        
+        if(!p.name || !p.price) return showToast("Nomi va narxi majburiy!");
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> SAQLANMOQDA...';
+
+        const { error } = prodId ? await supabase.from('products').update(p).eq('id', prodId) : await supabase.from('products').insert(p);
+        
+        if(!error) { 
+            showToast("Mahsulot saqlandi!"); 
+            closeOverlay('checkoutOverlay'); 
+            renderAdminInventory(); 
+        } else {
+            showToast("Xato: " + error.message);
+            btn.disabled = false;
+            btn.innerText = "SAQLASH";
+        }
     };
 
     renderEditorContent();
@@ -223,73 +253,34 @@ async function loadAdminProducts(searchTerm = '') {
 (window as any).uploadProdImageToUrl = async (input: HTMLInputElement, targetId: string) => {
     const file = input.files?.[0];
     if(!file) return;
-    showToast("Rasm yuklanmoqda...");
+    showToast("Yuklanmoqda...");
     const fileName = `main_${Date.now()}.${file.name.split('.').pop()}`;
     const { data, error } = await supabase.storage.from('products').upload(`items/${fileName}`, file);
-    if(error) return showToast("Yuklashda xato!");
+    if(error) return showToast("Xato!");
     const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(`items/${fileName}`);
-    (document.getElementById(targetId) as HTMLInputElement).value = publicUrl;
     
-    // UI Preview yangilash
+    // UI va inputni yangilash
+    const inputEl = document.getElementById(targetId) as HTMLInputElement;
+    if(inputEl) inputEl.value = publicUrl;
     const preview = document.getElementById('mainImgPreview');
     if(preview) preview.innerHTML = `<img src="${publicUrl}" style="width:100%; height:100%; object-fit:cover;">`;
-    showToast("Asosiy rasm tayyor!");
+    showToast("Rasm yuklandi");
 };
 
 (window as any).uploadProdImageToGallery = async (input: HTMLInputElement) => {
     const file = input.files?.[0];
     if(!file) return;
-    showToast("Galereyaga yuklanmoqda...");
     const fileName = `gal_${Date.now()}.${file.name.split('.').pop()}`;
     const { error } = await supabase.storage.from('products').upload(`items/${fileName}`, file);
     if(error) return showToast("Xato!");
     const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(`items/${fileName}`);
     currentEditingImages.push(publicUrl);
-    
-    // Tabni qayta render qilish orqali UI yangilash
     (window as any).switchEditorTab('media');
-    showToast("Galereyaga qo'shildi!");
 };
 
 (window as any).removeEditorImg = (idx: number) => {
     currentEditingImages.splice(idx, 1);
     (window as any).switchEditorTab('media');
-};
-
-(window as any).saveAdminProduct = async (id: any) => {
-    const btn = document.getElementById('btnSaveProd') as HTMLButtonElement;
-    const p_name = (document.getElementById('p_name') as HTMLInputElement)?.value.trim();
-    const p_price = Number((document.getElementById('p_price') as HTMLInputElement)?.value);
-    
-    if(!p_name || !p_price) return showToast("Majburiy maydonlarni to'ldiring!");
-
-    const data = {
-        name: p_name,
-        price: p_price,
-        category: (document.getElementById('p_cat') as HTMLSelectElement).value,
-        unit: (document.getElementById('p_unit') as HTMLInputElement).value.trim(),
-        description: (document.getElementById('p_desc') as HTMLTextAreaElement).value.trim(),
-        image_url: (document.getElementById('p_img') as HTMLInputElement).value.trim(),
-        images: currentEditingImages,
-        stock: Number((document.getElementById('p_stock') as HTMLInputElement)?.value || 0),
-        discount: Number((document.getElementById('p_discount') as HTMLInputElement)?.value || 0),
-        is_archived: false
-    };
-
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> SAQLANMOQDA...';
-
-    const { error } = id ? await supabase.from('products').update(data).eq('id', id) : await supabase.from('products').insert(data);
-    
-    if(!error) { 
-        showToast("Mahsulot muvaffaqiyatli saqlandi! ✨"); 
-        closeOverlay('checkoutOverlay'); 
-        renderAdminInventory(); 
-    } else {
-        showToast("Xato: " + error.message);
-        btn.disabled = false;
-        btn.innerText = "TIZIMGA SAQLASH";
-    }
 };
 
 (window as any).searchSklad = (val: string) => {
