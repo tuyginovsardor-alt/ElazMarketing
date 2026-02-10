@@ -14,6 +14,26 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 export let user: any = null;
 export let profile: any = null;
 
+// --- NOTIFICATION & SOUND UTILS ---
+export function playNotificationSound() {
+    const audio = new Audio('https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=message-incoming-132126.mp3');
+    audio.play().catch(e => console.log("Ovoz ijro etilmadi (User interaction kerak)"));
+}
+
+export async function requestPermissions() {
+    if ("Notification" in window) {
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") console.log("Bildirishnomalar yoqildi");
+    }
+}
+
+export function sendPush(title: string, body: string) {
+    if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(title, { body, icon: '/favicon.ico' });
+    }
+    showToast(body);
+}
+
 // --- GLOBAL UTILS ---
 export function showToast(msg: string) {
     const t = document.getElementById('toast');
@@ -65,6 +85,9 @@ export async function loadProfileData() {
         }
         profile = data;
         
+        // Mijoz uchun Real-time Order Monitoring (Status o'zgarganda xabar berish)
+        setupClientOrderMonitoring();
+
         const navIconContainer = document.getElementById('navProfileIconContainer');
         if (navIconContainer) {
             navIconContainer.innerHTML = profile?.avatar_url ? `<img src="${profile.avatar_url}" class="nav-profile-img">` : `<i class="far fa-user-circle" style="font-size: 1.6rem;"></i>`;
@@ -72,7 +95,26 @@ export async function loadProfileData() {
         return profile;
     } catch (e) { return null; }
 }
-(window as any).loadProfileData = loadProfileData;
+
+function setupClientOrderMonitoring() {
+    if (!user) return;
+    supabase.channel('client_orders')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` }, (payload) => {
+            const oldStatus = payload.old.status;
+            const newStatus = payload.new.status;
+            if (oldStatus !== newStatus) {
+                if (newStatus === 'delivering') {
+                    sendPush("ELAZ MARKET", "🛵 Kuryer buyurtmangizni qabul qildi va yo'lga chiqdi!");
+                    playNotificationSound();
+                } else if (newStatus === 'delivered') {
+                    sendPush("ELAZ MARKET", "✅ Buyurtmangiz yetkazib berildi. Yoqimli ishtaha!");
+                    playNotificationSound();
+                }
+                // Agar hozir ordersView bo'lsa yangilash
+                if (document.getElementById('ordersView')?.classList.contains('active')) renderOrdersView();
+            }
+        }).subscribe();
+}
 
 // --- NAVIGATION ---
 export const navTo = async (view: string) => {
@@ -134,6 +176,7 @@ export async function checkAuth() {
     if (session?.user) {
         user = session.user;
         await loadProfileData();
+        requestPermissions(); // Ruxsatlarni so'rash
         navTo('home');
     } else {
         showView('auth');
@@ -167,63 +210,3 @@ export async function addToCart(productId: number, qty: number = 1) {
     } catch (e) { showToast("Xatolik yuz berdi!"); }
 }
 (window as any).addToCart = addToCart;
-
-export async function toggleFavorite(productId: number) {
-    if(!user) return showToast("Tizimga kiring");
-    const { data: existing } = await supabase.from('favorites').select('id').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
-    if(existing) {
-        await supabase.from('favorites').delete().eq('id', existing.id);
-        showToast("O'chirildi");
-    } else {
-        await supabase.from('favorites').insert({ user_id: user.id, product_id: productId });
-        showToast("Saqlandi ❤️");
-    }
-}
-(window as any).toggleFavorite = toggleFavorite;
-
-(window as any).openProductDetailsById = async (id: number) => {
-    const { data } = await supabase.from('products').select('*').eq('id', id).single();
-    if(data) {
-        const { renderProductDetails } = await import("./productDetails.tsx");
-        renderProductDetails(data);
-    }
-};
-
-(window as any).enterAdminPanel = async () => {
-    const { switchAdminTab } = await import("./admin.tsx");
-    const app = document.getElementById('appContainer');
-    const admin = document.getElementById('adminPanel');
-    if(app) app.style.display = 'none';
-    if(admin) admin.style.display = 'flex';
-    switchAdminTab('dash');
-};
-
-(window as any).openLegal = async (type: 'offer' | 'privacy' | 'rules') => {
-    const { openLegal } = await import("./legal.tsx");
-    openLegal(type);
-};
-
-(window as any).openPayment = async () => {
-    const { openPaymentView } = await import("./payment.tsx");
-    openPaymentView();
-};
-
-(window as any).openCourierRegistration = async () => {
-    const { openCourierRegistrationForm } = await import("./courierRegistration.tsx");
-    openCourierRegistrationForm();
-};
-
-(window as any).openSupportCenter = async () => {
-    const { renderSupportView } = await import("./supportView.tsx");
-    renderSupportView();
-};
-
-(window as any).openProfileSecurity = async () => {
-    const { openProfileSecurity } = await import("./security.tsx");
-    openProfileSecurity();
-};
-
-(window as any).openProfileEdit = async () => {
-    const { openProfileEdit } = await import("./profileEdit.tsx");
-    openProfileEdit();
-};
