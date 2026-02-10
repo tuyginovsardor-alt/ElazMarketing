@@ -261,10 +261,10 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> JARAYONDA...';
 
     try {
-        const { data: items } = await supabase.from('cart_items').select('*, products(*)').eq('user_id', user.id);
+        const { data: cartItems } = await supabase.from('cart_items').select('*, products(*)').eq('user_id', user.id);
         
-        // Yangi: mahsulotlarni '|' va '*' belgilaridan foydalanib yanada tushunarliroq formatda saqlash
-        const itemsSummary = items?.map(i => `${i.products.name} (${i.quantity} ${i.products.unit})`).join("|") || "";
+        // Items stringini shakllantirish: "Nomi (Soni Birligi)"
+        const itemsSummary = cartItems?.map(i => `${i.products.name} (${i.quantity} ${i.products.unit})`).join("|") || "";
 
         const { data: newOrder, error } = await supabase.from('orders').insert({
             user_id: user?.id,
@@ -278,19 +278,15 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
             delivery_cost: Math.round(deliveryCost),
             payment_method: selectedPaymentMethod,
             requested_transport: selectedTransportType,
-            items: itemsSummary 
+            items: itemsSummary // Barcha mahsulotlar mana shu yerda saqlanadi
         }).select().single();
 
         if(error) throw error;
 
-        // TsPay bo'lsa redirection
+        // TsPay mantiqi (agar bo'lsa)
         if (selectedPaymentMethod === 'tspay') {
             const { data: tsData, error: tsError } = await supabase.functions.invoke('clever-api', {
-                body: { 
-                    action: 'create', 
-                    amount: finalTotal,
-                    user_id: user.id
-                }
+                body: { action: 'create', amount: finalTotal, user_id: user.id }
             });
             if (tsData?.status === 'success' && tsData?.transaction?.url) {
                 window.location.href = tsData.transaction.url;
@@ -299,7 +295,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
         }
 
         if (selectedPaymentMethod === 'wallet') {
-            await supabase.from('profiles').update({ balance: profile.balance - finalTotal }).eq('id', user.id);
+            await supabase.from('profiles').update({ balance: (profile.balance || 0) - finalTotal }).eq('id', user.id);
             await supabase.from('transactions').insert({
                 user_id: user.id,
                 amount: finalTotal,
