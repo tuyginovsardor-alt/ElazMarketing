@@ -38,15 +38,15 @@ export async function renderAdminOrders() {
 
                 return `
                 <div class="card" style="padding:22px; border-radius:28px; background:white; border:1.5px solid #f1f5f9; box-shadow:var(--shadow-sm); position:relative; overflow:hidden;">
-                    <div style="position:absolute; top:0; left:0; width:5px; height:100%; background:${o.status === 'delivered' ? '#22c55e' : (o.status === 'cancelled' ? '#ef4444' : '#3b82f6')};"></div>
+                    <div style="position:absolute; top:0; left:0; width:5px; height:100%; background:${o.status === 'delivered' ? '#22c55e' : (o.status === 'cancelled' ? '#ef4444' : (o.status === 'pending' ? '#f59e0b' : '#3b82f6'))};"></div>
 
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                         <div>
                             <div style="font-weight:900; font-size:1.1rem; color:var(--text);">#ORD-${o.id.toString().substring(0,6)}</div>
                             <div style="font-size:0.7rem; color:var(--gray); font-weight:800;">${new Date(o.created_at).toLocaleString()}</div>
                         </div>
-                        <div style="padding:6px 14px; border-radius:12px; background:${isUnassigned ? '#fef2f2' : '#f8fafc'}; font-size:0.65rem; font-weight:900; color:${isUnassigned ? '#ef4444' : '#64748b'}; border:1px solid ${isUnassigned ? '#fee2e2' : '#f1f5f9'};">
-                            ${isUnassigned ? 'KURYER KUTILMOQDA' : o.status.toUpperCase()}
+                        <div style="padding:6px 14px; border-radius:12px; background:${o.status === 'pending' ? '#fff7ed' : (isUnassigned ? '#fef2f2' : '#f8fafc')}; font-size:0.65rem; font-weight:900; color:${o.status === 'pending' ? '#ea580c' : (isUnassigned ? '#ef4444' : '#64748b')}; border:1px solid ${o.status === 'pending' ? '#ffedd5' : (isUnassigned ? '#fee2e2' : '#f1f5f9')};">
+                            ${o.status === 'pending' ? 'KUTILMOQDA' : (isUnassigned ? 'KURYER KUTILMOQDA' : o.status.toUpperCase())}
                         </div>
                     </div>
 
@@ -83,6 +83,7 @@ export async function renderAdminOrders() {
                         ` : ''}
                         
                         <select onchange="updateAdminOrderStatus(${o.id}, this.value)" style="flex:1; height:48px; border-radius:14px; margin:0; padding:0 15px; font-size:0.75rem; font-weight:800; background:white; border:2px solid #f1f5f9;">
+                            <option value="pending" ${o.status === 'pending' ? 'selected' : ''}>KUTILMOQDA</option>
                             <option value="confirmed" ${o.status === 'confirmed' ? 'selected' : ''}>TASDIQLANGAN</option>
                             <option value="delivering" ${o.status === 'delivering' ? 'selected' : ''}>YETKAZILMOQDA</option>
                             <option value="delivered" ${o.status === 'delivered' ? 'selected' : ''}>YETKAZILDI</option>

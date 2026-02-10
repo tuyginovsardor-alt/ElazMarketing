@@ -71,8 +71,8 @@ async function loadTerminalData() {
         let query = supabase.from('orders').select(`*, profiles!user_id(first_name, last_name, avatar_url)`);
 
         if(currentTab === 'new') {
-            // Faqat kuryer biriktirilmagan va tasdiqlangan buyurtmalar
-            query = query.eq('status', 'confirmed').is('courier_id', null).order('created_at', { ascending: false });
+            // Faqat kuryer biriktirilmagan va kutilayotgan (pending) buyurtmalar
+            query = query.eq('status', 'pending').is('courier_id', null).order('created_at', { ascending: false });
         } else if(currentTab === 'active') {
             // Kuryerning joriy faol buyurtmasi
             query = query.eq('courier_id', user.id).eq('status', 'delivering');
@@ -88,7 +88,7 @@ async function loadTerminalData() {
             feed.innerHTML = `
                 <div style="text-align:center; padding:5rem 20px; opacity:0.4;">
                     <i class="fas fa-inbox fa-3x" style="margin-bottom:15px;"></i>
-                    <p style="font-weight:800; font-size:0.9rem;">${currentTab === 'new' ? 'Hozircha bo\'sh buyurtmalar yo\'q' : 'Ma\'lumot yo\'q'}</p>
+                    <p style="font-weight:800; font-size:0.9rem;">${currentTab === 'new' ? 'Hozircha yangi buyurtmalar yo\'q' : 'Ma\'lumot yo\'q'}</p>
                 </div>
             `;
             return;
@@ -100,7 +100,7 @@ async function loadTerminalData() {
             const isBusy = courierProfile?.is_busy;
 
             return `
-            <div class="card" style="padding:22px; border-radius:28px; border:2px solid #f1f5f9; background:white; margin-bottom:15px; position:relative; overflow:hidden;">
+            <div class="card" style="padding:22px; border-radius:28px; border:1.5px solid #f1f5f9; background:white; margin-bottom:15px; position:relative; overflow:hidden;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                     <div>
                         <div style="font-weight:900; font-size:0.85rem; color:var(--gray);">#ORD-${o.id.toString().substring(0,6)}</div>
@@ -112,9 +112,18 @@ async function loadTerminalData() {
                     </div>
                 </div>
 
-                <div style="background:#f8fafc; padding:15px; border-radius:20px; margin-bottom:15px;">
-                    <div style="font-weight:900; font-size:0.9rem; margin-bottom:5px;">${fullName}</div>
+                <div style="background:#eff6ff; padding:15px; border-radius:20px; margin-bottom:15px; border:1px solid #dbeafe;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                         <div style="width:36px; height:36px; border-radius:10px; background:white; display:flex; align-items:center; justify-content:center; color:#3b82f6;">
+                            <i class="fas fa-user"></i>
+                         </div>
+                         <div>
+                            <div style="font-weight:900; font-size:0.9rem; color:#1e40af;">${fullName}</div>
+                            <div style="font-size:0.75rem; color:#3b82f6; font-weight:800;">${o.phone_number}</div>
+                         </div>
+                    </div>
                     <div style="font-size:0.8rem; font-weight:700; color:var(--gray);"><i class="fas fa-map-marker-alt" style="color:var(--danger);"></i> ${o.address_text}</div>
+                    ${o.comment ? `<div style="margin-top:10px; padding-top:10px; border-top:1px dashed #dbeafe; font-size:0.75rem; font-weight:700; color:#1e40af;">💬 Izoh: ${o.comment}</div>` : ''}
                 </div>
 
                 <div style="display:flex; gap:10px;">
@@ -122,7 +131,7 @@ async function loadTerminalData() {
                         <button onclick="window.terminalAcceptOrder(${o.id})" 
                                 ${isBusy ? 'disabled' : ''} 
                                 class="btn btn-primary" 
-                                style="flex:1; height:50px; border-radius:14px; background:${isBusy ? '#cbd5e1' : 'var(--primary)'}; opacity:${isBusy ? '0.6' : '1'};">
+                                style="flex:1; height:50px; border-radius:14px; background:${isBusy ? '#cbd5e1' : 'var(--dark)'}; opacity:${isBusy ? '0.6' : '1'}; border:none; box-shadow:none;">
                             ${isBusy ? 'BANDSIZ' : 'QABUL QILISH'}
                         </button>
                     ` : currentTab === 'active' ? `
@@ -130,14 +139,15 @@ async function loadTerminalData() {
                             YAKUNLASH (TOPSHIRILDI)
                         </button>
                         <button onclick="window.terminalTransferOrder(${o.id})" class="btn" style="flex:1; height:50px; border-radius:14px; background:#fff1f2; color:#ef4444; border:none; font-weight:800; font-size:0.75rem;">
-                            UZATISH
+                            RAD ETISH
                         </button>
                     ` : `
                         <div style="flex:1; text-align:center; font-weight:900; color:#22c55e; font-size:0.8rem;">
                             <i class="fas fa-check-circle"></i> YETKAZIB BERILGAN
                         </div>
                     `}
-                    ${o.latitude ? `<button onclick="window.open('https://www.google.com/maps?q=${o.latitude},${o.longitude}', '_blank')" class="btn btn-outline" style="width:50px; height:50px; border-radius:14px;"><i class="fas fa-location-arrow"></i></button>` : ''}
+                    ${o.latitude ? `<button onclick="window.open('https://www.google.com/maps?q=${o.latitude},${o.longitude}', '_blank')" class="btn btn-outline" style="width:50px; height:50px; border-radius:14px; background:#f8fafc; border-color:#e2e8f0; color:#64748b;"><i class="fas fa-location-arrow"></i></button>` : ''}
+                    ${currentTab === 'active' ? `<a href="tel:${o.phone_number}" class="btn" style="width:50px; height:50px; border-radius:14px; background:#f0fdf4; color:#22c55e; display:flex; align-items:center; justify-content:center; text-decoration:none;"><i class="fas fa-phone-alt"></i></a>` : ''}
                 </div>
                 ${currentTab === 'new' && isBusy ? `<p style="font-size:0.6rem; color:var(--danger); font-weight:800; text-align:center; margin-top:8px;">Avval faol buyurtmani yakunlang!</p>` : ''}
             </div>
@@ -219,7 +229,7 @@ function updateTabUI() {
 
     try {
         // Buyurtmani bo'shatish
-        await supabase.from('orders').update({ courier_id: null, status: 'confirmed' }).eq('id', oid);
+        await supabase.from('orders').update({ courier_id: null, status: 'pending' }).eq('id', oid);
         // Kuryerni bo'shatish
         await supabase.from('profiles').update({ is_busy: false }).eq('id', user.id);
 

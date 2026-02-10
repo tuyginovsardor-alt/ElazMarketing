@@ -245,14 +245,15 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 (window as any).placeOrderFinal = async () => {
-    const btn = document.getElementById('btnPlaceOrder') as HTMLButtonElement;
     const phone = (document.getElementById('checkoutPhone') as HTMLInputElement)?.value.trim();
     if(!phone) return showToast("Telefon raqami shart!");
 
+    if(!confirm("Buyurtmani tasdiqlaysizmi?")) return;
+
+    const btn = document.getElementById('btnPlaceOrder') as HTMLButtonElement;
     const base = deliveryRates[`${selectedTransportType}_base`] || 5000;
     const kmPrice = deliveryRates[`${selectedTransportType}_km`] || 2000;
     const deliveryCost = base + (Math.max(0, currentDistanceKm - 1) * kmPrice);
-    const finalTotal = subtotalAmount + Math.round(deliveryCost);
 
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> JARAYONDA...';
@@ -263,7 +264,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
             total_price: subtotalAmount,
             latitude: selectedPos.lat,
             longitude: selectedPos.lng,
-            status: 'confirmed',
+            status: 'pending',
             phone_number: phone,
             comment: (document.getElementById('checkoutComment') as HTMLTextAreaElement)?.value.trim(),
             address_text: "Xaritadan tanlangan manzil",
