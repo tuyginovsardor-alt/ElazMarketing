@@ -7,7 +7,6 @@ export async function renderProfileView(profileData: any) {
     
     const isAdmin = profileData?.role === 'admin' || profileData?.role === 'staff';
     const isCourier = profileData?.role === 'courier';
-    const isLinked = !!profileData?.telegram_id;
 
     const { count: totalOrders } = await supabase.from('orders').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
 
@@ -17,17 +16,20 @@ export async function renderProfileView(profileData: any) {
             <div style="background: linear-gradient(135deg, #1e293b, #0f172a); border-radius:0 0 45px 45px; margin:-1.2rem -1.2rem 25px -1.2rem; padding:50px 25px 35px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); position:relative; overflow:hidden;">
                 
                 <div style="display:flex; align-items:center; gap:18px; position:relative; z-index:1;">
-                    <div style="position:relative;">
-                        <div style="width:90px; height:90px; border-radius:30px; background:white; overflow:hidden; border:4px solid rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; box-shadow:0 10px 20px rgba(0,0,0,0.2);">
-                            ${profileData?.avatar_url ? `<img src="${profileData.avatar_url}" style="width:100%; height:100%; object-fit:cover;">` : `<i class="fas fa-user-circle" style="font-size:3.5rem; color:var(--primary);"></i>`}
+                    <div style="position:relative; flex-shrink: 0;">
+                        <div style="width:85px; height:85px; min-width:85px; min-height:85px; border-radius:28px; background:white; overflow:hidden; border:4px solid rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; box-shadow:0 10px 20px rgba(0,0,0,0.2);">
+                            ${profileData?.avatar_url ? 
+                                `<img src="${profileData.avatar_url}" style="width:100%; height:100%; object-fit:cover; display:block;">` : 
+                                `<i class="fas fa-user-circle" style="font-size:3.5rem; color:var(--primary);"></i>`
+                            }
                         </div>
-                        <div onclick="window.openProfileEdit()" style="position:absolute; bottom:-4px; right:-4px; width:32px; height:32px; background:var(--primary); border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; border:3px solid white; cursor:pointer;">
-                            <i class="fas fa-pen" style="font-size:0.75rem;"></i>
+                        <div onclick="window.openProfileEdit()" style="position:absolute; bottom:-4px; right:-4px; width:30px; height:30px; background:var(--primary); border-radius:10px; display:flex; align-items:center; justify-content:center; color:white; border:3px solid white; cursor:pointer;">
+                            <i class="fas fa-pen" style="font-size:0.7rem;"></i>
                         </div>
                     </div>
-                    <div style="flex:1; color:white;">
-                        <h2 style="font-weight:900; font-size:1.4rem; letter-spacing:-0.5px;">${profileData?.first_name || 'Mijoz'}</h2>
-                        <div style="font-size:0.7rem; font-weight:700; opacity:0.6; margin-top:2px;">${user.email}</div>
+                    <div style="flex:1; color:white; min-width:0;">
+                        <h2 style="font-weight:900; font-size:1.3rem; letter-spacing:-0.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${profileData?.first_name || 'Mijoz'}</h2>
+                        <div style="font-size:0.7rem; font-weight:700; opacity:0.6; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${user.email}</div>
                         <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(255,255,255,0.1); padding:4px 10px; border-radius:8px; margin-top:10px; font-size:0.6rem; font-weight:900; text-transform:uppercase; letter-spacing:0.5px;">
                             <i class="fas fa-crown" style="color:#fbbf24;"></i> ${profileData?.role === 'admin' ? 'Administrator' : (profileData?.role === 'courier' ? 'Kuryer' : 'Mijoz')}
                         </div>
@@ -39,15 +41,15 @@ export async function renderProfileView(profileData: any) {
             <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-top:-35px; padding:0 10px; margin-bottom:25px;">
                 <div style="background:white; padding:15px 10px; border-radius:22px; text-align:center; box-shadow: 0 8px 20px rgba(0,0,0,0.05); border:1px solid #f1f5f9;">
                     <div style="font-size:0.55rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:5px;">Hamyon</div>
-                    <div style="font-weight:900; color:var(--primary); font-size:0.9rem;">${(profileData?.balance || 0).toLocaleString()}</div>
+                    <div style="font-weight:900; color:var(--primary); font-size:0.85rem;">${(profileData?.balance || 0).toLocaleString()}</div>
                 </div>
                 <div onclick="navTo('orders')" style="background:white; padding:15px 10px; border-radius:22px; text-align:center; box-shadow: 0 8px 20px rgba(0,0,0,0.05); border:1px solid #f1f5f9; cursor:pointer;">
                     <div style="font-size:0.55rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:5px;">Xaridlar</div>
-                    <div style="font-weight:900; color:var(--dark); font-size:0.9rem;">${totalOrders || 0} ta</div>
+                    <div style="font-weight:900; color:var(--dark); font-size:0.85rem;">${totalOrders || 0} ta</div>
                 </div>
                 <div style="background:white; padding:15px 10px; border-radius:22px; text-align:center; box-shadow: 0 8px 20px rgba(0,0,0,0.05); border:1px solid #f1f5f9;">
                     <div style="font-size:0.55rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:5px;">Reyting</div>
-                    <div style="font-weight:900; color:#eab308; font-size:0.9rem;">⭐ 5.0</div>
+                    <div style="font-weight:900; color:#eab308; font-size:0.85rem;">⭐ 5.0</div>
                 </div>
             </div>
 
@@ -72,14 +74,6 @@ export async function renderProfileView(profileData: any) {
                     <div style="flex:1;"><div style="font-weight:800; font-size:0.9rem;">Mening hamyonim</div></div>
                     <i class="fas fa-chevron-right" style="color:#cbd5e1; font-size:0.8rem;"></i>
                 </div>
-
-                ${isCourier ? `
-                    <div onclick="navTo('orders')" style="display:flex; align-items:center; gap:15px; padding:18px 20px; border-bottom:1px solid #f8fafc; cursor:pointer; background:#f5f3ff;">
-                        <div style="width:40px; height:40px; border-radius:12px; background:#eef2ff; color:#4f46e5; display:flex; align-items:center; justify-content:center;"><i class="fas fa-motorcycle"></i></div>
-                        <span style="flex:1; font-weight:900; color:#4338ca; font-size:0.9rem;">KURYER REJIMI</span>
-                        <i class="fas fa-chevron-right" style="color:#c7d2fe; font-size:0.8rem;"></i>
-                    </div>
-                ` : ''}
 
                 <div onclick="window.handleSignOut()" style="display:flex; align-items:center; gap:15px; padding:18px 20px; cursor:pointer; color:var(--danger);">
                     <div style="width:40px; height:40px; border-radius:12px; background:#fef2f2; color:var(--danger); display:flex; align-items:center; justify-content:center;"><i class="fas fa-power-off"></i></div>
