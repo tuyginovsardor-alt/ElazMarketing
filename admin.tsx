@@ -8,11 +8,16 @@ export async function switchAdminTab(tab: string) {
     panel.innerHTML = `
         <div style="width:100%; height:100%; display:flex; flex-direction:column; background:#f8fafc;">
             <header style="padding:1rem 1.5rem; background:white; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 10px rgba(0,0,0,0.02); z-index:100;">
-                <div style="font-weight:900; font-size:1rem; color:#0f172a; display:flex; align-items:center; gap:10px;">
-                    <div style="width:32px; height:32px; background:var(--gradient); border-radius:10px; display:flex; align-items:center; justify-content:center; color:white;">
-                        <i class="fas fa-shield-halved" style="font-size:0.9rem;"></i>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="display:flex; flex-direction:column; align-items:flex-start;">
+                        <div class="elaz-brand" style="scale: 0.5; transform-origin: left; margin-bottom: -15px;">
+                            <span class="elaz-char char-e">E</span>
+                            <span class="elaz-char char-l">L</span>
+                            <span class="elaz-char char-a">A<i class="fas fa-shopping-cart cart-icon"></i></span>
+                            <span class="elaz-char char-z">Z</span>
+                        </div>
+                        <span style="font-size:0.5rem; letter-spacing:1px; font-weight:900; color:var(--primary); margin-left:2px;">CONTROL PANEL</span>
                     </div>
-                    <span style="letter-spacing:-0.5px;">ELAZ <span style="color:var(--primary); font-weight:600;">CONTROL</span></span>
                 </div>
                 <button class="btn" style="height:38px; padding:0 15px; font-size:0.7rem; background:#1e293b; color:white; border-radius:10px; font-weight:800; border:none;" onclick="window.exitAdminPanel()">
                     CHIQISH <i class="fas fa-sign-out-alt" style="margin-left:6px;"></i>

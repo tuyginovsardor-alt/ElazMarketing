@@ -25,6 +25,12 @@
             --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.03);
             --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08);
             --gradient: linear-gradient(135deg, #22c55e, #10b981);
+            
+            /* Logo Ranglari */
+            --elaz-e: linear-gradient(to bottom, #ff9800, #f44336);
+            --elaz-l: linear-gradient(to bottom, #ffeb3b, #fbc02d);
+            --elaz-a: linear-gradient(to bottom, #4caf50, #2e7d32);
+            --elaz-z: linear-gradient(to bottom, #f44336, #b71c1c);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -35,6 +41,58 @@
             max-width: 450px; margin: 0 auto; background: var(--white); height: 100vh;
             position: relative; box-shadow: 0 0 100px rgba(0,0,0,0.1);
             display: flex; flex-direction: column; overflow: hidden; z-index: 10;
+        }
+
+        /* --- BRAND LOGO CSS --- */
+        .elaz-brand {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            font-weight: 900;
+            user-select: none;
+        }
+        .elaz-char {
+            font-size: 3.5rem;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 4px 4px rgba(0,0,0,0.15));
+            position: relative;
+            line-height: 1;
+        }
+        .char-e { background-image: var(--elaz-e); }
+        .char-l { background-image: var(--elaz-l); }
+        .char-a { background-image: var(--elaz-a); }
+        .char-z { background-image: var(--elaz-z); }
+        
+        .char-a .cart-icon {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -10%);
+            font-size: 1.4rem;
+            -webkit-text-fill-color: rgba(255,255,255,0.9);
+            z-index: 2;
+        }
+        .char-z .courier-icon {
+            position: absolute;
+            right: -25px;
+            bottom: 0;
+            font-size: 1.8rem;
+            -webkit-text-fill-color: #f44336;
+            animation: drive 3s infinite ease-in-out;
+        }
+        @keyframes drive {
+            0%, 100% { transform: translateX(0) translateY(0); }
+            50% { transform: translateX(5px) translateY(-2px); }
+        }
+        .market-tag {
+            font-size: 1rem;
+            color: var(--dark);
+            letter-spacing: 4px;
+            font-weight: 800;
+            margin-top: -5px;
+            text-transform: uppercase;
         }
 
         #adminPanel {
@@ -53,7 +111,6 @@
 
         .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 14px; z-index: 9999; font-weight: 700; display: none; box-shadow: var(--shadow-lg); font-size: 0.9rem; }
 
-        /* BOTTOM NAV REDMI VA IPHONE UCHUN BALANDROQ QILINDI */
         .bottom-nav { 
             background: rgba(255, 255, 255, 0.95); 
             backdrop-filter: blur(10px);
@@ -111,9 +168,14 @@
         <section id="authView" class="view-section"></section>
         
         <header id="appHeader" style="display:none; padding:1.2rem 1.5rem; background:white; border-bottom:1px solid #f1f5f9; justify-content:space-between; align-items:center;">
-            <div style="font-weight:900; font-size:1.3rem; color:var(--text); display:flex; align-items:center; gap:10px;">
-                <div style="width:38px; height:38px; background:var(--gradient); border-radius:10px; display:flex; align-items:center; justify-content:center; color:white;"><i class="fas fa-shopping-bag"></i></div>
-                ELAZ <span style="color:var(--primary); font-weight:400; margin-left:-5px;">MARKET</span>
+            <div style="display:flex; flex-direction:column; align-items:flex-start;">
+                <div class="elaz-brand" style="scale: 0.55; transform-origin: left; margin-bottom: -15px;">
+                    <span class="elaz-char char-e">E</span>
+                    <span class="elaz-char char-l">L</span>
+                    <span class="elaz-char char-a">A<i class="fas fa-shopping-cart cart-icon"></i></span>
+                    <span class="elaz-char char-z">Z</span>
+                </div>
+                <div class="market-tag" style="font-size:0.5rem; letter-spacing:2px; margin-left:2px;">MARKET</div>
             </div>
             <div id="headerActions"></div>
         </header>

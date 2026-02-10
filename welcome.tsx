@@ -4,51 +4,54 @@ export function renderWelcomeView(onStart: () => void) {
     if(!container) return;
 
     container.innerHTML = `
-        <div class="welcome-bg"></div>
-        <div style="display:flex; flex-direction:column; height:100%; justify-content: space-between; padding-top: 4rem; padding-bottom: 2rem;">
+        <div style="display:flex; flex-direction:column; height:100%; justify-content: space-between; padding-top: 4rem; padding-bottom: 2rem; background:white; position:relative; overflow:hidden;">
             
-            <div style="text-align:center;">
-                <div style="width:100px; height:100px; background:var(--primary); border-radius:35px; display:inline-flex; align-items:center; justify-content:center; color:white; font-size:3rem; box-shadow: 0 15px 35px rgba(34,197,94,0.3); margin-bottom:2rem; animation: pulse 2s infinite;">
-                    <i class="fas fa-shopping-basket"></i>
+            <div style="text-align:center; padding: 0 20px;">
+                <!-- NEW BRAND LOGO BANNER -->
+                <div style="margin-bottom: 2rem; animation: float 3s infinite ease-in-out;">
+                    <div class="elaz-brand">
+                        <span class="elaz-char char-e">E</span>
+                        <span class="elaz-char char-l">L</span>
+                        <span class="elaz-char char-a">A<i class="fas fa-shopping-cart cart-icon"></i></span>
+                        <span class="elaz-char char-z">Z<i class="fas fa-motorcycle courier-icon"></i></span>
+                    </div>
+                    <div class="market-tag">MARKET</div>
                 </div>
-                <h1 style="font-size:2.8rem; font-weight:900; letter-spacing:-2px; line-height:1; color:var(--text);">
-                    ELAZ<span style="color:var(--primary)">MARKET</span>
-                </h1>
-                <p style="color:var(--gray); margin-top:1rem; font-size:1.1rem; font-weight:600;">
-                    Bag'dod tumanidagi eng tezkor <br> savdo platformasi
+
+                <p style="color:var(--gray); margin-top:1.5rem; font-size:1.1rem; font-weight:600; line-height:1.5;">
+                    Bag'dod tumanidagi eng tezkor <br> professional savdo platformasi
                 </p>
             </div>
 
             <div style="padding: 20px;">
                 <div style="display:flex; gap:15px; margin-bottom:2.5rem;">
-                    <div style="flex:1; background:white; padding:15px; border-radius:22px; box-shadow:var(--shadow-sm); text-align:center;">
-                        <i class="fas fa-bolt" style="color:#eab308; margin-bottom:8px;"></i>
+                    <div style="flex:1; background:#f8fafc; padding:15px; border-radius:22px; border:1px solid #f1f5f9; text-align:center;">
+                        <i class="fas fa-bolt" style="color:#eab308; margin-bottom:8px; font-size:1.2rem;"></i>
                         <p style="font-size:0.75rem; font-weight:800;">Tezkor</p>
                     </div>
-                    <div style="flex:1; background:white; padding:15px; border-radius:22px; box-shadow:var(--shadow-sm); text-align:center;">
-                        <i class="fas fa-shield-alt" style="color:var(--primary); margin-bottom:8px;"></i>
+                    <div style="flex:1; background:#f8fafc; padding:15px; border-radius:22px; border:1px solid #f1f5f9; text-align:center;">
+                        <i class="fas fa-shield-alt" style="color:var(--primary); margin-bottom:8px; font-size:1.2rem;"></i>
                         <p style="font-size:0.75rem; font-weight:800;">Ishonchli</p>
                     </div>
-                    <div style="flex:1; background:white; padding:15px; border-radius:22px; box-shadow:var(--shadow-sm); text-align:center;">
-                        <i class="fas fa-tags" style="color:#ef4444; margin-bottom:8px;"></i>
+                    <div style="flex:1; background:#f8fafc; padding:15px; border-radius:22px; border:1px solid #f1f5f9; text-align:center;">
+                        <i class="fas fa-tags" style="color:#ef4444; margin-bottom:8px; font-size:1.2rem;"></i>
                         <p style="font-size:0.75rem; font-weight:800;">Arzon</p>
                     </div>
                 </div>
 
-                <button class="btn btn-primary" id="btnGetStarted" style="font-size:1.1rem; width:100%;">
+                <button class="btn btn-primary" id="btnGetStarted" style="font-size:1.1rem; width:100%; height:70px; border-radius:25px;">
                     BOSHLASH <i class="fas fa-arrow-right"></i>
                 </button>
-                <p style="text-align:center; margin-top:1.5rem; font-size:0.85rem; color:var(--gray); font-weight:600;">
-                    Sizning ishonchingiz - bizning yutug'imiz
+                <p style="text-align:center; margin-top:1.5rem; font-size:0.8rem; color:var(--gray); font-weight:700; opacity:0.6;">
+                    ELAZ GROUP © 2024
                 </p>
             </div>
         </div>
 
         <style>
-            @keyframes pulse {
-                0% { transform: scale(1); }
-                50% { transform: scale(1.05); }
-                100% { transform: scale(1); }
+            @keyframes float {
+                0%, 100% { transform: translateY(0); }
+                50% { transform: translateY(-15px); }
             }
         </style>
     `;

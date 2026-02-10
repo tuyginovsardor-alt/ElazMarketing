@@ -37,11 +37,14 @@ export function renderAuthView(mode: AuthMode = 'login', extraData?: any) {
     container.innerHTML = `
         <div style="padding: 20px; display: flex; flex-direction: column; min-height: 100%; max-width: 420px; margin: 0 auto; animation: fadeIn 0.5s ease-out;">
             <!-- LOGO AREA -->
-            <div style="text-align: center; margin-bottom: 35px; margin-top: 20px;">
-                <div style="width: 80px; height: 80px; background: var(--gradient); border-radius: 26px; display: inline-flex; align-items: center; justify-content: center; color: white; font-size: 2.2rem; box-shadow: 0 15px 30px rgba(34,197,94,0.25); margin-bottom: 15px; transform: rotate(-5deg);">
-                    <i class="fas fa-shopping-basket"></i>
+            <div style="text-align: center; margin-bottom: 35px; margin-top: 10px;">
+                <div class="elaz-brand" style="scale:0.8; margin-bottom:-10px;">
+                    <span class="elaz-char char-e">E</span>
+                    <span class="elaz-char char-l">L</span>
+                    <span class="elaz-char char-a">A<i class="fas fa-shopping-cart cart-icon"></i></span>
+                    <span class="elaz-char char-z">Z</span>
                 </div>
-                <h1 style="font-size: 2rem; font-weight: 900; letter-spacing: -1.5px; color: var(--text);">ELAZ<span style="color:var(--primary)">MARKET</span></h1>
+                <div class="market-tag" style="font-size:0.7rem;">MARKET</div>
             </div>
 
             <!-- HEADER TEXT -->
