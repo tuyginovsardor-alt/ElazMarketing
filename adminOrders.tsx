@@ -30,7 +30,7 @@ export async function renderAdminOrders() {
     }
 
     container.innerHTML = `
-        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap:20px; padding:10px 0;">
+        <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap:20px; padding:10px 0;">
             ${orders.map(o => {
                 const customer = (o as any).profiles;
                 const fullName = customer ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() : "Noma'lum mijoz";
@@ -38,7 +38,7 @@ export async function renderAdminOrders() {
 
                 return `
                 <div class="card" style="padding:22px; border-radius:28px; background:white; border:1.5px solid #f1f5f9; box-shadow:var(--shadow-sm); position:relative; overflow:hidden;">
-                    <div style="position:absolute; top:0; left:0; width:5px; height:100%; background:${o.status === 'delivered' ? '#22c55e' : (o.status === 'cancelled' ? '#ef4444' : (o.status === 'pending' ? '#f59e0b' : '#3b82f6'))};"></div>
+                    <div style="position:absolute; top:0; left:0; width:6px; height:100%; background:${o.status === 'delivered' ? '#22c55e' : (o.status === 'cancelled' ? '#ef4444' : (o.status === 'pending' ? '#f59e0b' : '#3b82f6'))};"></div>
 
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                         <div>
@@ -62,6 +62,12 @@ export async function renderAdminOrders() {
                         </div>
                     </div>
                     
+                    <div style="margin-bottom:15px; background:#f8fafc; padding:15px; border-radius:18px; border:1px solid #e2e8f0;">
+                        <div style="font-size:0.65rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:5px;">Mahsulotlar:</div>
+                        <div style="font-size:0.8rem; font-weight:700; color:var(--text);">${o.items || 'Ma\'lumot kiritilmagan'}</div>
+                        ${o.comment ? `<div style="margin-top:10px; border-top:1px dashed #cbd5e1; padding-top:8px; font-size:0.75rem; font-style:italic; color:var(--gray);">"${o.comment}"</div>` : ''}
+                    </div>
+
                     <div style="margin-bottom:15px; background:#f8fafc; padding:15px; border-radius:18px;">
                         <div style="font-size:0.85rem; font-weight:700; display:flex; gap:10px; align-items:center;">
                             <i class="fas fa-map-marker-alt" style="color:var(--danger);"></i> 
@@ -78,7 +84,7 @@ export async function renderAdminOrders() {
                     <div style="display:flex; gap:10px;">
                         ${o.latitude ? `
                             <button class="btn btn-outline" style="width:50px; height:48px; padding:0; border-radius:14px; background:#eff6ff; color:#3b82f6; border-color:#dbeafe;" onclick="window.open('https://www.google.com/maps?q=${o.latitude},${o.longitude}', '_blank')">
-                                <i class="fas fa-location-arrow"></i>
+                                <i class="fas fa-location-dot"></i>
                             </button>
                         ` : ''}
                         
@@ -139,7 +145,6 @@ export async function renderAdminOrders() {
     if(!confirm("Ushbu buyurtmani kuryerga biriktirasizmi?")) return;
 
     try {
-        // 1. Buyurtmani yangilash
         const { error: orderError } = await supabase.from('orders').update({
             courier_id: courierId,
             status: 'delivering'
@@ -147,10 +152,8 @@ export async function renderAdminOrders() {
 
         if(orderError) throw orderError;
 
-        // 2. Kuryer holatini yangilash
         await supabase.from('profiles').update({ is_busy: true }).eq('id', courierId);
 
-        // 3. Log yozish
         await supabase.from('courier_logs').insert({
             courier_id: courierId,
             order_id: orderId,

@@ -204,7 +204,6 @@ function updateCheckoutSummary() {
     `;
 
     setTimeout(() => {
-        // Fix: Access Leaflet global variable L from window to resolve TypeScript 'Cannot find name L' errors.
         const L = (window as any).L;
         if (!L) return;
 
@@ -262,6 +261,9 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> JARAYONDA...';
 
     try {
+        const { data: items } = await supabase.from('cart_items').select('*, products(*)').eq('user_id', user.id);
+        const itemsSummary = items?.map(i => `${i.products.name} (${i.quantity} ${i.products.unit})`).join(", ") || "";
+
         const { data: newOrder, error } = await supabase.from('orders').insert({
             user_id: user?.id,
             total_price: finalTotal,
@@ -273,7 +275,8 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
             address_text: "Xaritadan tanlangan manzil",
             delivery_cost: Math.round(deliveryCost),
             payment_method: selectedPaymentMethod,
-            requested_transport: selectedTransportType
+            requested_transport: selectedTransportType,
+            items: itemsSummary // Yangi: mahsulotlar ro'yxati
         }).select().single();
 
         if(error) throw error;

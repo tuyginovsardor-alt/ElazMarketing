@@ -45,8 +45,8 @@ export async function renderCourierDashboard() {
             </div>
 
             <div style="display:flex; background:#f1f5f9; padding:6px; border-radius:22px; margin-bottom:20px; gap:5px;">
-                <button onclick="window.switchCourierTab('new')" id="tab_new" style="flex:1.2; height:45px; border-radius:18px; border:none; font-weight:900; font-size:0.65rem; cursor:pointer; transition:0.3s;">BO'SH BUYURTMALAR</button>
-                <button onclick="window.switchCourierTab('active')" id="tab_active" style="flex:1; height:45px; border-radius:18px; border:none; font-weight:900; font-size:0.65rem; cursor:pointer; transition:0.3s;">MENING ISHIM</button>
+                <button onclick="window.switchCourierTab('new')" id="tab_new" style="flex:1.2; height:45px; border-radius:18px; border:none; font-weight:900; font-size:0.65rem; cursor:pointer; transition:0.3s;">BO'SH ISH</button>
+                <button onclick="window.switchCourierTab('active')" id="tab_active" style="flex:1; height:45px; border-radius:18px; border:none; font-weight:900; font-size:0.65rem; cursor:pointer; transition:0.3s;">FAOL</button>
                 <button onclick="window.switchCourierTab('history')" id="tab_history" style="flex:1; height:45px; border-radius:18px; border:none; font-weight:900; font-size:0.65rem; cursor:pointer; transition:0.3s;">TARIX</button>
             </div>
 
@@ -68,7 +68,6 @@ async function loadTerminalData() {
         let query = supabase.from('orders').select(`*, profiles!user_id(first_name, last_name, avatar_url)`);
 
         if(currentTab === 'new') {
-            // Ham pending ham confirmed buyurtmalar kuryerlarga pickup uchun ochiladi (Automatic Dispatch)
             query = query.in('status', ['pending', 'confirmed']).is('courier_id', null).order('created_at', { ascending: false });
         } else if(currentTab === 'active') {
             query = query.eq('courier_id', user.id).eq('status', 'delivering');
@@ -107,6 +106,12 @@ async function loadTerminalData() {
                     </div>
                 </div>
 
+                <!-- MAHSULOTLAR RO'YXATI -->
+                <div style="background:#f8fafc; padding:15px; border-radius:18px; margin-bottom:15px; border:1px solid #e2e8f0;">
+                    <div style="font-size:0.7rem; font-weight:900; color:var(--gray); text-transform:uppercase; margin-bottom:8px;">Mahsulotlar:</div>
+                    <div style="font-size:0.85rem; font-weight:700; color:var(--text); line-height:1.4;">${o.items || 'Ma\'lumot yo\'q'}</div>
+                </div>
+
                 <div style="background:#eff6ff; padding:15px; border-radius:20px; margin-bottom:15px; border:1px solid #dbeafe;">
                     <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
                          <div style="width:36px; height:36px; border-radius:10px; background:white; display:flex; align-items:center; justify-content:center; color:#3b82f6;">
@@ -141,7 +146,14 @@ async function loadTerminalData() {
                             <i class="fas fa-check-circle"></i> YETKAZIB BERILGAN
                         </div>
                     `}
-                    ${o.latitude ? `<button onclick="window.open('https://www.google.com/maps?q=${o.latitude},${o.longitude}', '_blank')" class="btn btn-outline" style="width:50px; height:50px; border-radius:14px;"><i class="fas fa-location-arrow"></i></button>` : ''}
+                    
+                    <!-- Google Maps Havolasi -->
+                    <button onclick="window.open('https://www.google.com/maps?q=${o.latitude},${o.longitude}', '_blank')" 
+                            class="btn btn-outline" 
+                            style="width:50px; height:50px; border-radius:14px; background:#f0f9ff; color:#0ea5e9; border-color:#e0f2fe;">
+                        <i class="fas fa-location-dot"></i>
+                    </button>
+
                     ${currentTab === 'active' ? `<a href="tel:${o.phone_number}" class="btn" style="width:50px; height:50px; border-radius:14px; background:#f0fdf4; color:#22c55e; display:flex; align-items:center; justify-content:center; text-decoration:none;"><i class="fas fa-phone-alt"></i></a>` : ''}
                 </div>
             </div>
