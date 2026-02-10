@@ -116,9 +116,9 @@ export async function renderProfileView(profileData: any) {
             <!-- LEGAL & APP INFO -->
             <div style="padding:0 15px; margin-bottom:25px;">
                 <div style="display:flex; flex-wrap:wrap; gap:15px; justify-content:center; opacity:0.6;">
-                    <span onclick="openLegal('offer')" style="font-size:0.7rem; font-weight:800; cursor:pointer; text-decoration:underline;">Ommaviy oferta</span>
-                    <span onclick="openLegal('privacy')" style="font-size:0.7rem; font-weight:800; cursor:pointer; text-decoration:underline;">Maxfiylik siyosati</span>
-                    <span onclick="openLegal('rules')" style="font-size:0.7rem; font-weight:800; cursor:pointer; text-decoration:underline;">Qoidalar</span>
+                    <span onclick="window.openLegal('offer')" style="font-size:0.7rem; font-weight:800; cursor:pointer; text-decoration:underline;">Ommaviy oferta</span>
+                    <span onclick="window.openLegal('privacy')" style="font-size:0.7rem; font-weight:800; cursor:pointer; text-decoration:underline;">Maxfiylik siyosati</span>
+                    <span onclick="window.openLegal('rules')" style="font-size:0.7rem; font-weight:800; cursor:pointer; text-decoration:underline;">Qoidalar</span>
                 </div>
                 <div style="text-align:center; margin-top:15px; font-size:0.6rem; color:var(--gray); font-weight:700;">ELAZ MARKET v2.5.0-STABLE | Barcha huquqlar himoyalangan</div>
             </div>

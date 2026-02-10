@@ -70,12 +70,12 @@ export function openLegal(type: 'offer' | 'privacy' | 'rules') {
     if(!placeholder) return;
 
     placeholder.innerHTML = `
-        <div style="padding-bottom:50px;">
-            <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px; position:sticky; top:0; background:white; z-index:10; padding:10px 0;">
-                <i class="fas fa-arrow-left" onclick="closeOverlay('checkoutOverlay')" style="font-size:1.4rem; cursor:pointer; color:var(--text); padding: 10px;"></i>
-                <h2 style="font-weight:900; font-size:1.4rem;">${LEGAL_TEXTS[type].title}</h2>
+        <div style="padding-bottom:50px; animation: fadeIn 0.3s ease-out;">
+            <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px; position:sticky; top:0; background:white; z-index:10; padding:15px 10px; border-bottom:1px solid #f1f5f9;">
+                <i class="fas fa-arrow-left" onclick="closeOverlay('checkoutOverlay')" style="font-size:1.4rem; cursor:pointer; color:var(--text); padding: 5px;"></i>
+                <h2 style="font-weight:900; font-size:1.2rem;">${LEGAL_TEXTS[type].title}</h2>
             </div>
-            <div style="padding:0 5px;">
+            <div style="padding:0 20px;">
                 ${LEGAL_TEXTS[type].content}
             </div>
         </div>
