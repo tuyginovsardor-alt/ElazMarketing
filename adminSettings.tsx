@@ -3,7 +3,7 @@ import { supabase, showToast } from "./index.tsx";
 
 let settingsMap: any = null;
 let settingsMarker: any = null;
-// Siz aytgan Markaziy ofis (Cerova, Bag'dod) koordinatalari
+// Markaziy ofis (Cerova, Bag'dod) koordinatalari
 const DEFAULT_OFFICE = { lat: 40.5186, lng: 71.2185 };
 
 export async function renderAdminSettings() {
@@ -74,22 +74,40 @@ async function loadSettingsData() {
     };
     const office = settings?.find(s => s.key === 'office_location')?.value || DEFAULT_OFFICE;
 
-    (document.getElementById('s_off_lat') as HTMLInputElement).value = office.lat;
-    (document.getElementById('s_off_lng') as HTMLInputElement).value = office.lng;
+    const latInput = document.getElementById('s_off_lat') as HTMLInputElement;
+    const lngInput = document.getElementById('s_off_lng') as HTMLInputElement;
+    if(latInput) latInput.value = office.lat;
+    if(lngInput) lngInput.value = office.lng;
 
     ratesCont.innerHTML = `
         <div style="background:#f8fafc; padding:20px; border-radius:22px; margin-bottom:15px; border:1.5px solid #f1f5f9;">
             <p style="font-size:0.7rem; font-weight:900; color:var(--primary); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-                <i class="fas fa-walking"></i> PIYODA / VELOSIPED
+                <i class="fas fa-walking"></i> PIYODA
             </p>
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                 <div>
                     <label style="font-size:0.6rem; font-weight:800; color:var(--gray);">BAZA (UZS)</label>
-                    <input type="number" id="s_walking_base" value="${deliveryRates.walking_base}" style="height:48px; margin:0; font-size:0.9rem; border-radius:12px;">
+                    <input type="number" id="s_walking_base" value="${deliveryRates.walking_base || 5000}" style="height:48px; margin:0; font-size:0.9rem; border-radius:12px;">
                 </div>
                 <div>
                     <label style="font-size:0.6rem; font-weight:800; color:var(--gray);">+1 KM UCHUN</label>
-                    <input type="number" id="s_walking_km" value="${deliveryRates.walking_km}" style="height:48px; margin:0; font-size:0.9rem; border-radius:12px;">
+                    <input type="number" id="s_walking_km" value="${deliveryRates.walking_km || 2000}" style="height:48px; margin:0; font-size:0.9rem; border-radius:12px;">
+                </div>
+            </div>
+        </div>
+
+        <div style="background:#f0fdf4; padding:20px; border-radius:22px; margin-bottom:15px; border:1.5px solid #dcfce7;">
+            <p style="font-size:0.7rem; font-weight:900; color:#16a34a; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                <i class="fas fa-bicycle"></i> VELOSIPED
+            </p>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                <div>
+                    <label style="font-size:0.6rem; font-weight:800; color:var(--gray);">BAZA (UZS)</label>
+                    <input type="number" id="s_bicycle_base" value="${deliveryRates.bicycle_base || 7000}" style="height:48px; margin:0; font-size:0.9rem; border-radius:12px;">
+                </div>
+                <div>
+                    <label style="font-size:0.6rem; font-weight:800; color:var(--gray);">+1 KM UCHUN</label>
+                    <input type="number" id="s_bicycle_km" value="${deliveryRates.bicycle_km || 2500}" style="height:48px; margin:0; font-size:0.9rem; border-radius:12px;">
                 </div>
             </div>
         </div>
@@ -125,8 +143,10 @@ function initSettingsMap(lat: number, lng: number) {
     
     settingsMarker.on('dragend', () => {
         const pos = settingsMarker.getLatLng();
-        (document.getElementById('s_off_lat') as HTMLInputElement).value = pos.lat.toFixed(6);
-        (document.getElementById('s_off_lng') as HTMLInputElement).value = pos.lng.toFixed(6);
+        const latInput = document.getElementById('s_off_lat') as HTMLInputElement;
+        const lngInput = document.getElementById('s_off_lng') as HTMLInputElement;
+        if(latInput) latInput.value = pos.lat.toFixed(6);
+        if(lngInput) lngInput.value = pos.lng.toFixed(6);
     });
 }
 
@@ -138,29 +158,50 @@ function initSettingsMap(lat: number, lng: number) {
         if(settingsMap && settingsMarker) {
             settingsMap.setView([latitude, longitude], 16);
             settingsMarker.setLatLng([latitude, longitude]);
-            (document.getElementById('s_off_lat') as HTMLInputElement).value = latitude.toFixed(6);
-            (document.getElementById('s_off_lng') as HTMLInputElement).value = longitude.toFixed(6);
+            const latInput = document.getElementById('s_off_lat') as HTMLInputElement;
+            const lngInput = document.getElementById('s_off_lng') as HTMLInputElement;
+            if(latInput) latInput.value = latitude.toFixed(6);
+            if(lngInput) lngInput.value = longitude.toFixed(6);
             showToast("📍 Koordinatalar yangilandi!");
         }
     }, () => showToast("Aniqlab bo'lmadi."));
 };
 
 (window as any).saveAdminDeliveryRates = async () => {
-    const val = {
-        walking_base: Number((document.getElementById('s_walking_base') as HTMLInputElement).value),
-        walking_km: Number((document.getElementById('s_walking_km') as HTMLInputElement).value),
-        car_base: Number((document.getElementById('s_car_base') as HTMLInputElement).value),
-        car_km: Number((document.getElementById('s_car_km') as HTMLInputElement).value)
-    };
-    await supabase.from('app_settings').upsert({ key: 'delivery_rates', value: val });
-    showToast("Tariflar saqlandi! 🚚");
+    const btn = document.getElementById('btnSaveRates') as HTMLButtonElement;
+    if(btn) btn.disabled = true;
+
+    try {
+        const val = {
+            walking_base: Number((document.getElementById('s_walking_base') as HTMLInputElement).value),
+            walking_km: Number((document.getElementById('s_walking_km') as HTMLInputElement).value),
+            bicycle_base: Number((document.getElementById('s_bicycle_base') as HTMLInputElement).value),
+            bicycle_km: Number((document.getElementById('s_bicycle_km') as HTMLInputElement).value),
+            car_base: Number((document.getElementById('s_car_base') as HTMLInputElement).value),
+            car_km: Number((document.getElementById('s_car_km') as HTMLInputElement).value)
+        };
+        
+        const { error } = await supabase.from('app_settings').upsert({ key: 'delivery_rates', value: val }, { onConflict: 'key' });
+        
+        if(error) throw error;
+        showToast("Tariflar saqlandi! 🚚");
+    } catch (e: any) {
+        showToast("Xato: " + e.message);
+    } finally {
+        if(btn) btn.disabled = false;
+    }
 };
 
 (window as any).saveAdminOfficeLoc = async () => {
-    const val = {
-        lat: Number((document.getElementById('s_off_lat') as HTMLInputElement).value),
-        lng: Number((document.getElementById('s_off_lng') as HTMLInputElement).value)
-    };
-    await supabase.from('app_settings').upsert({ key: 'office_location', value: val });
-    showToast("📍 Ofis manzili saqlandi!");
+    try {
+        const val = {
+            lat: Number((document.getElementById('s_off_lat') as HTMLInputElement).value),
+            lng: Number((document.getElementById('s_off_lng') as HTMLInputElement).value)
+        };
+        const { error } = await supabase.from('app_settings').upsert({ key: 'office_location', value: val }, { onConflict: 'key' });
+        if(error) throw error;
+        showToast("📍 Ofis manzili saqlandi!");
+    } catch (e: any) {
+        showToast("Xato: " + e.message);
+    }
 };
