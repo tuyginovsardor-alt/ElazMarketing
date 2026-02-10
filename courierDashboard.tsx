@@ -30,7 +30,7 @@ export async function renderCourierDashboard() {
                         </div>
                     </div>
                     <div style="display:flex; gap:10px;">
-                        <button onclick="window.location.reload()" class="btn" style="width:42px; height:42px; border-radius:12px; background:rgba(255,255,255,0.1); border:none; color:white;"><i class="fas fa-sync-alt"></i></button>
+                        <button onclick="window.refreshTerminal()" class="btn" style="width:42px; height:42px; border-radius:12px; background:rgba(255,255,255,0.1); border:none; color:white;"><i class="fas fa-sync-alt"></i></button>
                         <button onclick="window.toggleCourierStatus()" class="btn" style="height:42px; padding:0 20px; border-radius:12px; background:${isOnline ? 'rgba(239,68,68,0.1)' : 'var(--primary)'}; color:${isOnline ? '#ef4444' : 'white'}; border:none; font-size:0.75rem;">
                             ${isOnline ? 'STOP' : 'START'}
                         </button>
@@ -56,7 +56,7 @@ export async function renderCourierDashboard() {
             </div>
 
             <div id="courierTerminalFeed">
-                <div style="text-align:center; padding:4rem;"><i class="fas fa-spinner fa-spin fa-2x"></i></div>
+                <div style="text-align:center; padding:4rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--primary);"></i></div>
             </div>
         </div>
     `;
@@ -66,14 +66,23 @@ export async function renderCourierDashboard() {
     setupCourierRealtime();
 }
 
+(window as any).refreshTerminal = () => {
+    loadTerminalData();
+    showToast("Yangilandi 🔄");
+};
+
 // Yangi buyurtma monitoringi
 function setupCourierRealtime() {
-    supabase.channel('new_orders_feed')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, (payload) => {
-            if (courierProfile?.active_status && !courierProfile?.is_busy) {
-                playNotificationSound();
-                showToast("🔔 YANGI BUYURTMA KELDI!");
-                if (currentTab === 'new') loadTerminalData();
+    // Ham INSERT (yangi yaratilgan), ham UPDATE (admin tasdiqlagan) uchun eshitamiz
+    supabase.channel('courier_global_feed')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+            // Agar kuryer ONLAYN bo'lsa va bu kurerga bog'lanmagan (yangi/tasdiqlangan) buyurtma bo'lsa
+            if (courierProfile?.active_status) {
+                if (payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && payload.new.status === 'confirmed' && !payload.new.courier_id)) {
+                    playNotificationSound();
+                    showToast("🔔 Terminalda yangi buyurtma!");
+                    if (currentTab === 'new') loadTerminalData();
+                }
             }
         }).subscribe();
 }
@@ -82,8 +91,6 @@ function setupCourierRealtime() {
 function startLocationTracking() {
     if (!navigator.geolocation) return;
     if (locationWatcher) navigator.geolocation.clearWatch(locationWatcher);
-    
-    // Fix: Removed 'distanceFilter' as it is not a standard property of PositionOptions
     locationWatcher = navigator.geolocation.watchPosition(async (pos) => {
         const { latitude, longitude } = pos.coords;
         await supabase.from('profiles').update({ live_lat: latitude, live_lng: longitude }).eq('id', user.id);
@@ -103,6 +110,7 @@ async function loadTerminalData() {
         let query = supabase.from('orders').select(`*, profiles!user_id(first_name, last_name, avatar_url)`);
 
         if(currentTab === 'new') {
+            // MUHIM: Barcha kuryerlar ko'rishi uchun statuslar ('pending' va 'confirmed') va courier_id null bo'lishi kerak
             query = query.in('status', ['pending', 'confirmed']).is('courier_id', null).order('created_at', { ascending: false });
         } else if(currentTab === 'active') {
             query = query.eq('courier_id', user.id).eq('status', 'delivering');
@@ -116,8 +124,8 @@ async function loadTerminalData() {
         if(!orders?.length) {
             feed.innerHTML = `
                 <div style="text-align:center; padding:5rem 20px; opacity:0.4;">
-                    <i class="fas fa-inbox fa-3x" style="margin-bottom:15px;"></i>
-                    <p style="font-weight:800; font-size:0.9rem;">${currentTab === 'new' ? 'Yangi buyurtmalar yo\'q' : 'Ma\'lumot yo\'q'}</p>
+                    <div style="font-size:4rem; color:#cbd5e1; margin-bottom:20px;"><i class="fas fa-inbox"></i></div>
+                    <p style="font-weight:800; font-size:0.9rem; color:var(--gray);">${currentTab === 'new' ? 'Yangi buyurtmalar yo\'q' : 'Ma\'lumot topilmadi'}</p>
                 </div>
             `;
             return;
@@ -130,32 +138,44 @@ async function loadTerminalData() {
             const timeStr = orderDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
             return `
-            <div class="card" style="padding:22px; border-radius:28px; border:1.5px solid #f1f5f9; background:white; margin-bottom:15px; box-shadow:var(--shadow-sm);">
+            <div class="card" style="padding:22px; border-radius:28px; border:1.5px solid #f1f5f9; background:white; margin-bottom:15px; box-shadow:var(--shadow-sm); animation: slideIn 0.3s ease-out;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
                     <div>
-                        <div style="font-weight:900; font-size:0.8rem; color:var(--gray);">
-                            <i class="fas fa-clock"></i> ${timeStr}
+                        <div style="font-weight:900; font-size:0.75rem; color:var(--gray); display:flex; align-items:center; gap:5px;">
+                            <i class="fas fa-clock" style="color:var(--primary);"></i> ${timeStr}
                         </div>
-                        <div style="font-weight:900; font-size:1.1rem; color:var(--text); margin-top:4px;">${o.total_price.toLocaleString()} so'm</div>
+                        <div style="font-weight:900; font-size:1.2rem; color:var(--text); margin-top:4px;">${o.total_price.toLocaleString()} <small style="font-size:0.6rem;">UZS</small></div>
                     </div>
                     <div style="text-align:right;">
-                        <div style="font-weight:900; color:var(--primary); font-size:0.9rem;">+${o.delivery_cost.toLocaleString()} so'm</div>
-                        <div style="font-size:0.6rem; font-weight:800; color:var(--gray);">XIZMAT HAQI</div>
+                        <div style="font-weight:900; color:var(--primary); font-size:0.95rem;">+${o.delivery_cost.toLocaleString()} <small style="font-size:0.5rem;">UZS</small></div>
+                        <div style="font-size:0.6rem; font-weight:800; color:var(--gray); text-transform:uppercase;">Xizmat haqi</div>
                     </div>
                 </div>
-                <div style="background:#eff6ff; padding:15px; border-radius:20px; margin-bottom:15px; border:1px solid #dbeafe;">
-                    <div style="font-weight:900; font-size:0.9rem; color:#1e40af; margin-bottom:5px;">${fullName}</div>
-                    <div style="font-size:0.8rem; font-weight:700; color:var(--gray);"><i class="fas fa-map-marker-alt" style="color:var(--danger);"></i> ${o.address_text}</div>
+                
+                <div style="background:#f8fafc; padding:18px; border-radius:22px; margin-bottom:20px; border:1px solid #f1f5f9;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                        <div style="width:32px; height:32px; border-radius:10px; background:white; display:flex; align-items:center; justify-content:center; color:#3b82f6; border:1px solid #e2e8f0;"><i class="fas fa-user"></i></div>
+                        <div style="font-weight:900; font-size:0.9rem; color:var(--text);">${fullName}</div>
+                    </div>
+                    <div style="font-size:0.8rem; font-weight:700; color:var(--gray); line-height:1.4;"><i class="fas fa-location-dot" style="color:var(--danger); margin-right:5px;"></i> ${o.address_text || 'Xaritada ko\'rsatilgan'}</div>
                 </div>
-                <div style="display:flex; gap:10px;">
-                    ${currentTab === 'new' ? `<button onclick="window.terminalAcceptOrder(${o.id})" class="btn btn-primary" style="flex:1; height:50px; border-radius:14px; background:var(--dark);">QABUL QILISH</button>` : currentTab === 'active' ? `<button onclick="window.terminalFinishOrder(${o.id})" class="btn btn-primary" style="flex:1; height:50px; border-radius:14px;">TOPSHIRILDI</button>` : ''}
-                    <button onclick="window.open('https://www.google.com/maps?q=${o.latitude},${o.longitude}', '_blank')" class="btn btn-outline" style="width:50px; height:50px; border-radius:14px; background:#f0f9ff; color:#0ea5e9;"><i class="fas fa-location-dot"></i></button>
+
+                <div style="display:flex; gap:12px;">
+                    ${currentTab === 'new' ? `
+                        <button onclick="window.terminalAcceptOrder(${o.id})" class="btn btn-primary" style="flex:1; height:55px; border-radius:16px; background:var(--dark); font-size:0.85rem;">QABUL QILISH</button>
+                    ` : currentTab === 'active' ? `
+                        <button onclick="window.terminalFinishOrder(${o.id})" class="btn btn-primary" style="flex:1; height:55px; border-radius:16px; font-size:0.85rem;">TOPSHIRILDI</button>
+                    ` : ''}
+                    
+                    <button onclick="window.open('https://www.google.com/maps?q=${o.latitude},${o.longitude}', '_blank')" class="btn btn-outline" style="width:55px; height:55px; border-radius:16px; background:#eff6ff; color:#3b82f6; border:none;">
+                        <i class="fas fa-location-arrow" style="font-size:1.2rem;"></i>
+                    </button>
                 </div>
             </div>
             `;
         }).join('');
     } catch(e) {
-        feed.innerHTML = `<p style="text-align:center; padding:2rem;">Xatolik yuz berdi</p>`;
+        feed.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--danger); font-weight:800;">Yuklashda xatolik yuz berdi</div>`;
     }
 }
 
@@ -172,36 +192,68 @@ function updateTabUI() {
         if(el) {
             el.style.background = currentTab === t ? 'white' : 'transparent';
             el.style.color = currentTab === t ? 'var(--primary)' : 'var(--gray)';
+            el.style.boxShadow = currentTab === t ? 'var(--shadow-sm)' : 'none';
         }
     });
 }
 
 (window as any).toggleCourierStatus = async () => {
     const newStatus = !courierProfile?.active_status;
-    await supabase.from('profiles').update({ active_status: newStatus }).eq('id', user.id);
-    if (newStatus) startLocationTracking();
-    else stopLocationTracking();
-    renderCourierDashboard();
-    showToast(newStatus ? "Siz ONLAYNsiz! Lokatsiya yangilanmoqda." : "Siz OFLAYNsiz.");
+    const { error } = await supabase.from('profiles').update({ active_status: newStatus }).eq('id', user.id);
+    if(!error) {
+        courierProfile.active_status = newStatus;
+        if (newStatus) startLocationTracking();
+        else stopLocationTracking();
+        renderCourierDashboard();
+        showToast(newStatus ? "Siz ONLAYNsiz! 🟢" : "Siz OFLAYNsiz 🔴");
+    }
 };
 
 (window as any).terminalAcceptOrder = async (oid: number) => {
-    if(!courierProfile?.active_status) return showToast("Avval START bosing!");
-    const { error } = await supabase.from('orders').update({ courier_id: user.id, status: 'delivering' }).eq('id', oid).is('courier_id', null);
-    if(!error) {
+    if(!courierProfile?.active_status) return showToast("Avval START bosing! 🔴");
+    
+    // Optimistik qabul qilish: Avval bazada courier_id ni yozamiz
+    const { data, error } = await supabase
+        .from('orders')
+        .update({ courier_id: user.id, status: 'delivering' })
+        .eq('id', oid)
+        .is('courier_id', null) // Faqat hali hech kim olmagan bo'lsa
+        .select();
+
+    if(!error && data && data.length > 0) {
         await supabase.from('profiles').update({ is_busy: true }).eq('id', user.id);
-        showToast("Buyurtma olindi! 🚀");
+        showToast("Buyurtma sizga biriktirildi! 🛵🚀");
         switchCourierTab('active');
     } else {
-        showToast("Xato: Buyurtma band.");
+        showToast("Kechikdingiz, boshqa kuryer olib qo'ydi! 💨");
+        loadTerminalData(); // Ro'yxatni yangilaymiz
     }
 };
 
 (window as any).terminalFinishOrder = async (oid: number) => {
-    if(!confirm("Mijozga topshirildimi?")) return;
-    await supabase.from('orders').update({ status: 'delivered' }).eq('id', oid);
-    await supabase.from('profiles').update({ is_busy: false }).eq('id', user.id);
-    showToast("Yakunlandi! 💰");
-    renderCourierDashboard();
-    switchCourierTab('history');
+    if(!confirm("Mijozga topshirildimi va to'lov olindimi?")) return;
+    
+    const { data: order } = await supabase.from('orders').select('*').eq('id', oid).single();
+    if(!order) return;
+
+    // Buyurtmani yakunlash
+    const { error } = await supabase.from('orders').update({ status: 'delivered' }).eq('id', oid);
+    
+    if(!error) {
+        // Balansni yangilash (Xizmat haqini qo'shish)
+        const newBal = (courierProfile.balance || 0) + (order.delivery_cost || 0);
+        await supabase.from('profiles').update({ balance: newBal, is_busy: false }).eq('id', user.id);
+        
+        // Log yozish
+        await supabase.from('courier_logs').insert({
+            courier_id: user.id,
+            order_id: oid,
+            action_text: `Buyurtma topshirildi. +${order.delivery_cost} UZS`
+        });
+
+        showToast("Muvaffaqiyatli yakunlandi! 💰✨");
+        await loadProfileData(); // Profilni qayta yuklash
+        renderCourierDashboard();
+        switchCourierTab('history');
+    }
 };
