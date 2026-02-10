@@ -27,6 +27,7 @@ export async function switchAdminTab(tab: string) {
                 <div class="admin-tab" onclick="window.switchAdminTab('orders')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'orders' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'orders' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">BUYURTMALAR</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('couriers')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'couriers' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'couriers' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">KURYERLAR</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('fin')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'fin' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'fin' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">MOLIYA</div>
+                <div class="admin-tab" onclick="window.switchAdminTab('bot')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'bot' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'bot' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">BOTLAR</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('settings')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'settings' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'settings' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;"><i class="fas fa-cog"></i></div>
             </nav>
 
@@ -79,6 +80,9 @@ async function renderTabContent(tab: string) {
         } else if(tab === 'fin') {
             const { renderAdminFinance } = await import("./adminFinance.tsx");
             renderAdminFinance();
+        } else if(tab === 'bot') {
+            const { renderAdminBot } = await import("./adminBot.tsx");
+            renderAdminBot();
         } else if(tab === 'settings') {
             const { renderAdminSettings } = await import("./adminSettings.tsx");
             renderAdminSettings();

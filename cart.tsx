@@ -115,7 +115,6 @@ function updateCheckoutSummary() {
     openOverlay('checkoutOverlay');
     const placeholder = document.getElementById('checkoutPlaceholder')!;
     
-    const { data: items } = await supabase.from('cart_items').select('*, products(*)').eq('user_id', user.id);
     const { data: sets } = await supabase.from('app_settings').select('*');
     if(sets) {
         deliveryRates = sets.find(s => s.key === 'delivery_rates')?.value || deliveryRates;
@@ -204,7 +203,7 @@ function updateCheckoutSummary() {
     }, () => showToast("Joylashuvni aniqlab bo'lmadi."));
 };
 
-function calculateDistance(lat1, lon1, lat2, lon2) {
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
     const R = 6371;
     const dLat = (lat2-lat1)*Math.PI/180;
     const dLon = (lon2-lon1)*Math.PI/180;
@@ -227,7 +226,13 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
     try {
         const { data: cartItems } = await supabase.from('cart_items').select('*, products(*)').eq('user_id', user.id);
-        const itemsSummary = cartItems?.map(i => `${i.products.name} (${i.quantity} ${i.products.unit})`).join("|") || "";
+        if(!cartItems?.length) throw new Error("Savat bo'sh");
+
+        // Format: rasm_url:::nom (miqdor)
+        const itemsSummary = cartItems.map(i => {
+            const img = i.products.image_url || "";
+            return `${img}:::${i.products.name} (${i.quantity} ${i.products.unit})`;
+        }).join("|");
 
         const { error } = await supabase.from('orders').insert({
             user_id: user?.id,
