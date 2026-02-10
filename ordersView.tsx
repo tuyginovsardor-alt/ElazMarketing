@@ -48,18 +48,42 @@ export async function renderOrdersView() {
         return;
     }
 
-    list.innerHTML = orders.map(o => `
+    list.innerHTML = orders.map(o => {
+        let statusText = 'Tasdiqlangan';
+        let statusColor = '#fff7ed';
+        let textColor = '#ea580c';
+
+        if (o.status === 'pending') {
+            statusText = 'Kutilmoqda';
+            statusColor = '#f1f5f9';
+            textColor = '#64748b';
+        } else if (o.status === 'delivering') {
+            statusText = 'Yo\'lda 🛵';
+            statusColor = '#eff6ff';
+            textColor = '#3b82f6';
+        } else if (o.status === 'delivered') {
+            statusText = 'Yetkazilgan';
+            statusColor = '#f0fdf4';
+            textColor = '#16a34a';
+        } else if (o.status === 'cancelled') {
+            statusText = 'Bekor qilingan';
+            statusColor = '#fef2f2';
+            textColor = '#ef4444';
+        }
+
+        return `
         <div class="card" style="margin-bottom:0; border:1px solid #f1f5f9; padding:20px; border-radius:24px; position:relative;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
                 <span style="font-size:0.75rem; color:var(--gray); font-weight:800;">#ORD-${o.id.toString().substring(0,6)}</span>
-                <span style="padding:4px 10px; border-radius:8px; font-size:0.65rem; font-weight:900; text-transform:uppercase; background:${o.status === 'delivered' ? '#f0fdf4' : '#fff7ed'}; color:${o.status === 'delivered' ? '#16a34a' : '#ea580c'};">
-                    ${o.status === 'delivered' ? 'Yetkazilgan' : (o.status === 'delivering' ? 'Yo\'lda 🛵' : 'Tasdiqlangan')}
+                <span style="padding:4px 10px; border-radius:8px; font-size:0.65rem; font-weight:900; text-transform:uppercase; background:${statusColor}; color:${textColor};">
+                    ${statusText}
                 </span>
             </div>
             
             <div style="margin-bottom:15px;">
                 <p style="font-size:0.85rem; font-weight:600; color:var(--gray);">${new Date(o.created_at).toLocaleDateString()}</p>
                 <h4 style="font-weight:900; font-size:1.2rem; color:var(--text); margin-top:4px;">${o.total_price.toLocaleString()} UZS</h4>
+                <p style="font-size:0.75rem; color:var(--gray); font-weight:700; margin-top:5px;">To'lov: ${o.payment_method === 'cash' ? 'Naqd' : (o.payment_method === 'wallet' ? 'Hamyon' : 'TsPay')}</p>
             </div>
 
             ${o.status === 'delivering' ? `
@@ -82,7 +106,7 @@ export async function renderOrdersView() {
                 </div>
             ` : ''}
         </div>
-    `).join('');
+    `}).join('');
 }
 
 (window as any).openTrackingMap = async (courierId: string, destLat: number, destLng: number) => {
@@ -107,7 +131,6 @@ export async function renderOrdersView() {
         <style>
             .pulse-icon { animation: pulse 1.5s infinite; }
             @keyframes pulse { 0% { transform: scale(0.9); opacity: 0.7; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.9); opacity: 0.7; } }
-            /* Silliq animatsiya uchun transition */
             .smooth-marker { transition: transform 0.5s linear !important; }
         </style>
     `;
@@ -119,7 +142,6 @@ export async function renderOrdersView() {
         trackingMap = L.map('liveTrackingMap').setView([destLat, destLng], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(trackingMap);
 
-        // Mijoz manzili marker
         L.marker([destLat, destLng], { 
             icon: L.divIcon({ 
                 html: '<i class="fas fa-house-user" style="color:var(--danger); font-size:25px;"></i>',
@@ -127,7 +149,6 @@ export async function renderOrdersView() {
             }) 
         }).addTo(trackingMap).bindPopup("Sizning manzilingiz");
 
-        // Kuryer uchun dastlabki joylashuv
         const { data: cData } = await supabase.from('profiles').select('live_lat, live_lng').eq('id', courierId).single();
         
         const courierIcon = L.divIcon({ 
@@ -142,7 +163,6 @@ export async function renderOrdersView() {
             trackingMap.panTo([cData.live_lat, cData.live_lng]);
         }
 
-        // REALTIME SUBSCRIPTION (JONLI KUZATISH)
         trackingSubscription = supabase
             .channel(`courier_${courierId}`)
             .on('postgres_changes', { 
@@ -153,7 +173,6 @@ export async function renderOrdersView() {
             }, (payload) => {
                 const { live_lat, live_lng } = payload.new;
                 if (live_lat && live_lng && courierMarker) {
-                    // Silliq harakatlanish (144 FPS effekti CSS orqali)
                     courierMarker.setLatLng([live_lat, live_lng]);
                     trackingMap.panTo([live_lat, live_lng]);
                     const info = document.getElementById('trackingInfo');

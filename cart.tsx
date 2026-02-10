@@ -204,14 +204,14 @@ function updateCheckoutSummary() {
     `;
 
     setTimeout(() => {
-        // @ts-ignore
+        // Fix: Access Leaflet global variable L from window to resolve TypeScript 'Cannot find name L' errors.
+        const L = (window as any).L;
+        if (!L) return;
+
         const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
-        // @ts-ignore
         const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
-        // @ts-ignore
         const hybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { maxZoom: 20, subdomains:['mt0','mt1','mt2','mt3'] });
 
-        // @ts-ignore
         map = L.map('deliveryMap', {
             center: [officePos.lat, officePos.lng],
             zoom: 15,
@@ -219,10 +219,8 @@ function updateCheckoutSummary() {
         });
 
         const baseMaps = { "Ko'cha": osm, "Sputnik": satellite, "Gibrid": hybrid };
-        // @ts-ignore
         L.control.layers(baseMaps).addTo(map);
 
-        // @ts-ignore
         marker = L.marker([officePos.lat, officePos.lng], {draggable: true}).addTo(map);
         
         const onLocationChange = () => {
@@ -254,6 +252,11 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     const base = deliveryRates[`${selectedTransportType}_base`] || 5000;
     const kmPrice = deliveryRates[`${selectedTransportType}_km`] || 2000;
     const deliveryCost = base + (Math.max(0, currentDistanceKm - 1) * kmPrice);
+    const finalTotal = subtotalAmount + Math.round(deliveryCost);
+
+    if (selectedPaymentMethod === 'wallet' && (profile?.balance || 0) < finalTotal) {
+        return showToast("Hamyonda mablag' yetarli emas!");
+    }
 
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> JARAYONDA...';
@@ -261,7 +264,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
     try {
         const { data: newOrder, error } = await supabase.from('orders').insert({
             user_id: user?.id,
-            total_price: subtotalAmount,
+            total_price: finalTotal,
             latitude: selectedPos.lat,
             longitude: selectedPos.lng,
             status: 'pending',
@@ -274,6 +277,31 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
         }).select().single();
 
         if(error) throw error;
+
+        // TsPay bo'lsa redirection
+        if (selectedPaymentMethod === 'tspay') {
+            const { data: tsData, error: tsError } = await supabase.functions.invoke('clever-api', {
+                body: { 
+                    action: 'create', 
+                    amount: finalTotal,
+                    user_id: user.id
+                }
+            });
+            if (tsData?.status === 'success' && tsData?.transaction?.url) {
+                window.location.href = tsData.transaction.url;
+                return;
+            }
+        }
+
+        if (selectedPaymentMethod === 'wallet') {
+            await supabase.from('profiles').update({ balance: profile.balance - finalTotal }).eq('id', user.id);
+            await supabase.from('transactions').insert({
+                user_id: user.id,
+                amount: finalTotal,
+                type: 'expense',
+                description: `Buyurtma #${newOrder.id.toString().substring(0,6)} uchun to'lov`
+            });
+        }
 
         await supabase.from('cart_items').delete().eq('user_id', user?.id);
         showToast("Buyurtma qabul qilindi! 🚀");

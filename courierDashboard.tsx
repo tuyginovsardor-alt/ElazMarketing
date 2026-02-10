@@ -10,7 +10,6 @@ export async function renderCourierDashboard() {
 
     showView('orders');
     
-    // Profilni yuklash
     const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
     courierProfile = p;
 
@@ -19,7 +18,6 @@ export async function renderCourierDashboard() {
 
     container.innerHTML = `
         <div style="padding-bottom:120px; animation: fadeIn 0.4s ease-out;">
-            <!-- HEADER STATS -->
             <div style="background:var(--dark); color:white; margin:-1.2rem -1.2rem 25px -1.2rem; padding:50px 25px 30px; border-radius:0 0 40px 40px; box-shadow:var(--shadow-lg);">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
                     <div>
@@ -41,16 +39,15 @@ export async function renderCourierDashboard() {
                     </div>
                     <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:20px; border:1px solid rgba(255,255,255,0.1);">
                         <div style="font-size:0.6rem; font-weight:800; opacity:0.6;">HOLATINGIZ</div>
-                        <div style="font-weight:900; font-size:0.9rem; color:${isBusy ? '#f59e0b' : '#22c55e'};">${isBusy ? 'BAND (Buyurtmada)' : 'BO\'SH'}</div>
+                        <div style="font-weight:900; font-size:0.9rem; color:${isBusy ? '#f59e0b' : '#22c55e'};">${isBusy ? 'BAND' : 'BO\'SH'}</div>
                     </div>
                 </div>
             </div>
 
-            <!-- TAB NAVIGATION -->
             <div style="display:flex; background:#f1f5f9; padding:6px; border-radius:22px; margin-bottom:20px; gap:5px;">
-                <button onclick="window.switchCourierTab('new')" id="tab_new" style="flex:1; height:45px; border-radius:18px; border:none; font-weight:900; font-size:0.7rem; cursor:pointer; transition:0.3s;">BO'SH BUYURTMALAR</button>
-                <button onclick="window.switchCourierTab('active')" id="tab_active" style="flex:1; height:45px; border-radius:18px; border:none; font-weight:900; font-size:0.7rem; cursor:pointer; transition:0.3s;">MENING ISHIM</button>
-                <button onclick="window.switchCourierTab('history')" id="tab_history" style="flex:1; height:45px; border-radius:18px; border:none; font-weight:900; font-size:0.7rem; cursor:pointer; transition:0.3s;">TARIX</button>
+                <button onclick="window.switchCourierTab('new')" id="tab_new" style="flex:1.2; height:45px; border-radius:18px; border:none; font-weight:900; font-size:0.65rem; cursor:pointer; transition:0.3s;">BO'SH BUYURTMALAR</button>
+                <button onclick="window.switchCourierTab('active')" id="tab_active" style="flex:1; height:45px; border-radius:18px; border:none; font-weight:900; font-size:0.65rem; cursor:pointer; transition:0.3s;">MENING ISHIM</button>
+                <button onclick="window.switchCourierTab('history')" id="tab_history" style="flex:1; height:45px; border-radius:18px; border:none; font-weight:900; font-size:0.65rem; cursor:pointer; transition:0.3s;">TARIX</button>
             </div>
 
             <div id="courierTerminalFeed">
@@ -71,13 +68,11 @@ async function loadTerminalData() {
         let query = supabase.from('orders').select(`*, profiles!user_id(first_name, last_name, avatar_url)`);
 
         if(currentTab === 'new') {
-            // Faqat kuryer biriktirilmagan va kutilayotgan (pending) buyurtmalar
-            query = query.eq('status', 'pending').is('courier_id', null).order('created_at', { ascending: false });
+            // Ham pending ham confirmed buyurtmalar kuryerlarga pickup uchun ochiladi (Automatic Dispatch)
+            query = query.in('status', ['pending', 'confirmed']).is('courier_id', null).order('created_at', { ascending: false });
         } else if(currentTab === 'active') {
-            // Kuryerning joriy faol buyurtmasi
             query = query.eq('courier_id', user.id).eq('status', 'delivering');
         } else {
-            // Yakunlangan buyurtmalar
             query = query.eq('courier_id', user.id).eq('status', 'delivered').order('created_at', { ascending: false }).limit(20);
         }
 
@@ -88,7 +83,7 @@ async function loadTerminalData() {
             feed.innerHTML = `
                 <div style="text-align:center; padding:5rem 20px; opacity:0.4;">
                     <i class="fas fa-inbox fa-3x" style="margin-bottom:15px;"></i>
-                    <p style="font-weight:800; font-size:0.9rem;">${currentTab === 'new' ? 'Hozircha yangi buyurtmalar yo\'q' : 'Ma\'lumot yo\'q'}</p>
+                    <p style="font-weight:800; font-size:0.9rem;">${currentTab === 'new' ? 'Yangi buyurtmalar yo\'q' : 'Ma\'lumot yo\'q'}</p>
                 </div>
             `;
             return;
@@ -131,7 +126,7 @@ async function loadTerminalData() {
                         <button onclick="window.terminalAcceptOrder(${o.id})" 
                                 ${isBusy ? 'disabled' : ''} 
                                 class="btn btn-primary" 
-                                style="flex:1; height:50px; border-radius:14px; background:${isBusy ? '#cbd5e1' : 'var(--dark)'}; opacity:${isBusy ? '0.6' : '1'}; border:none; box-shadow:none;">
+                                style="flex:1; height:50px; border-radius:14px; background:${isBusy ? '#cbd5e1' : 'var(--dark)'}; opacity:${isBusy ? '0.6' : '1'};">
                             ${isBusy ? 'BANDSIZ' : 'QABUL QILISH'}
                         </button>
                     ` : currentTab === 'active' ? `
@@ -146,10 +141,9 @@ async function loadTerminalData() {
                             <i class="fas fa-check-circle"></i> YETKAZIB BERILGAN
                         </div>
                     `}
-                    ${o.latitude ? `<button onclick="window.open('https://www.google.com/maps?q=${o.latitude},${o.longitude}', '_blank')" class="btn btn-outline" style="width:50px; height:50px; border-radius:14px; background:#f8fafc; border-color:#e2e8f0; color:#64748b;"><i class="fas fa-location-arrow"></i></button>` : ''}
+                    ${o.latitude ? `<button onclick="window.open('https://www.google.com/maps?q=${o.latitude},${o.longitude}', '_blank')" class="btn btn-outline" style="width:50px; height:50px; border-radius:14px;"><i class="fas fa-location-arrow"></i></button>` : ''}
                     ${currentTab === 'active' ? `<a href="tel:${o.phone_number}" class="btn" style="width:50px; height:50px; border-radius:14px; background:#f0fdf4; color:#22c55e; display:flex; align-items:center; justify-content:center; text-decoration:none;"><i class="fas fa-phone-alt"></i></a>` : ''}
                 </div>
-                ${currentTab === 'new' && isBusy ? `<p style="font-size:0.6rem; color:var(--danger); font-weight:800; text-align:center; margin-top:8px;">Avval faol buyurtmani yakunlang!</p>` : ''}
             </div>
             `;
         }).join('');
@@ -228,9 +222,7 @@ function updateTabUI() {
     if(!confirm("Ushbu buyurtmani rad etib, boshqa kuryerlarga uzatmoqchimisiz?")) return;
 
     try {
-        // Buyurtmani bo'shatish
         await supabase.from('orders').update({ courier_id: null, status: 'pending' }).eq('id', oid);
-        // Kuryerni bo'shatish
         await supabase.from('profiles').update({ is_busy: false }).eq('id', user.id);
 
         showToast("Buyurtma bo'shatildi.");
