@@ -28,9 +28,12 @@ export async function renderCourierDashboard() {
                             <span style="font-size:0.7rem; font-weight:800; opacity:0.8;">${isOnline ? 'ISH REJIMIDA' : 'DAM OLISHDA'}</span>
                         </div>
                     </div>
-                    <button onclick="window.toggleCourierStatus()" class="btn" style="height:42px; padding:0 20px; border-radius:12px; background:${isOnline ? 'rgba(239,68,68,0.1)' : 'var(--primary)'}; color:${isOnline ? '#ef4444' : 'white'}; border:none; font-size:0.75rem;">
-                        ${isOnline ? 'STOP' : 'START'}
-                    </button>
+                    <div style="display:flex; gap:10px;">
+                        <button onclick="window.location.reload()" class="btn" style="width:42px; height:42px; border-radius:12px; background:rgba(255,255,255,0.1); border:none; color:white;"><i class="fas fa-sync-alt"></i></button>
+                        <button onclick="window.toggleCourierStatus()" class="btn" style="height:42px; padding:0 20px; border-radius:12px; background:${isOnline ? 'rgba(239,68,68,0.1)' : 'var(--primary)'}; color:${isOnline ? '#ef4444' : 'white'}; border:none; font-size:0.75rem;">
+                            ${isOnline ? 'STOP' : 'START'}
+                        </button>
+                    </div>
                 </div>
 
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
@@ -99,21 +102,27 @@ async function loadTerminalData() {
 
             // Mahsulotlarni chiroyli chiqaramiz (Rasm bilan)
             const itemsMarkup = o.items ? o.items.split('|').map(itemStr => {
-                const parts = itemStr.split(':::');
-                const hasImg = parts.length > 1;
-                const imgUrl = hasImg ? parts[0] : "";
-                const label = hasImg ? parts[1] : parts[0];
+                // Mustahkam parse: eski va yangi formatni tekshiradi
+                const hasDelimiter = itemStr.includes(':::');
+                let imgUrl = "";
+                let label = itemStr;
+
+                if (hasDelimiter) {
+                    const parts = itemStr.split(':::');
+                    imgUrl = parts[0];
+                    label = parts[1];
+                }
 
                 return `
                     <div style="display:inline-flex; align-items:center; gap:8px; padding:6px 12px; background:white; border:1px solid #f1f5f9; border-radius:14px; font-size:0.7rem; font-weight:800; color:var(--text); box-shadow:var(--shadow-sm);">
-                        ${imgUrl ? `<img src="${imgUrl}" style="width:24px; height:24px; border-radius:6px; object-fit:cover;">` : '<i class="fas fa-check-circle" style="color:var(--primary); font-size:0.6rem;"></i>'}
+                        ${imgUrl && imgUrl.startsWith('http') ? `<img src="${imgUrl}" style="width:24px; height:24px; border-radius:6px; object-fit:cover;" onerror="this.style.display='none'">` : '<i class="fas fa-check-circle" style="color:var(--primary); font-size:0.6rem;"></i>'}
                         <span>${label}</span>
                     </div>
                 `;
             }).join('') : '<span style="color:var(--gray); font-size:0.75rem;">Mahsulot ma\'lumoti yo\'q</span>';
 
             return `
-            <div class="card" style="padding:22px; border-radius:28px; border:1.5px solid #f1f5f9; background:white; margin-bottom:15px; position:relative; overflow:hidden; box-shadow:var(--shadow-sm);">
+            <div class="card" style="padding:22px; border-radius:28px; border:1.5px solid #f1f5f9; background:white; margin-bottom:15 :relative; overflow:hidden; box-shadow:var(--shadow-sm);">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:15px;">
                     <div>
                         <div style="font-weight:900; font-size:0.8rem; color:var(--gray);">
