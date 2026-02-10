@@ -181,8 +181,9 @@ function updateCheckoutSummary() {
                     <i class="fas fa-wallet" style="font-size:1.7rem; color:#8b5cf6; margin-bottom:8px;"></i>
                     <div style="font-size:0.65rem; font-weight:900;">HAMYON</div>
                 </div>
-                <div id="pay_tspay" onclick="selectPaymentMethod('tspay')" class="pay-option" style="padding:18px 10px; border-radius:24px; border:2.5px solid #f1f5f9; background:white; text-align:center; cursor:pointer;">
-                    <div style="font-weight:900; color:#3b82f6; font-size:1.2rem; margin-bottom:8px;">TsPay</div>
+                <div id="pay_tspay" onclick="selectPaymentMethod('tspay')" class="pay-option" style="padding:18px 10px; border-radius:24px; border:2.5px solid #f1f5f9; background:white; text-align:center; cursor:pointer; position:relative; overflow:hidden;">
+                    <div style="position:absolute; top:0; left:0; width:100%; background:var(--primary); color:white; font-size:0.45rem; font-weight:900; padding:2px 0;">+0.3% CASHBACK</div>
+                    <div style="font-weight:900; color:#3b82f6; font-size:1.2rem; margin-bottom:8px; margin-top:5px;">TsPay</div>
                     <div style="font-size:0.65rem; font-weight:900;">KARTA</div>
                 </div>
             </div>

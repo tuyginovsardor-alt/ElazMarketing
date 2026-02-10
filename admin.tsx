@@ -24,6 +24,7 @@ export async function switchAdminTab(tab: string) {
                 <div class="admin-tab" onclick="window.switchAdminTab('apps')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'apps' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'apps' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">ARIZALAR <span id="appBadge" style="display:none; background:var(--danger); color:white; padding:1px 5px; border-radius:5px; font-size:0.5rem; margin-left:3px;">!</span></div>
                 <div class="admin-tab" onclick="window.switchAdminTab('users')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'users' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'users' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">MIJOZLAR</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('inv')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'inv' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'inv' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">SKLAD</div>
+                <div class="admin-tab" onclick="window.switchAdminTab('ads')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'ads' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'ads' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">MARKETING</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('orders')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'orders' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'orders' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">BUYURTMALAR</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('couriers')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'couriers' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'couriers' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">KURYERLAR</div>
                 <div class="admin-tab" onclick="window.switchAdminTab('fin')" style="padding:18px 15px; font-weight:800; font-size:0.6rem; cursor:pointer; color:${tab === 'fin' ? 'var(--primary)' : '#94a3b8'}; border-bottom:3px solid ${tab === 'fin' ? 'var(--primary)' : 'transparent'}; transition:0.2s; white-space:nowrap; text-transform:uppercase;">MOLIYA</div>
@@ -71,6 +72,9 @@ async function renderTabContent(tab: string) {
         } else if(tab === 'inv') {
             const { renderAdminInventory } = await import("./adminInventory.tsx");
             renderAdminInventory();
+        } else if(tab === 'ads') {
+            const { renderAdminAds } = await import("./adminAds.tsx");
+            renderAdminAds();
         } else if(tab === 'orders') {
             const { renderAdminOrders } = await import("./adminOrders.tsx");
             renderAdminOrders();
