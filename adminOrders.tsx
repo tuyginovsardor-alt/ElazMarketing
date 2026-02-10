@@ -1,5 +1,5 @@
 
-import { supabase, showToast } from "./index.tsx";
+import { supabase, showToast, openOverlay, closeOverlay } from "./index.tsx";
 
 export async function renderAdminOrders() {
     const container = document.getElementById('adminTabContent');
@@ -7,8 +7,6 @@ export async function renderAdminOrders() {
     
     container.innerHTML = `<div style="text-align:center; padding:3rem;"><i class="fas fa-spinner fa-spin fa-2x" style="color:var(--primary);"></i></div>`;
 
-    // Muhim: Agar Foreign Key xatosi chiqsa, bog'liqlikni aniq ko'rsatuvchi select ishlatamiz
-    // Supabase-da jadval nomi bilan birga user_id ni ham ko'rsatish bog'liqlikni topishga yordam beradi
     const { data: orders, error } = await supabase
         .from('orders')
         .select(`
@@ -22,14 +20,7 @@ export async function renderAdminOrders() {
         .order('created_at', { ascending: false });
 
     if(error) {
-        console.error("Orders Load Error:", error);
-        container.innerHTML = `
-            <div class="card" style="text-align:center; padding:2rem;">
-                <p style="color:var(--danger); font-weight:800; margin-bottom:10px;">Ma'lumot yuklashda xatolik</p>
-                <code style="font-size:0.7rem; color:var(--gray); display:block; margin-bottom:15px;">${error.message}</code>
-                <button class="btn btn-primary" onclick="renderAdminOrders()" style="height:40px; font-size:0.7rem;">QAYTA URINISH</button>
-            </div>
-        `;
+        container.innerHTML = `<div class="card" style="text-align:center; padding:2rem;"><p style="color:var(--danger);">Xatolik: ${error.message}</p></div>`;
         return;
     }
 
@@ -43,7 +34,7 @@ export async function renderAdminOrders() {
             ${orders.map(o => {
                 const customer = (o as any).profiles;
                 const fullName = customer ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() : "Noma'lum mijoz";
-                const email = customer?.email || "Email mavjud emas";
+                const isUnassigned = !o.courier_id && o.status !== 'cancelled' && o.status !== 'delivered';
 
                 return `
                 <div class="card" style="padding:22px; border-radius:28px; background:white; border:1.5px solid #f1f5f9; box-shadow:var(--shadow-sm); position:relative; overflow:hidden;">
@@ -54,8 +45,8 @@ export async function renderAdminOrders() {
                             <div style="font-weight:900; font-size:1.1rem; color:var(--text);">#ORD-${o.id.toString().substring(0,6)}</div>
                             <div style="font-size:0.7rem; color:var(--gray); font-weight:800;">${new Date(o.created_at).toLocaleString()}</div>
                         </div>
-                        <div style="padding:6px 14px; border-radius:12px; background:#f8fafc; font-size:0.65rem; font-weight:900; color:#64748b; border:1px solid #f1f5f9;">
-                            ${o.status.toUpperCase()}
+                        <div style="padding:6px 14px; border-radius:12px; background:${isUnassigned ? '#fef2f2' : '#f8fafc'}; font-size:0.65rem; font-weight:900; color:${isUnassigned ? '#ef4444' : '#64748b'}; border:1px solid ${isUnassigned ? '#fee2e2' : '#f1f5f9'};">
+                            ${isUnassigned ? 'KURYER KUTILMOQDA' : o.status.toUpperCase()}
                         </div>
                     </div>
 
@@ -66,30 +57,23 @@ export async function renderAdminOrders() {
                             </div>
                             <div style="overflow:hidden;">
                                 <div style="font-weight:900; font-size:0.9rem; color:#1e40af; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${fullName}</div>
-                                <div style="font-size:0.7rem; color:#3b82f6; font-weight:700; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${email}</div>
+                                <div style="font-size:0.7rem; color:#3b82f6; font-weight:700;">${o.phone_number}</div>
                             </div>
                         </div>
                     </div>
                     
                     <div style="margin-bottom:15px; background:#f8fafc; padding:15px; border-radius:18px;">
-                        <div style="font-size:0.85rem; font-weight:700; display:flex; gap:10px; align-items:center; margin-bottom:8px;">
+                        <div style="font-size:0.85rem; font-weight:700; display:flex; gap:10px; align-items:center;">
                             <i class="fas fa-map-marker-alt" style="color:var(--danger);"></i> 
-                            <span>${o.address_text || "Manzil ko'rsatilmagan"}</span>
+                            <span>${o.address_text || "Xaritada belgilangan"}</span>
                         </div>
-                        <div style="font-size:0.8rem; font-weight:800; color:var(--primary); margin-bottom:10px;">
-                            <i class="fas fa-phone"></i> ${o.phone_number || 'Noma\'lum'}
-                        </div>
-                        ${o.comment ? `
-                            <div style="padding:10px; background:#fff9db; border-radius:12px; font-size:0.8rem; font-weight:700; color:#856404; border:1px dashed #ffeeba;">
-                                <i class="fas fa-comment-alt" style="margin-right:6px;"></i> "${o.comment}"
-                            </div>
-                        ` : ''}
                     </div>
 
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; padding:0 5px;">
-                        <span style="font-size:0.75rem; font-weight:800; color:var(--gray);">SUMMA:</span>
-                        <b style="font-size:1.1rem; color:var(--text);">${o.total_price?.toLocaleString()} UZS</b>
-                    </div>
+                    ${isUnassigned ? `
+                        <button class="btn btn-primary" style="width:100%; height:50px; border-radius:16px; margin-bottom:15px; background:var(--dark); box-shadow:none;" onclick="window.openCourierAssigner(${o.id})">
+                            <i class="fas fa-motorcycle"></i> KURYER BIRIKTIRISH
+                        </button>
+                    ` : ''}
 
                     <div style="display:flex; gap:10px;">
                         ${o.latitude ? `
@@ -101,8 +85,8 @@ export async function renderAdminOrders() {
                         <select onchange="updateAdminOrderStatus(${o.id}, this.value)" style="flex:1; height:48px; border-radius:14px; margin:0; padding:0 15px; font-size:0.75rem; font-weight:800; background:white; border:2px solid #f1f5f9;">
                             <option value="confirmed" ${o.status === 'confirmed' ? 'selected' : ''}>TASDIQLANGAN</option>
                             <option value="delivering" ${o.status === 'delivering' ? 'selected' : ''}>YETKAZILMOQDA</option>
-                            <option value="delivered" ${o.status === 'delivered' ? 'selected' : ''}>YETKAZIB BERILDI</option>
-                            <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>BEKOR QILINGAN</option>
+                            <option value="delivered" ${o.status === 'delivered' ? 'selected' : ''}>YETKAZILDI</option>
+                            <option value="cancelled" ${o.status === 'cancelled' ? 'selected' : ''}>BEKOR QILISH</option>
                         </select>
                     </div>
                 </div>
@@ -111,10 +95,79 @@ export async function renderAdminOrders() {
     `;
 }
 
+(window as any).openCourierAssigner = async (orderId: number) => {
+    openOverlay('checkoutOverlay');
+    const placeholder = document.getElementById('checkoutPlaceholder');
+    if(!placeholder) return;
+
+    placeholder.innerHTML = `<div style="text-align:center; padding:5rem;"><i class="fas fa-spinner fa-spin fa-2x"></i></div>`;
+
+    const { data: couriers } = await supabase.from('profiles').select('*').eq('role', 'courier');
+
+    placeholder.innerHTML = `
+        <div style="padding-bottom:50px; animation: slideUp 0.3s ease-out;">
+            <div style="display:flex; align-items:center; gap:15px; margin-bottom:25px; position:sticky; top:0; background:white; z-index:10; padding:15px 0; border-bottom:1px solid #f1f5f9;">
+                <i class="fas fa-arrow-left" onclick="closeOverlay('checkoutOverlay')" style="font-size:1.4rem; cursor:pointer; color:var(--text); padding:5px;"></i>
+                <h2 style="font-weight:900; font-size:1.2rem;">Kuryerni biriktirish</h2>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                ${couriers?.map(c => `
+                    <div class="card" style="display:flex; align-items:center; gap:15px; padding:18px; border-radius:24px; cursor:pointer; border:2px solid ${c.active_status && !c.is_busy ? 'var(--primary-light)' : '#f1f5f9'}" onclick="window.assignOrderToCourier(${orderId}, '${c.id}')">
+                        <div style="width:48px; height:48px; border-radius:14px; background:#f8fafc; overflow:hidden; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center;">
+                            ${c.avatar_url ? `<img src="${c.avatar_url}" style="width:100%; height:100%; object-fit:cover;">` : `<i class="fas fa-user-ninja" style="color:#cbd5e1;"></i>`}
+                        </div>
+                        <div style="flex:1;">
+                            <div style="font-weight:900; font-size:0.9rem;">${c.first_name}</div>
+                            <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
+                                <span style="width:8px; height:8px; border-radius:50%; background:${c.active_status ? '#22c55e' : '#cbd5e1'};"></span>
+                                <span style="font-size:0.65rem; font-weight:800; color:var(--gray);">${c.active_status ? 'ONLAYN' : 'OFLAYN'}</span>
+                                ${c.is_busy ? `<span style="font-size:0.6rem; font-weight:900; background:#fff7ed; color:#ea580c; padding:2px 6px; border-radius:5px;">BAND</span>` : `<span style="font-size:0.6rem; font-weight:900; background:#f0fdf4; color:#16a34a; padding:2px 6px; border-radius:5px;">BO'SH</span>`}
+                            </div>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color:#cbd5e1;"></i>
+                    </div>
+                `).join('')}
+                ${!couriers?.length ? '<p style="text-align:center; padding:3rem; color:var(--gray);">Kuryerlar topilmadi.</p>' : ''}
+            </div>
+        </div>
+    `;
+};
+
+(window as any).assignOrderToCourier = async (orderId: number, courierId: string) => {
+    if(!confirm("Ushbu buyurtmani kuryerga biriktirasizmi?")) return;
+
+    try {
+        // 1. Buyurtmani yangilash
+        const { error: orderError } = await supabase.from('orders').update({
+            courier_id: courierId,
+            status: 'delivering'
+        }).eq('id', orderId);
+
+        if(orderError) throw orderError;
+
+        // 2. Kuryer holatini yangilash
+        await supabase.from('profiles').update({ is_busy: true }).eq('id', courierId);
+
+        // 3. Log yozish
+        await supabase.from('courier_logs').insert({
+            courier_id: courierId,
+            order_id: orderId,
+            action_text: "Admin tomonidan buyurtma biriktirildi"
+        });
+
+        showToast("Buyurtma kuryerga muvaffaqiyatli topshirildi! 🛵");
+        closeOverlay('checkoutOverlay');
+        renderAdminOrders();
+    } catch(e: any) {
+        showToast("Xato: " + e.message);
+    }
+};
+
 (window as any).updateAdminOrderStatus = async (id: number, status: string) => {
     const { error } = await supabase.from('orders').update({ status }).eq('id', id);
     if(!error) {
-        showToast("Holat o'zgardi: " + status.toUpperCase());
+        showToast("Holat yangilandi.");
         renderAdminOrders();
     } else {
         showToast("Xato: " + error.message);
