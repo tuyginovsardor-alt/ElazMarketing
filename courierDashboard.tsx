@@ -1,25 +1,32 @@
 
 import { supabase, showToast, profile, user, loadProfileData } from "./index.tsx";
 
+let watchId: number | null = null;
+
 export async function renderCourierDashboard() {
     const container = document.getElementById('ordersView');
     if(!container || !user) return;
 
     const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).single();
     const isOnline = p?.active_status || false;
+    const isBusy = p?.is_busy || false;
 
     container.innerHTML = `
         <div style="padding-bottom:120px; animation: fadeIn 0.4s ease-out;">
             <!-- STATUS HEADER -->
-            <div style="background:white; padding:20px; border-radius:30px; border:1.5px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; box-shadow:var(--shadow-sm);">
+            <div style="background:white; padding:20px; border-radius:30px; border:1.5|px solid #f1f5f9; display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; box-shadow:var(--shadow-sm);">
                 <div>
                     <h2 style="font-weight:900; font-size:1.3rem;">Kuryer Terminali</h2>
                     <div style="display:flex; align-items:center; gap:8px; margin-top:5px;">
-                        <div style="width:10px; height:10px; border-radius:50%; background:${isOnline ? 'var(--primary)' : 'var(--danger)'}; box-shadow:0 0 10px ${isOnline ? 'var(--primary)' : 'var(--danger)'};"></div>
-                        <span style="font-size:0.75rem; font-weight:900; color:${isOnline ? 'var(--primary)' : 'var(--danger)'}; text-transform:uppercase;">${isOnline ? 'Onlayn' : 'Oflayn'}</span>
+                        <div id="statusIndicator" style="width:10px; height:10px; border-radius:50%; background:${isBusy ? '#f59e0b' : (isOnline ? 'var(--primary)' : 'var(--danger)')}; box-shadow:0 0 10px ${isBusy ? '#f59e0b' : (isOnline ? 'var(--primary)' : 'var(--danger)')};"></div>
+                        <span id="statusText" style="font-size:0.75rem; font-weight:900; color:${isBusy ? '#f59e0b' : (isOnline ? 'var(--primary)' : 'var(--danger)')}; text-transform:uppercase;">
+                            ${isBusy ? 'Band (Buyurtmada)' : (isOnline ? 'Onlayn' : 'Oflayn')}
+                        </span>
                     </div>
                 </div>
-                <button class="btn ${isOnline ? 'btn-outline' : 'btn-primary'}" style="height:52px; padding:0 25px; border-radius:18px; font-size:0.8rem;" onclick="window.toggleCourierStatus()">
+                <button id="toggleStatusBtn" class="btn ${isOnline ? 'btn-outline' : 'btn-primary'}" 
+                        style="height:52px; padding:0 25px; border-radius:18px; font-size:0.8rem;" 
+                        onclick="window.toggleCourierStatus()" ${isBusy ? 'disabled' : ''}>
                     <i class="fas ${isOnline ? 'fa-pause' : 'fa-play'}"></i> ${isOnline ? 'OFFLINE' : 'ONLINE'}
                 </button>
             </div>
@@ -35,9 +42,49 @@ export async function renderCourierDashboard() {
         </div>
     `;
 
-    // Fix: Cast window to any to access switchCourierTab
+    if (isOnline) startGeoTracking();
     (window as any).switchCourierTab('new');
 }
+
+function startGeoTracking() {
+    if (!navigator.geolocation) return;
+    if (watchId) navigator.geolocation.clearWatch(watchId);
+
+    watchId = navigator.geolocation.watchPosition(
+        async (pos) => {
+            const { latitude, longitude } = pos.coords;
+            await supabase.from('profiles').update({ 
+                live_lat: latitude, 
+                live_lng: longitude,
+                last_active: new Date().toISOString()
+            }).eq('id', user.id);
+            console.log("Location synced:", latitude, longitude);
+        },
+        (err) => console.error(err),
+        // Fix: removed 'distanceFilter' as it is not a valid property for PositionOptions in the standard Web API
+        { enableHighAccuracy: true }
+    );
+}
+
+function stopGeoTracking() {
+    if (watchId) navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+}
+
+(window as any).toggleCourierStatus = async () => {
+    const { data: p } = await supabase.from('profiles').select('active_status, is_busy').eq('id', user.id).single();
+    if (p.is_busy) return showToast("Hozir buyurtmadagi kuryer holatni o'zgartira olmaydi!");
+
+    const newStatus = !p.active_status;
+    const { error } = await supabase.from('profiles').update({ active_status: newStatus }).eq('id', user.id);
+    
+    if (!error) {
+        if (newStatus) startGeoTracking();
+        else stopGeoTracking();
+        renderCourierDashboard();
+        showToast(newStatus ? "Siz onlaynsiz! 🛵" : "Siz oflaynsiz. Dam oling!");
+    }
+};
 
 (window as any).switchCourierTab = async (tab: string) => {
     const feed = document.getElementById('courierOrdersFeed');
@@ -101,7 +148,7 @@ function renderOrderCard(o: any, type: 'available' | 'active') {
                 </div>
             </div>
 
-            <div style="background:#f8fafc; padding:15px; border-radius:22px; border:1px solid #f1f5f9; margin-bottom:15px;">
+            <div style="background:#f8fafc; padding:15px; border-radius:22px; border:1.5px solid #f1f5f9; margin-bottom:15px;">
                 <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
                     <div style="width:36px; height:36px; border-radius:10px; background:white; display:flex; align-items:center; justify-content:center; color:var(--primary);"><i class="fas fa-user"></i></div>
                     <div style="flex:1;">
@@ -115,7 +162,6 @@ function renderOrderCard(o: any, type: 'available' | 'active') {
             </div>
 
             <div style="display:flex; gap:10px;">
-                ${o.latitude ? `<button class="btn btn-outline" style="width:55px; height:55px; border-radius:18px; border-color:#e2e8f0;" onclick="window.open('https://www.google.com/maps?q=${o.latitude},${o.longitude}', '_blank')"><i class="fas fa-location-arrow" style="color:#3b82f6;"></i></button>` : ''}
                 ${type === 'available' ? 
                     `<button class="btn btn-primary" style="flex:1; height:55px; border-radius:18px; font-size:0.9rem;" onclick="window.courierAcceptOrder('${o.id}')">QABUL QILISH <i class="fas fa-check-circle" style="margin-left:8px;"></i></button>` : 
                     `<button class="btn btn-primary" style="flex:1; height:55px; border-radius:18px; font-size:0.9rem; background:var(--dark); box-shadow:none;" onclick="window.courierFinishOrder('${o.id}')">BAJARILDI (YAKUNLASH) <i class="fas fa-flag-checkered" style="margin-left:8px;"></i></button>`
@@ -126,39 +172,46 @@ function renderOrderCard(o: any, type: 'available' | 'active') {
 }
 
 (window as any).courierAcceptOrder = async (oid: string) => {
+    const { data: p } = await supabase.from('profiles').select('is_busy').eq('id', user.id).single();
+    if (p.is_busy) return showToast("Sizda allaqachon faol buyurtma bor!");
+
     if(!confirm("Ushbu buyurtmani qabul qilasizmi?")) return;
     
     try {
         const { error } = await supabase.from('orders').update({ courier_id: user.id, status: 'delivering' }).eq('id', oid).is('courier_id', null);
         if(error) throw error;
 
-        // Log yozish
+        // Kuryer holatini band qilish
+        await supabase.from('profiles').update({ is_busy: true, active_status: false }).eq('id', user.id);
+        
         await supabase.from('courier_logs').insert({ courier_id: user.id, order_id: oid, action_text: "Yangi buyurtmani qabul qildi" });
         
-        showToast("Buyurtma sizga biriktirildi! 🛵");
-        // Fix: Cast window to any to access switchCourierTab
-        (window as any).switchCourierTab('mine');
+        showToast("Buyurtma qabul qilindi! Holatingiz 'BAND'ga o'zgardi. 🛵");
+        renderCourierDashboard();
     } catch(e: any) {
         showToast("Xato: Kechikdingiz yoki ulanishda xato.");
     }
 };
 
 (window as any).courierFinishOrder = async (oid: string) => {
-    if(!confirm("Buyurtma mijozga yetkazildimi va pul olindimi?")) return;
+    if(!confirm("Buyurtma mijozga yetkazildimi?")) return;
 
     try {
         const { data: order } = await supabase.from('orders').select('delivery_cost').eq('id', oid).single();
         const { data: p } = await supabase.from('profiles').select('balance').eq('id', user.id).single();
 
         await supabase.from('orders').update({ status: 'delivered' }).eq('id', oid);
-        await supabase.from('profiles').update({ balance: (p.balance || 0) + order.delivery_cost }).eq('id', user.id);
+        // Kuryerni yana bo'shatish va onlayn qilish
+        await supabase.from('profiles').update({ 
+            balance: (p.balance || 0) + order.delivery_cost,
+            is_busy: false,
+            active_status: true
+        }).eq('id', user.id);
         
-        // Log yozish
         await supabase.from('courier_logs').insert({ courier_id: user.id, order_id: oid, action_text: "Buyurtmani muvaffaqiyatli yetkazdi ✅" });
 
-        showToast("Baraka toping! Daromad balansingizga qo'shildi. 💰");
-        // Fix: Cast window to any to access switchCourierTab
-        (window as any).switchCourierTab('mine');
+        showToast("Baraka toping! Siz yana onlaynsiz. 💰");
+        renderCourierDashboard();
         await loadProfileData();
     } catch(e) {
         showToast("Xatolik yuz berdi.");
