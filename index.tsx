@@ -85,7 +85,6 @@ export async function loadProfileData() {
         }
         profile = data;
         
-        // Mijoz uchun Real-time Order Monitoring (Status o'zgarganda xabar berish)
         setupClientOrderMonitoring();
 
         const navIconContainer = document.getElementById('navProfileIconContainer');
@@ -110,7 +109,6 @@ function setupClientOrderMonitoring() {
                     sendPush("ELAZ MARKET", "✅ Buyurtmangiz yetkazib berildi. Yoqimli ishtaha!");
                     playNotificationSound();
                 }
-                // Agar hozir ordersView bo'lsa yangilash
                 if (document.getElementById('ordersView')?.classList.contains('active')) renderOrdersView();
             }
         }).subscribe();
@@ -176,7 +174,7 @@ export async function checkAuth() {
     if (session?.user) {
         user = session.user;
         await loadProfileData();
-        requestPermissions(); // Ruxsatlarni so'rash
+        requestPermissions();
         navTo('home');
     } else {
         showView('auth');
@@ -184,6 +182,48 @@ export async function checkAuth() {
     }
 }
 window.onload = checkAuth;
+
+// --- PROFILE FEATURE INDEXING (Tugmalarni bog'lash) ---
+(window as any).openProfileEdit = async () => {
+    const { openProfileEdit } = await import("./profileEdit.tsx");
+    openProfileEdit();
+};
+
+(window as any).openPayment = async () => {
+    const { openPaymentView } = await import("./payment.tsx");
+    openPaymentView();
+};
+
+(window as any).openCourierRegistration = async () => {
+    const { openCourierRegistrationForm } = await import("./courierRegistration.tsx");
+    openCourierRegistrationForm();
+};
+
+(window as any).openSupportCenter = async () => {
+    const { renderSupportView } = await import("./supportView.tsx");
+    renderSupportView();
+};
+
+(window as any).openProfileSecurity = async () => {
+    const { openProfileSecurity } = await import("./security.tsx");
+    openProfileSecurity();
+};
+
+(window as any).openLegal = async (type: any) => {
+    const { openLegal } = await import("./legal.tsx");
+    openLegal(type);
+};
+
+(window as any).enterAdminPanel = async () => {
+    const { switchAdminTab } = await import("./admin.tsx");
+    const app = document.getElementById('appContainer');
+    const admin = document.getElementById('adminPanel');
+    if(app) app.style.display = 'none';
+    if(admin) {
+        admin.style.display = 'flex';
+        switchAdminTab('dash');
+    }
+};
 
 (window as any).handleSignOut = async () => {
     if(confirm("Tizimdan chiqmoqchimisiz?")) {
@@ -194,7 +234,6 @@ window.onload = checkAuth;
 
 export async function addToCart(productId: number, qty: number = 1) {
     if(!user) return showToast("Iltimos, avval tizimga kiring 🔑");
-    
     try {
         const { data: existing } = await supabase.from('cart_items').select('*').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
         if(existing) {
@@ -203,10 +242,8 @@ export async function addToCart(productId: number, qty: number = 1) {
             await supabase.from('cart_items').insert([{ user_id: user.id, product_id: productId, quantity: qty }]);
         }
         showToast("Savatga qo'shildi! 🛒");
-        
         const cartView = document.getElementById('cartView');
         if(cartView?.classList.contains('active')) renderCartView();
-        
     } catch (e) { showToast("Xatolik yuz berdi!"); }
 }
 (window as any).addToCart = addToCart;
