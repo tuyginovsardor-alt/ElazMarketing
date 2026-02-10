@@ -93,9 +93,7 @@ export const navTo = async (view: string) => {
 export function showView(viewId: string) {
     const app = document.getElementById('appContainer');
     const admin = document.getElementById('adminPanel');
-    if(app) app.style.display = 'flex';
-    if(admin) admin.style.display = 'none';
-
+    
     document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
     const target = document.getElementById(viewId + 'View') || document.getElementById('homeView');
     if(target) target.classList.add('active');
@@ -103,8 +101,15 @@ export function showView(viewId: string) {
     const header = document.getElementById('appHeader');
     const nav = document.getElementById('bottomNav');
     const showNavHeader = ['home', 'cart', 'profile', 'orders', 'saved'].includes(viewId);
+    
     if(header) header.style.display = showNavHeader ? 'flex' : 'none';
     if(nav) nav.style.display = showNavHeader ? 'flex' : 'none';
+
+    // Admin paneldan qaytganda appni ko'rsatish
+    if(app && admin && admin.style.display === 'flex' && showNavHeader) {
+        app.style.display = 'flex';
+        admin.style.display = 'none';
+    }
 }
 (window as any).showView = showView;
 
@@ -122,8 +127,7 @@ export async function checkAuth() {
 }
 window.onload = checkAuth;
 
-// --- ALL GLOBAL ATTACHMENTS (INDEXING) ---
-
+// --- GLOBAL ATTACHMENTS ---
 (window as any).enterAdminPanel = async () => {
     const { switchAdminTab } = await import("./admin.tsx");
     const app = document.getElementById('appContainer');
@@ -170,7 +174,6 @@ window.onload = checkAuth;
     }
 };
 
-// --- CART & FAVORITES (FIXED: EXPORTED) ---
 export async function addToCart(productId: number, qty: number = 1) {
     if(!user) return showToast("Tizimga kiring");
     try {
