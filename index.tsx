@@ -161,7 +161,6 @@ export async function addToCart(productId: number, qty: number = 1) {
         }
         showToast("Savatga qo'shildi! 🛒");
         
-        // Agar savat sahifasida bo'lsak, uni yangilaymiz
         const cartView = document.getElementById('cartView');
         if(cartView?.classList.contains('active')) renderCartView();
         
