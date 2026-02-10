@@ -82,5 +82,3 @@ export function openLegal(type: 'offer' | 'privacy' | 'rules') {
     `;
     openOverlay('checkoutOverlay');
 }
-
-(window as any).openLegal = openLegal;

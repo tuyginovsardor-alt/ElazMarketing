@@ -59,7 +59,6 @@ export async function loadProfileData() {
         }
         profile = data;
         
-        // Navigatsiyadagi profil rasmi
         const navIconContainer = document.getElementById('navProfileIconContainer');
         if (navIconContainer) {
             navIconContainer.innerHTML = profile?.avatar_url ? `<img src="${profile.avatar_url}" class="nav-profile-img">` : `<i class="far fa-user-circle" style="font-size: 1.6rem;"></i>`;
@@ -105,7 +104,6 @@ export function showView(viewId: string) {
     if(header) header.style.display = showNavHeader ? 'flex' : 'none';
     if(nav) nav.style.display = showNavHeader ? 'flex' : 'none';
 
-    // Admin paneldan qaytganda appni ko'rsatish
     if(app && admin && admin.style.display === 'flex' && showNavHeader) {
         app.style.display = 'flex';
         admin.style.display = 'none';
@@ -135,6 +133,11 @@ window.onload = checkAuth;
     if(app) app.style.display = 'none';
     if(admin) admin.style.display = 'flex';
     switchAdminTab('dash');
+};
+
+(window as any).openLegal = async (type: 'offer' | 'privacy' | 'rules') => {
+    const { openLegal } = await import("./legal.tsx");
+    openLegal(type);
 };
 
 (window as any).openPayment = async () => {
