@@ -21,62 +21,63 @@ async function router(update) {
     if (!sessions[chatId]) sessions[chatId] = { step: 'idle' };
     const session = sessions[chatId];
 
-    // --- DEEP LINKING ---
-    if (text?.startsWith("/start ")) {
-        const token = text.split(" ")[1];
-        if (token) {
-            const { data: profile } = await supabase.from('profiles').select('*').eq('link_token', token).maybeSingle();
-            if (profile) {
-                await supabase.from('profiles').update({ telegram_id: chatId, link_token: null }).eq('id', profile.id);
-                const kb = profile.role === 'courier' ? KB.courier : KB.user;
-                return tg('sendMessage', { 
-                    chat_id: chatId, 
-                    text: `✅ <b>TABRIKLAYMIZ, ${profile.first_name.toUpperCase()}!</b>\n\nBot muvaffaqiyatli ulandi.`, 
-                    parse_mode: 'HTML', 
-                    reply_markup: kb 
-                });
-            }
-        }
-    }
-
+    // --- GLOBAL RESET ---
     if (text === "/start" || text === "❌ Chiqish" || text === "❌ Bekor qilish") {
         session.step = 'idle';
-        const { data: profile } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
+        // Bazadan profilni rolini ham qo'shib olish
+        const { data: profile, error } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
+        
         if (profile) {
+            console.log(`[BOT] Recognized user: ${profile.first_name}, Role: ${profile.role}`);
             const kb = profile.role === 'courier' ? KB.courier : KB.user;
-            return tg('sendMessage', { chat_id: chatId, text: `👋 Xush kelibsiz, <b>${profile.first_name}</b>!`, parse_mode: 'HTML', reply_markup: kb });
+            const welcomeMsg = profile.role === 'courier' ? 
+                `🛵 <b>KURER TERMINALI</b>\n\nXush kelibsiz, <b>${profile.first_name}</b>!\nBugun xizmatga tayyormisiz?` : 
+                `🛒 <b>ELAZ MARKET</b>\n\nXush kelibsiz, <b>${profile.first_name}</b>!`;
+            return tg('sendMessage', { chat_id: chatId, text: welcomeMsg, parse_mode: 'HTML', reply_markup: kb });
         }
-        return tg('sendMessage', { chat_id: chatId, text: "🏪 <b>ELAZ MARKET</b>\n\nBotga xush kelibsiz!", parse_mode: 'HTML', reply_markup: KB.welcome });
+        
+        return tg('sendMessage', { 
+            chat_id: chatId, 
+            text: "🏪 <b>ELAZ MARKET</b>\n\nBag'dod tumanidagi eng tezkor savdo platformasi botiga xush kelibsiz! Davom etish uchun tizimga kiring:", 
+            parse_mode: 'HTML', 
+            reply_markup: KB.welcome 
+        });
     }
 
+    // --- AUTH FLOW ---
     if (session.step !== 'idle' || text === "🔑 Kirish" || text === "📝 Ro'yxatdan o'tish") {
         return handleAuth(chatId, text, session, msg);
     }
 
+    // --- LOGGED IN ROUTING ---
     const { data: profile } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
     if (profile) {
-        if (profile.role === 'courier') return handleCourier(chatId, text, profile);
-        return handleUser(chatId, text, profile);
+        if (profile.role === 'courier') {
+            return handleCourier(chatId, text, profile);
+        } else {
+            return handleUser(chatId, text, profile);
+        }
+    } else {
+        // Agar profil topilmasa startga qaytarish
+        return tg('sendMessage', { chat_id: chatId, text: "Siz tizimga kirmagansiz. /start bosing.", reply_markup: KB.welcome });
     }
 }
 
 async function start() {
-    console.log("🚀 ELAZ BOT ENGINE STARTING...");
+    console.log("🚀 ELAZ BOT ENGINE V10.5 (RECOGNITION FIX) STARTED...");
     
-    // Monitoringni faqat bir marta ishga tushiramiz
     if(!isMonitoring) {
         isMonitoring = true;
         setInterval(async () => {
             const newToken = await refreshBotToken();
             if (newToken && newToken !== currentActiveToken) {
-                console.log("🔄 NEW TOKEN DETECTED, RESTARTING POLLER...");
+                console.log("🔄 NEW TOKEN SYNCED...");
                 currentActiveToken = newToken;
-                lastId = 0; // Reset offset for new bot
+                lastId = 0; 
             }
         }, 5000);
     }
 
-    // Polling Loop
     while (true) {
         if (!currentActiveToken) {
             currentActiveToken = await refreshBotToken() || "";
@@ -91,14 +92,11 @@ async function start() {
                     await router(u);
                     lastId = u.update_id + 1;
                 }
-            } else if (res && !res.ok && res.error_code === 401) {
-                console.error("🚫 TOKEN EXPIRED OR INVALID");
-                currentActiveToken = "";
             }
         } catch (e) {
             await new Promise(r => setTimeout(r, 5000));
         }
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise(r => setTimeout(r, 200));
     }
 }
 
