@@ -2,17 +2,19 @@
 import { supabase, showToast, user, profile, showView, playNotificationSound, navTo } from "./index.tsx";
 
 let currentTab = 'new'; 
-let courierProfile: any = null;
+let cProfile: any = null;
 
 export async function renderCourierDashboard() {
     const container = document.getElementById('ordersView');
     if(!container || !user) return;
 
-    showView('orders');
-    
+    // Eng oxirgi profil ma'lumotlarini yuklash (oq sahifa muammosini oldini olish uchun)
     const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
-    if(!p) return;
-    courierProfile = p;
+    if(!p) {
+        container.innerHTML = '<div style="text-align:center; padding:5rem;">Profil yuklanmadi. Qayta urinib ko\'ring.</div>';
+        return;
+    }
+    cProfile = p;
 
     container.innerHTML = `
         <div style="padding-bottom:120px; animation: fadeIn 0.4s ease-out;">
@@ -22,13 +24,13 @@ export async function renderCourierDashboard() {
                     <div>
                         <h1 style="font-weight:900; font-size:1.4rem; letter-spacing:-0.5px;">KURER TERMINALI</h1>
                         <div style="display:flex; align-items:center; gap:8px; margin-top:5px;">
-                            <div style="width:10px; height:10px; border-radius:50%; background:${courierProfile.active_status ? '#22c55e' : '#ef4444'}; box-shadow: 0 0 10px ${courierProfile.active_status ? '#22c55e' : '#ef4444'};"></div>
-                            <span style="font-size:0.7rem; font-weight:800; opacity:0.8; letter-spacing:1px;">${courierProfile.active_status ? 'ISH REJIMIDA' : 'DAM OLISHDA'}</span>
+                            <div style="width:10px; height:10px; border-radius:50%; background:${cProfile.active_status ? '#22c55e' : '#ef4444'}; box-shadow: 0 0 10px ${cProfile.active_status ? '#22c55e' : '#ef4444'};"></div>
+                            <span style="font-size:0.7rem; font-weight:800; opacity:0.8; letter-spacing:1px;">${cProfile.active_status ? 'ISH REJIMIDA' : 'DAM OLISHDA'}</span>
                         </div>
                     </div>
                     <div style="display:flex; gap:10px;">
-                        <button onclick="window.toggleCourierStatus()" class="btn" style="height:45px; padding:0 22px; border-radius:15px; background:${courierProfile.active_status ? 'rgba(239,68,68,0.15)' : 'var(--primary)'}; color:${courierProfile.active_status ? '#ef4444' : 'white'}; border:none; font-size:0.75rem; font-weight:900;">
-                            ${courierProfile.active_status ? 'STOP' : 'START'}
+                        <button onclick="window.toggleCourierStatus()" class="btn" style="height:45px; padding:0 22px; border-radius:15px; background:${cProfile.active_status ? 'rgba(239,68,68,0.15)' : 'var(--primary)'}; color:${cProfile.active_status ? '#ef4444' : 'white'}; border:none; font-size:0.75rem; font-weight:900;">
+                            ${cProfile.active_status ? 'STOP' : 'START'}
                         </button>
                     </div>
                 </div>
@@ -36,18 +38,18 @@ export async function renderCourierDashboard() {
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                     <div style="background:rgba(255,255,255,0.05); padding:12px; border-radius:20px; border:1px solid rgba(255,255,255,0.1);">
                         <div style="font-size:0.55rem; font-weight:800; opacity:0.6; text-transform:uppercase;">Balans</div>
-                        <div style="font-weight:900; font-size:1.1rem; color:var(--primary);">${(courierProfile.balance || 0).toLocaleString()} <small style="font-size:0.6rem;">UZS</small></div>
+                        <div style="font-weight:900; font-size:1.1rem; color:var(--primary);">${(cProfile.balance || 0).toLocaleString()} <small style="font-size:0.6rem;">UZS</small></div>
                     </div>
                     <div onclick="window.switchCourierTab('profile')" style="background:rgba(255,255,255,0.05); padding:12px; border-radius:20px; border:1px solid rgba(255,255,255,0.1); cursor:pointer;">
                         <div style="font-size:0.55rem; font-weight:800; opacity:0.6; text-transform:uppercase;">Transport</div>
-                        <div style="font-weight:900; font-size:0.8rem; margin-top:3px;"><i class="fas ${getTransportIcon(courierProfile.transport_type)}"></i> ${courierProfile.transport_type.toUpperCase()}</div>
+                        <div style="font-weight:900; font-size:0.8rem; margin-top:3px;"><i class="fas ${getTransportIcon(cProfile.transport_type)}"></i> ${cProfile.transport_type.toUpperCase()}</div>
                     </div>
                 </div>
             </div>
 
             <!-- TABS -->
             <div style="display:flex; background:#f1f5f9; padding:6px; border-radius:22px; margin-bottom:25px; gap:5px;">
-                <button onclick="window.switchCourierTab('new')" id="tab_new" style="flex:1; height:48px; border-radius:18px; border:none; font-weight:900; font-size:0.65rem; transition:0.3s;">YANGI ISH</button>
+                <button onclick="window.switchCourierTab('new')" id="tab_new" style="flex:1.2; height:48px; border-radius:18px; border:none; font-weight:900; font-size:0.65rem; transition:0.3s;">YANGI ISH</button>
                 <button onclick="window.switchCourierTab('active')" id="tab_active" style="flex:1; height:48px; border-radius:18px; border:none; font-weight:900; font-size:0.65rem; transition:0.3s;">FAOL</button>
                 <button onclick="window.switchCourierTab('profile')" id="tab_profile" style="flex:1; height:48px; border-radius:18px; border:none; font-weight:900; font-size:0.65rem; transition:0.3s;">PROFIL</button>
             </div>
@@ -80,7 +82,6 @@ async function loadTerminalData() {
 
     let query = supabase.from('orders').select('*, profiles!user_id(*)');
     
-    // MUHIM: Transportga qarab filtrlamaymiz, hammaga birdek ko'rinadi
     if(currentTab === 'new') {
         query = query.in('status', ['pending', 'confirmed']).is('courier_id', null).order('created_at', { ascending: false });
     } else {
@@ -124,27 +125,32 @@ async function loadTerminalData() {
 
                 <div style="margin-bottom:15px;">
                     ${itemsList.map(item => `
-                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:5px;">
-                            <img src="${item.img}" style="width:30px; height:30px; border-radius:5px; object-fit:cover;">
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px; background:#fff; padding:6px; border-radius:12px; border:1.5px solid #f1f5f9;">
+                            <img src="${item.img || 'https://via.placeholder.com/50'}" style="width:35px; height:35px; border-radius:8px; object-fit:cover;">
                             <span style="font-size:0.75rem; font-weight:800;">${item.desc}</span>
                         </div>
                     `).join('')}
                 </div>
 
                 ${o.payment_method === 'cash' ? `
-                    <div style="background:#fef2f2; border:1px solid #fee2e2; padding:15px; border-radius:20px; text-align:center; margin-bottom:15px;">
-                        <div style="font-size:0.6rem; font-weight:900; color:var(--danger);">MIJOZDAN OLING:</div>
-                        <div style="font-size:1.4rem; font-weight:900; color:var(--danger);">${o.total_price.toLocaleString()} UZS</div>
+                    <div style="background:#fef2f2; border:1px solid #fee2e2; padding:18px; border-radius:24px; text-align:center; margin-bottom:20px;">
+                        <div style="font-size:0.65rem; font-weight:900; color:var(--danger); letter-spacing:1px; margin-bottom:5px;">MIJOZDAN OLINADIGAN NAQD PUL:</div>
+                        <div style="font-size:1.6rem; font-weight:900; color:var(--danger);">${o.total_price.toLocaleString()} UZS</div>
                     </div>
-                ` : ''}
+                ` : `
+                    <div style="background:#f0fdf4; border:1px solid #dcfce7; padding:18px; border-radius:24px; text-align:center; margin-bottom:20px;">
+                        <div style="font-size:0.65rem; font-weight:900; color:#16a34a; letter-spacing:1px; margin-bottom:5px;">TO'LANGAN (KARTADAN):</div>
+                        <div style="font-size:1.6rem; font-weight:900; color:#16a34a;">0 UZS</div>
+                    </div>
+                `}
 
                 <div style="display:flex; gap:10px;">
                     ${currentTab === 'new' ? `
-                        <button onclick="window.terminalAcceptOrder(${o.id})" class="btn btn-primary" style="flex:1; height:55px; border-radius:18px; background:var(--dark);">QABUL QILISH</button>
+                        <button onclick="window.terminalAcceptOrder(${o.id})" class="btn btn-primary" style="flex:1; height:60px; border-radius:18px; background:var(--dark);">QABUL QILISH</button>
                     ` : `
-                        <button onclick="window.terminalFinishOrder(${o.id})" class="btn btn-primary" style="flex:1; height:55px; border-radius:18px;">TOPSHIRILDI</button>
+                        <button onclick="window.terminalFinishOrder(${o.id})" class="btn btn-primary" style="flex:1; height:60px; border-radius:18px;">TOPSHIRILDI (YAKUNLASH)</button>
                     `}
-                    <button onclick="window.open('https://www.google.com/maps?q=${o.latitude},${o.longitude}', '_blank')" class="btn btn-outline" style="width:55px; height:55px; border-radius:18px; background:#eff6ff; color:#3b82f6;"><i class="fas fa-location-arrow"></i></button>
+                    <button onclick="window.open('https://www.google.com/maps?q=${o.latitude},${o.longitude}', '_blank')" class="btn btn-outline" style="width:60px; height:60px; border-radius:18px; background:#eff6ff; color:#3b82f6; border-color:#dbeafe;"><i class="fas fa-location-arrow"></i></button>
                 </div>
             </div>
         `;
@@ -157,20 +163,20 @@ function renderCourierProfileSettings(feed: HTMLElement) {
             <div class="card" style="padding:25px; border-radius:30px; background:white; border:1.5px solid #f1f5f9; margin-bottom:20px;">
                 <h3 style="font-weight:900; font-size:1.1rem; margin-bottom:20px;">Transport turini o'zgartirish</h3>
                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                    <div onclick="window.updateCourierTransport('walking')" style="padding:15px; border:2px solid ${courierProfile.transport_type === 'walking' ? 'var(--primary)' : '#f1f5f9'}; background:${courierProfile.transport_type === 'walking' ? 'var(--primary-light)' : 'white'}; border-radius:18px; text-align:center; cursor:pointer;">
-                        <i class="fas fa-walking" style="font-size:1.4rem; color:${courierProfile.transport_type === 'walking' ? 'var(--primary)' : 'var(--gray)'}"></i>
+                    <div onclick="window.updateCourierTransport('walking')" style="padding:15px; border:2px solid ${cProfile.transport_type === 'walking' ? 'var(--primary)' : '#f1f5f9'}; background:${cProfile.transport_type === 'walking' ? 'var(--primary-light)' : 'white'}; border-radius:18px; text-align:center; cursor:pointer;">
+                        <i class="fas fa-walking" style="font-size:1.4rem; color:${cProfile.transport_type === 'walking' ? 'var(--primary)' : 'var(--gray)'}"></i>
                         <div style="font-size:0.7rem; font-weight:900; margin-top:5px;">PIYODA</div>
                     </div>
-                    <div onclick="window.updateCourierTransport('bicycle')" style="padding:15px; border:2px solid ${courierProfile.transport_type === 'bicycle' ? 'var(--primary)' : '#f1f5f9'}; background:${courierProfile.transport_type === 'bicycle' ? 'var(--primary-light)' : 'white'}; border-radius:18px; text-align:center; cursor:pointer;">
-                        <i class="fas fa-bicycle" style="font-size:1.4rem; color:${courierProfile.transport_type === 'bicycle' ? 'var(--primary)' : 'var(--gray)'}"></i>
+                    <div onclick="window.updateCourierTransport('bicycle')" style="padding:15px; border:2px solid ${cProfile.transport_type === 'bicycle' ? 'var(--primary)' : '#f1f5f9'}; background:${cProfile.transport_type === 'bicycle' ? 'var(--primary-light)' : 'white'}; border-radius:18px; text-align:center; cursor:pointer;">
+                        <i class="fas fa-bicycle" style="font-size:1.4rem; color:${cProfile.transport_type === 'bicycle' ? 'var(--primary)' : 'var(--gray)'}"></i>
                         <div style="font-size:0.7rem; font-weight:900; margin-top:5px;">VELO</div>
                     </div>
-                    <div onclick="window.updateCourierTransport('car')" style="padding:15px; border:2px solid ${courierProfile.transport_type === 'car' ? 'var(--primary)' : '#f1f5f9'}; background:${courierProfile.transport_type === 'car' ? 'var(--primary-light)' : 'white'}; border-radius:18px; text-align:center; cursor:pointer;">
-                        <i class="fas fa-car" style="font-size:1.4rem; color:${courierProfile.transport_type === 'car' ? 'var(--primary)' : 'var(--gray)'}"></i>
+                    <div onclick="window.updateCourierTransport('car')" style="padding:15px; border:2px solid ${cProfile.transport_type === 'car' ? 'var(--primary)' : '#f1f5f9'}; background:${cProfile.transport_type === 'car' ? 'var(--primary-light)' : 'white'}; border-radius:18px; text-align:center; cursor:pointer;">
+                        <i class="fas fa-car" style="font-size:1.4rem; color:${cProfile.transport_type === 'car' ? 'var(--primary)' : 'var(--gray)'}"></i>
                         <div style="font-size:0.7rem; font-weight:900; margin-top:5px;">MASHINA</div>
                     </div>
-                    <div onclick="window.updateCourierTransport('mixed')" style="padding:15px; border:2px solid ${courierProfile.transport_type === 'mixed' ? 'var(--primary)' : '#f1f5f9'}; background:${courierProfile.transport_type === 'mixed' ? 'var(--primary-light)' : 'white'}; border-radius:18px; text-align:center; cursor:pointer;">
-                        <i class="fas fa-shuffle" style="font-size:1.4rem; color:${courierProfile.transport_type === 'mixed' ? 'var(--primary)' : 'var(--gray)'}"></i>
+                    <div onclick="window.updateCourierTransport('mixed')" style="padding:15px; border:2px solid ${cProfile.transport_type === 'mixed' ? 'var(--primary)' : '#f1f5f9'}; background:${cProfile.transport_type === 'mixed' ? 'var(--primary-light)' : 'white'}; border-radius:18px; text-align:center; cursor:pointer;">
+                        <i class="fas fa-shuffle" style="font-size:1.4rem; color:${cProfile.transport_type === 'mixed' ? 'var(--primary)' : 'var(--gray)'}"></i>
                         <div style="font-size:0.7rem; font-weight:900; margin-top:5px;">ARALASH</div>
                     </div>
                 </div>
@@ -178,7 +184,7 @@ function renderCourierProfileSettings(feed: HTMLElement) {
 
             <div class="card" style="padding:25px; border-radius:30px; background:white; border:1.5px solid #f1f5f9; text-align:center;">
                 <p style="font-size:0.8rem; color:var(--gray); font-weight:600;">Profil ma'lumotlari bo'yicha yordam kerak bo'lsa admin bilan bog'laning.</p>
-                <button onclick="window.openSupportCenter()" class="btn btn-outline" style="width:100%; margin-top:15px; height:50px; border-radius:15px;">ADMIN BILAN ALOQA</button>
+                <button onclick="window.openSupportCenter()" class="btn btn-outline" style="width:100%; margin-top:15px; height:55px; border-radius:15px;">ADMIN BILAN ALOQA</button>
             </div>
         </div>
     `;
@@ -211,14 +217,14 @@ function updateTabUI() {
 }
 
 (window as any).toggleCourierStatus = async () => {
-    const newStatus = !courierProfile?.active_status;
+    const newStatus = !cProfile?.active_status;
     await supabase.from('profiles').update({ active_status: newStatus }).eq('id', user.id);
     renderCourierDashboard();
     showToast(newStatus ? "Siz ONLAYNsiz! ✅" : "Siz OFLAYNsiz. 🔴");
 };
 
 (window as any).terminalAcceptOrder = async (oid: number) => {
-    if(!courierProfile?.active_status) return showToast("Avval START bosing! 🚦");
+    if(!cProfile?.active_status) return showToast("Avval START bosing! 🚦");
     const { error } = await supabase.from('orders').update({ courier_id: user.id, status: 'delivering' }).eq('id', oid).is('courier_id', null);
     if(!error) {
         showToast("Buyurtma qabul qilindi! 🚀");

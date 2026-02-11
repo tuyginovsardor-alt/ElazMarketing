@@ -13,18 +13,18 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export let user: any = null;
 export let profile: any = null;
-export let adminBackupProfile: any = null; // Admin o'ziga qaytishi uchun
+export let adminBackupProfile: any = null;
 
 // --- NOTIFICATION & SOUND UTILS ---
 export function playNotificationSound() {
     const audio = new Audio('https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=message-incoming-132126.mp3');
-    audio.play().catch(e => console.log("Ovoz ijro etilmadi (User interaction kerak)"));
+    audio.play().catch(e => console.log("Sound muted"));
 }
 
 export async function requestPermissions() {
     if ("Notification" in window) {
         const permission = await Notification.requestPermission();
-        if (permission === "granted") console.log("Bildirishnomalar yoqildi");
+        if (permission === "granted") console.log("Notifications enabled");
     }
 }
 
@@ -69,9 +69,7 @@ export function closeOverlay(id: string) {
 
 // --- IMPERSONATION LOGIC ---
 export const impersonateUser = (targetProfile: any) => {
-    if (!adminBackupProfile) {
-        adminBackupProfile = { ...profile }; // Admin ma'lumotlarini saqlash
-    }
+    if (!adminBackupProfile) adminBackupProfile = { ...profile };
     profile = targetProfile;
     showToast(`${targetProfile.first_name} hisobiga kirildi 🛡️`);
     updateImpersonationBanner();
@@ -105,12 +103,10 @@ function updateImpersonationBanner() {
             document.body.prepend(banner);
         }
         banner.innerHTML = `
-            <span><i class="fas fa-user-secret mr-2"></i> REJIM: ${profile.first_name.toUpperCase()} (${profile.role.toUpperCase()})</span>
+            <span><i class="fas fa-user-secret mr-2"></i> REJIM: ${profile.first_name.toUpperCase()}</span>
             <button onclick="window.stopImpersonation()" style="background:white; color:#3b82f6; border:none; padding:5px 12px; border-radius:8px; font-weight:900; font-size:0.65rem; cursor:pointer;">QAYTISH</button>
         `;
-    } else if (banner) {
-        banner.remove();
-    }
+    } else if (banner) banner.remove();
 }
 
 // --- PROFILE LOADING ---
@@ -120,7 +116,6 @@ export async function loadProfileData() {
         if(!session?.user) return null;
         user = session.user;
 
-        // Agar impersonatsiya bo'lsa, bazadan qayta yuklamaymiz
         if (adminBackupProfile) return profile;
 
         let { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
@@ -135,15 +130,8 @@ export async function loadProfileData() {
             data = inserted;
         }
 
-        if (data.role === 'courier' && data.is_approved === false) {
-            const { data: updated } = await supabase.from('profiles').update({ is_approved: true }).eq('id', user.id).select().single();
-            if (updated) data = updated;
-        }
-
         profile = data;
         
-        setupClientOrderMonitoring();
-
         const navIconContainer = document.getElementById('navProfileIconContainer');
         if (navIconContainer) {
             navIconContainer.innerHTML = profile?.avatar_url ? `<img src="${profile.avatar_url}" class="nav-profile-img">` : `<i class="far fa-user-circle" style="font-size: 1.6rem;"></i>`;
@@ -152,33 +140,15 @@ export async function loadProfileData() {
     } catch (e) { return null; }
 }
 
-function setupClientOrderMonitoring() {
-    if (!user || adminBackupProfile) return; // Impersonatsiya vaqtida push jo'natmaymiz
-    supabase.channel('client_orders')
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` }, (payload) => {
-            const oldStatus = payload.old.status;
-            const newStatus = payload.new.status;
-            if (oldStatus !== newStatus) {
-                if (newStatus === 'delivering') {
-                    sendPush("ELAZ MARKET", "🛵 Kuryer buyurtmangizni qabul qildi va yo'lga chiqdi!");
-                    playNotificationSound();
-                } else if (newStatus === 'delivered') {
-                    sendPush("ELAZ MARKET", "✅ Buyurtmangiz yetkazib berildi. Yoqimli ishtaha!");
-                    playNotificationSound();
-                }
-                if (document.getElementById('ordersView')?.classList.contains('active')) renderOrdersView();
-            }
-        }).subscribe();
-}
-
 // --- NAVIGATION ---
 export const navTo = async (view: string) => {
-    // Impersonatsiya vaqtida profil yuklamaymiz (u allaqachon qo'lda o'rnatilgan)
-    if (view === 'profile' && !adminBackupProfile) await loadProfileData();
+    // Profil yuklanganiga ishonch hosil qilish
+    if (!profile && user) await loadProfileData();
 
-    if(view === 'orders' && profile?.role === 'courier') {
+    // KURER REDIRECT LOGIC
+    if (profile?.role === 'courier') {
         const { renderCourierDashboard } = await import("./courierDashboard.tsx");
-        showView('orders');
+        showView('orders'); // Kuryer uchun ordersView - bu uning terminali
         renderCourierDashboard();
         updateNavActive('orders');
         return;
@@ -233,7 +203,8 @@ export async function checkAuth() {
         user = session.user;
         await loadProfileData();
         requestPermissions();
-        navTo('home');
+        // Kuryer bo'lsa ordersga, bo'lmasa homega
+        navTo(profile?.role === 'courier' ? 'orders' : 'home');
     } else {
         showView('auth');
         renderAuthView('login');
@@ -241,37 +212,31 @@ export async function checkAuth() {
 }
 window.onload = checkAuth;
 
-// --- PROFILE FEATURE INDEXING ---
+// --- DYNAMIC IMPORTS ---
 (window as any).openProfileEdit = async () => {
     const { openProfileEdit } = await import("./profileEdit.tsx");
     openProfileEdit();
 };
-
 (window as any).openPayment = async () => {
     const { openPaymentView } = await import("./payment.tsx");
     openPaymentView();
 };
-
 (window as any).openCourierRegistration = async () => {
     const { openCourierRegistrationForm } = await import("./courierRegistration.tsx");
     openCourierRegistrationForm();
 };
-
 (window as any).openSupportCenter = async () => {
     const { renderSupportView } = await import("./supportView.tsx");
     renderSupportView();
 };
-
 (window as any).openProfileSecurity = async () => {
     const { openProfileSecurity } = await import("./security.tsx");
     openProfileSecurity();
 };
-
 (window as any).openLegal = async (type: any) => {
     const { openLegal } = await import("./legal.tsx");
     openLegal(type);
 };
-
 (window as any).enterAdminPanel = async () => {
     const { switchAdminTab } = await import("./admin.tsx");
     const app = document.getElementById('appContainer');
@@ -282,26 +247,21 @@ window.onload = checkAuth;
         switchAdminTab('dash');
     }
 };
-
 (window as any).handleSignOut = async () => {
-    if(confirm("Tizimdan chiqmoqchimisiz?")) {
+    if(confirm("Chiqmoqchimisiz?")) {
         await supabase.auth.signOut();
         window.location.reload();
     }
 };
 
 export async function addToCart(productId: number, qty: number = 1) {
-    if(!user) return showToast("Iltimos, avval tizimga kiring 🔑");
+    if(!user) return showToast("Tizimga kiring 🔑");
     try {
         const { data: existing } = await supabase.from('cart_items').select('*').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
-        if(existing) {
-            await supabase.from('cart_items').update({ quantity: existing.quantity + qty }).eq('id', existing.id);
-        } else {
-            await supabase.from('cart_items').insert([{ user_id: user.id, product_id: productId, quantity: qty }]);
-        }
+        if(existing) await supabase.from('cart_items').update({ quantity: existing.quantity + qty }).eq('id', existing.id);
+        else await supabase.from('cart_items').insert([{ user_id: user.id, product_id: productId, quantity: qty }]);
         showToast("Savatga qo'shildi! 🛒");
-        const cartView = document.getElementById('cartView');
-        if(cartView?.classList.contains('active')) renderCartView();
-    } catch (e) { showToast("Xatolik yuz berdi!"); }
+        if(document.getElementById('cartView')?.classList.contains('active')) renderCartView();
+    } catch (e) { showToast("Xatolik!"); }
 }
 (window as any).addToCart = addToCart;
