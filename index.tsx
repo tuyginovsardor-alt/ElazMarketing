@@ -6,6 +6,7 @@ import { renderHomeView } from "./home.tsx";
 import { renderCartView } from "./cart.tsx";
 import { renderOrdersView } from "./ordersView.tsx";
 import { renderSavedView } from "./savedView.tsx";
+import "./productDetails.tsx"; // Global funksiyalarni (openProductDetailsById) yuklash uchun
 
 const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY = (import.meta as any).env?.VITE_SUPABASE_KEY || "";
@@ -33,7 +34,7 @@ const sendOrderNotification = (order: any) => {
         });
         n.onclick = () => { window.focus(); navTo('orders'); };
         
-        // Ovozli xabar (ixtiyoriy)
+        // Ovozli xabar
         const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
         audio.play().catch(() => {});
     }
@@ -212,19 +213,17 @@ export async function loadProfileData() {
         let { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
         profile = data;
         
-        // --- REALTIME NOTIFICATIONS START ---
+        // --- REALTIME NOTIFICATIONS ---
         if (profile?.role === 'admin' || profile?.role === 'courier') {
             supabase.channel('orders-monitor')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, payload => {
                 sendOrderNotification(payload.new);
             }).subscribe();
             
-            // Ruxsat so'rash (agar hali so'ralmagan bo'lsa)
             if (Notification.permission === 'default') {
                 setTimeout(() => (window as any).requestNotificationPermission(), 5000);
             }
         }
-        // --- REALTIME NOTIFICATIONS END ---
 
         const navIconContainer = document.getElementById('navProfileIconContainer');
         if (navIconContainer) {
