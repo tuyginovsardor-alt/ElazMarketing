@@ -13,9 +13,9 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export let user: any = null;
 export let profile: any = null;
-export let adminBackupProfile: any = null;
+export let adminBackupProfile: any = null; // Admin profilini saqlab turish uchun
 
-// --- GLOBAL ACTIONS (PROFIL FUNKSIYALARI UCHUN) ---
+// --- GLOBAL ACTIONS (PROFIL & ADMIN FUNKSIYALARI) ---
 
 (window as any).openProfileEdit = async () => {
     const { openProfileEdit } = await import("./profileEdit.tsx");
@@ -56,6 +56,45 @@ export let adminBackupProfile: any = null;
         const { switchAdminTab } = await import("./admin.tsx");
         switchAdminTab('dash');
     }
+};
+
+(window as any).exitAdminPanel = () => {
+    const app = document.getElementById('appContainer');
+    const admin = document.getElementById('adminPanel');
+    if(app) app.style.display = 'flex';
+    if(admin) admin.style.display = 'none';
+};
+
+// --- IMPERSONATION (Mijoz nomidan kirish) ---
+(window as any).impersonateUser = (targetProfile: any) => {
+    if(!adminBackupProfile) adminBackupProfile = { ...profile }; // Adminni zaxiralash
+    profile = { ...targetProfile };
+    
+    // Vizual ko'rsatkich qo'shish
+    const existingBanner = document.getElementById('impersonationBanner');
+    if(existingBanner) existingBanner.remove();
+    
+    const banner = document.createElement('div');
+    banner.id = 'impersonationBanner';
+    banner.style.cssText = "position:fixed; top:0; left:0; width:100%; background:var(--danger); color:white; text-align:center; padding:10px; font-size:0.7rem; font-weight:900; z-index:10000; letter-spacing:1px;";
+    banner.innerHTML = `MIJOZ REJIMIDA: ${targetProfile.first_name.toUpperCase()} <button onclick="window.stopImpersonating()" style="margin-left:15px; background:white; color:var(--danger); border:none; padding:4px 10px; border-radius:8px; font-weight:900; cursor:pointer;">ADMIN REJIMIGA QAYTISH</button>`;
+    document.body.appendChild(banner);
+
+    (window as any).exitAdminPanel();
+    navTo('home');
+    showToast(`${targetProfile.first_name} akkauntiga kirdingiz`);
+};
+
+(window as any).stopImpersonating = () => {
+    if(adminBackupProfile) {
+        profile = { ...adminBackupProfile };
+        adminBackupProfile = null;
+    }
+    const banner = document.getElementById('impersonationBanner');
+    if(banner) banner.remove();
+    
+    navTo('profile');
+    showToast("Admin rejimiga qaytdingiz");
 };
 
 (window as any).handleSignOut = async () => {

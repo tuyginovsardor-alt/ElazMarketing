@@ -43,35 +43,47 @@ async function loadUsers(searchTerm = '', roleFilter = 'all') {
     container.innerHTML = `
         <div class="card" style="padding:0; border-radius:25px; overflow:hidden; border:1.5px solid #f1f5f9; background:white;">
             <div style="overflow-x:auto;">
-                <table style="width:100%; border-collapse:collapse; min-width:600px;">
+                <table style="width:100%; border-collapse:collapse; min-width:800px;">
                     <thead style="background:#f8fafc; border-bottom:1.5px solid #f1f5f9;">
                         <tr>
-                            <th style="padding:15px; text-align:left; font-size:0.65rem; color:var(--gray);">FOYDALANUVCHI</th>
-                            <th style="padding:15px; text-align:left; font-size:0.65rem; color:var(--gray);">ROLE</th>
-                            <th style="padding:15px; text-align:left; font-size:0.65rem; color:var(--gray);">BALANS</th>
-                            <th style="padding:15px; text-align:center; font-size:0.65rem; color:var(--gray);">AMAL</th>
+                            <th style="padding:15px; text-align:left; font-size:0.65rem; color:var(--gray); text-transform:uppercase;">Foydalanuvchi</th>
+                            <th style="padding:15px; text-align:left; font-size:0.65rem; color:var(--gray); text-transform:uppercase;">Role & O'zgartirish</th>
+                            <th style="padding:15px; text-align:left; font-size:0.65rem; color:var(--gray); text-transform:uppercase;">Balans</th>
+                            <th style="padding:15px; text-align:center; font-size:0.65rem; color:var(--gray); text-transform:uppercase;">Amal</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${users?.map(u => `
+                        ${users?.map(u => {
+                            const profileJson = JSON.stringify(u).replace(/'/g, "&#39;");
+                            return `
                             <tr style="border-bottom:1px solid #f8fafc;">
                                 <td style="padding:12px 15px;">
                                     <div style="font-weight:800; font-size:0.85rem;">${u.first_name || '—'}</div>
                                     <div style="font-size:0.7rem; color:var(--gray);">${u.email}</div>
                                 </td>
                                 <td style="padding:15px;">
-                                    <span style="font-size:0.65rem; font-weight:900; background:#f1f5f9; padding:4px 8px; border-radius:6px;">${u.role.toUpperCase()}</span>
+                                    <div style="display:flex; gap:5px; align-items:center;">
+                                        <select id="roleSelect_${u.id}" style="height:38px; width:120px; font-size:0.7rem; padding:0 10px; margin:0; border-radius:8px;">
+                                            <option value="user" ${u.role === 'user' ? 'selected' : ''}>USER</option>
+                                            <option value="courier" ${u.role === 'courier' ? 'selected' : ''}>COURIER</option>
+                                            <option value="staff" ${u.role === 'staff' ? 'selected' : ''}>STAFF</option>
+                                            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>ADMIN</option>
+                                        </select>
+                                        <button class="btn" style="width:38px; height:38px; background:var(--primary); color:white; border-radius:8px; border:none;" onclick="window.saveUserRoleDirectly('${u.id}')">
+                                            <i class="fas fa-save"></i>
+                                        </button>
+                                    </div>
                                 </td>
                                 <td style="padding:15px; font-weight:900; color:var(--primary); font-size:0.85rem;">
                                     ${(u.balance || 0).toLocaleString()}
                                 </td>
                                 <td style="padding:15px; text-align:center;">
-                                    <button class="btn" style="width:35px; height:35px; background:#eff6ff; color:#3b82f6; border-radius:10px; border:none; display:inline-flex;" onclick='window.impersonateUser(${JSON.stringify(u)})'>
+                                    <button title="Ushbu akkaunt nomidan kirish" class="btn" style="width:38px; height:38px; background:#eff6ff; color:#3b82f6; border-radius:10px; border:none; display:inline-flex;" onclick='window.impersonateUser(${profileJson})'>
                                         <i class="fas fa-right-to-bracket"></i>
                                     </button>
                                 </td>
                             </tr>
-                        `).join('') || ''}
+                        `}).join('') || ''}
                     </tbody>
                 </table>
             </div>
@@ -79,8 +91,47 @@ async function loadUsers(searchTerm = '', roleFilter = 'all') {
     `;
 }
 
+(window as any).saveUserRoleDirectly = async (userId: string) => {
+    const sel = document.getElementById(`roleSelect_${userId}`) as HTMLSelectElement;
+    if(!sel) return;
+    const newRole = sel.value;
+    
+    if(!confirm(`Foydalanuvchi rolesini ${newRole.toUpperCase()} ga o'zgartirasizmi?`)) return;
+
+    try {
+        const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId);
+        if(error) throw error;
+        showToast("Role muvaffaqiyatli o'zgartirildi! ✅");
+        loadUsers(
+            (document.getElementById('userSearchInput') as HTMLInputElement).value,
+            currentFilter
+        );
+    } catch(e: any) {
+        showToast("Xato: " + e.message);
+    }
+};
+
 (window as any).handleUserSearch = (val: string) => loadUsers(val.trim(), currentFilter);
 (window as any).filterUsers = (role: string) => {
     currentFilter = role;
+    
+    // Tugma ranglarini yangilash
+    ['All', 'Mijoz', 'Courier'].forEach(btn => {
+        const el = document.getElementById('btn' + btn);
+        if(el) {
+            el.style.background = 'transparent';
+            el.style.color = 'var(--gray)';
+            el.style.boxShadow = 'none';
+        }
+    });
+    
+    const activeBtnId = role === 'all' ? 'btnAll' : (role === 'user' ? 'btnMijoz' : 'btnCourier');
+    const activeEl = document.getElementById(activeBtnId);
+    if(activeEl) {
+        activeEl.style.background = 'white';
+        activeEl.style.color = 'var(--text)';
+        activeEl.style.boxShadow = 'var(--shadow-sm)';
+    }
+
     loadUsers('', role);
 };
