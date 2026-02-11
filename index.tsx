@@ -48,127 +48,33 @@ export function closeOverlay(id: string) {
 (window as any).closeOverlay = closeOverlay;
 
 // --- CART ACTIONS ---
-// Added addToCart function to resolve missing export errors in other files
 export async function addToCart(productId: number, quantity: number = 1) {
-    if (!user) {
-        showToast("Savatga qo'shish uchun tizimga kiring");
-        return;
-    }
+    if (!user) return showToast("Savatga qo'shish uchun tizimga kiring");
     try {
-        const { data: existing } = await supabase
-            .from('cart_items')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('product_id', productId)
-            .maybeSingle();
-
+        const { data: existing } = await supabase.from('cart_items').select('*').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
         if (existing) {
-            await supabase
-                .from('cart_items')
-                .update({ quantity: parseFloat((existing.quantity + quantity).toFixed(2)) })
-                .eq('id', existing.id);
+            await supabase.from('cart_items').update({ quantity: parseFloat((existing.quantity + quantity).toFixed(2)) }).eq('id', existing.id);
         } else {
-            await supabase
-                .from('cart_items')
-                .insert([{ user_id: user.id, product_id: productId, quantity: parseFloat(quantity.toFixed(2)) }]);
+            await supabase.from('cart_items').insert([{ user_id: user.id, product_id: productId, quantity: parseFloat(quantity.toFixed(2)) }]);
         }
         showToast("Savatga qo'shildi! 🛒");
-    } catch (e) {
-        console.error("Add to cart error:", e);
-        showToast("Xatolik yuz berdi");
-    }
+    } catch (e) { showToast("Xatolik yuz berdi"); }
 }
 (window as any).addToCart = addToCart;
 
-// --- IMPERSONATION ---
-export const impersonateUser = (targetProfile: any) => {
-    if (!adminBackupProfile) adminBackupProfile = { ...profile };
-    profile = targetProfile;
-    showToast(`${targetProfile.first_name} hisobiga kirildi 🛡️`);
-    updateImpersonationBanner();
-    navTo('home');
-};
-(window as any).impersonateUser = impersonateUser;
-
-export const stopImpersonation = () => {
-    if (adminBackupProfile) {
-        profile = { ...adminBackupProfile };
-        adminBackupProfile = null;
-        showToast("Admin rejimiga qaytildi ✨");
-        updateImpersonationBanner();
-        (window as any).enterAdminPanel();
-    }
-};
-(window as any).stopImpersonation = stopImpersonation;
-
-function updateImpersonationBanner() {
-    let banner = document.getElementById('impersonationBanner');
-    if (adminBackupProfile && profile) {
-        if (!banner) {
-            banner = document.createElement('div');
-            banner.id = 'impersonationBanner';
-            banner.style.cssText = `
-                position: fixed; top: 0; left: 0; width: 100%; z-index: 10000;
-                background: #3b82f6; color: white; padding: 10px 20px;
-                display: flex; justify-content: space-between; align-items: center;
-                font-size: 0.75rem; font-weight: 800; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            `;
-            document.body.prepend(banner);
-        }
-        banner.innerHTML = `
-            <span><i class="fas fa-user-secret mr-2"></i> REJIM: ${profile.first_name?.toUpperCase()}</span>
-            <button onclick="window.stopImpersonation()" style="background:white; color:#3b82f6; border:none; padding:5px 12px; border-radius:8px; font-weight:900; font-size:0.65rem; cursor:pointer;">QAYTISH</button>
-        `;
-    } else if (banner) banner.remove();
-}
-
-// --- DATA LOADING ---
-export async function loadProfileData() {
-    try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if(!session?.user) return null;
-        user = session.user;
-
-        if (adminBackupProfile) return profile;
-
-        let { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
-        
-        if (!data) {
-            const newProfile = { 
-                id: user.id, email: user.email, 
-                first_name: user.user_metadata?.full_name || user.email?.split('@')[0],
-                role: 'user', balance: 0, is_approved: false
-            };
-            const { data: inserted } = await supabase.from('profiles').insert([newProfile]).select().single();
-            data = inserted;
-        }
-        profile = data;
-        
-        const navIconContainer = document.getElementById('navProfileIconContainer');
-        if (navIconContainer) {
-            navIconContainer.innerHTML = profile?.avatar_url ? `<img src="${profile.avatar_url}" class="nav-profile-img">` : `<i class="far fa-user-circle" style="font-size: 1.6rem;"></i>`;
-        }
-        return profile;
-    } catch (e) { return null; }
-}
-
 // --- NAVIGATION CORE ---
 export const navTo = async (view: string) => {
-    // 1. Profil yuklanganligini tekshirish
-    if (!profile && user) {
-        await loadProfileData();
-    }
+    if (!profile && user) await loadProfileData();
 
-    // 2. Kuryer bo'lsa har doim Dashboard'ga yo'naltirish
-    if (profile?.role === 'courier') {
+    // Agar kuryer bo'lsa va 'orders' bo'limiga kirsa - Terminalni ochamiz
+    if (profile?.role === 'courier' && view === 'orders') {
         const { renderCourierDashboard } = await import("./courierDashboard.tsx");
         showView('orders'); 
-        renderCourierDashboard(user, profile); // Ma'lumotlarni uzatamiz
+        renderCourierDashboard(user, profile);
         updateNavActive('orders');
         return;
     }
 
-    // 3. Mijoz yoki Admin uchun standart navigatsiya
     showView(view);
     updateNavActive(view);
     
@@ -178,9 +84,7 @@ export const navTo = async (view: string) => {
         if(view === 'cart') renderCartView();
         if(view === 'orders') renderOrdersView();
         if(view === 'profile') renderProfileView(profile);
-    } catch (e) {
-        console.error("View rendering error:", e);
-    }
+    } catch (e) { console.error("View error:", e); }
 };
 (window as any).navTo = navTo;
 
@@ -199,30 +103,30 @@ export function showView(viewId: string) {
     const target = document.getElementById(viewId + 'View') || document.getElementById('homeView');
     if(target) target.classList.add('active');
     
-    const header = document.getElementById('appHeader');
-    const nav = document.getElementById('bottomNav');
-    const app = document.getElementById('appContainer');
-    const admin = document.getElementById('adminPanel');
-
     const isMainView = ['home', 'cart', 'profile', 'orders', 'saved'].includes(viewId);
-    
-    if(header) header.style.display = isMainView ? 'flex' : 'none';
-    if(nav) nav.style.display = isMainView ? 'flex' : 'none';
-
-    if(app && admin && admin.style.display === 'flex' && isMainView) {
-        app.style.display = 'flex';
-        admin.style.display = 'none';
-    }
+    document.getElementById('appHeader')!.style.display = isMainView ? 'flex' : 'none';
+    document.getElementById('bottomNav')!.style.display = isMainView ? 'flex' : 'none';
 }
 (window as any).showView = showView;
 
-// --- BOOTSTRAP ---
+export async function loadProfileData() {
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if(!session?.user) return null;
+        user = session.user;
+        let { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+        profile = data;
+        const navIcon = document.getElementById('navProfileIconContainer');
+        if (navIcon) navIcon.innerHTML = profile?.avatar_url ? `<img src="${profile.avatar_url}" class="nav-profile-img">` : `<i class="far fa-user-circle" style="font-size: 1.6rem;"></i>`;
+        return profile;
+    } catch (e) { return null; }
+}
+
 export async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
         user = session.user;
         const p = await loadProfileData();
-        // Role aniqlangandan keyin navigatsiya qilamiz
         navTo(p?.role === 'courier' ? 'orders' : 'home');
     } else {
         showView('auth');
@@ -231,21 +135,10 @@ export async function checkAuth() {
 }
 window.onload = checkAuth;
 
-// --- GLOBAL ACTIONS ---
+(window as any).handleSignOut = async () => { if(confirm("Chiqmoqchimisiz?")) { await supabase.auth.signOut(); window.location.reload(); } };
 (window as any).enterAdminPanel = async () => {
     const { switchAdminTab } = await import("./admin.tsx");
-    const app = document.getElementById('appContainer');
-    const admin = document.getElementById('adminPanel');
-    if(app) app.style.display = 'none';
-    if(admin) {
-        admin.style.display = 'flex';
-        switchAdminTab('dash');
-    }
-};
-
-(window as any).handleSignOut = async () => {
-    if(confirm("Chiqmoqchimisiz?")) {
-        await supabase.auth.signOut();
-        window.location.reload();
-    }
+    document.getElementById('appContainer')!.style.display = 'none';
+    document.getElementById('adminPanel')!.style.display = 'flex';
+    switchAdminTab('dash');
 };
