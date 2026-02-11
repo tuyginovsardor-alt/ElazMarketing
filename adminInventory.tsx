@@ -11,7 +11,7 @@ const CATEGORIES = [
 
 let currentSkladFilter = 'active'; 
 let currentCatFilter = 'all';
-let currentEditingProduct: any = { name: '', price: 0, stock: 0, unit: 'dona', category: 'grocery', description: '', image_url: '' };
+let currentEditingProduct: any = { name: '', price: 0, stock: 0, unit: 'dona', category: 'grocery', description: '', image_url: '', images: [], discount: 0 };
 let currentStep = 1;
 
 // --- GLOBAL FUNCTIONS ---
@@ -22,34 +22,55 @@ let currentStep = 1;
 };
 
 (window as any).updateDraft = (key: string, val: any) => {
-    if(key === 'price' || key === 'stock') val = parseFloat(val) || 0;
+    if(key === 'price' || key === 'stock' || key === 'discount') val = parseFloat(val) || 0;
     currentEditingProduct[key] = val;
+    if(key === 'price' || key === 'discount') (window as any).syncEditorPrice();
+};
+
+(window as any).syncEditorPrice = () => {
+    const preview = document.getElementById('pricePreview');
+    if(preview) {
+        const p = currentEditingProduct.price || 0;
+        const d = currentEditingProduct.discount || 0;
+        const final = Math.round(p * (1 - d/100));
+        preview.innerHTML = `Yakuniy: <b style="color:var(--primary)">${final.toLocaleString()} UZS</b>`;
+    }
 };
 
 (window as any).setStep = (step: number) => {
     if(step === 2 && !currentEditingProduct.name) return showToast("Avval mahsulot nomini kiriting!");
-    if(step === 3 && !currentEditingProduct.image_url) return showToast("Avval rasm yuklang!");
+    if(step === 3 && !currentEditingProduct.image_url) return showToast("Avval asosiy rasmni yuklang!");
     
     currentStep = step;
     renderEditorUI();
 };
 
-(window as any).uploadProductImage = async (input: HTMLInputElement) => {
+(window as any).uploadProductImage = async (input: HTMLInputElement, isGallery: boolean = false) => {
     const file = input.files?.[0];
     if(!file) return;
     
-    showToast("Rasm yuklanmoqda...");
-    const fileName = `prod_${Date.now()}.jpg`;
+    showToast(isGallery ? "Qo'shimcha rasm yuklanmoqda..." : "Asosiy rasm yuklanmoqda...");
+    const fileName = `prod_${Date.now()}_${Math.random().toString(36).substr(2, 5)}.jpg`;
     const { error } = await supabase.storage.from('products').upload(`items/${fileName}`, file);
     
     if(!error) {
         const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(`items/${fileName}`);
-        currentEditingProduct.image_url = publicUrl;
+        if(isGallery) {
+            if(!currentEditingProduct.images) currentEditingProduct.images = [];
+            currentEditingProduct.images.push(publicUrl);
+        } else {
+            currentEditingProduct.image_url = publicUrl;
+        }
         renderEditorUI(); 
-        showToast("Rasm yuklandi ✅");
+        showToast("Yuklandi ✅");
     } else {
         showToast("Xato: " + error.message);
     }
+};
+
+(window as any).removeGalleryImage = (idx: number) => {
+    currentEditingProduct.images.splice(idx, 1);
+    renderEditorUI();
 };
 
 (window as any).openProductEditor = async (id?: string) => {
@@ -62,12 +83,12 @@ let currentStep = 1;
         showToast("Yuklanmoqda...");
         const { data, error } = await supabase.from('products').select('*').eq('id', id).single();
         if(!error && data) {
-            currentEditingProduct = data;
+            currentEditingProduct = { ...data, images: data.images || [], discount: data.discount || 0 };
         } else {
             return showToast("Xatolik: Mahsulot topilmadi");
         }
     } else {
-        currentEditingProduct = { name: '', price: 0, stock: 0, unit: 'dona', category: 'grocery', description: '', image_url: '' };
+        currentEditingProduct = { name: '', price: 0, stock: 0, unit: 'dona', category: 'grocery', description: '', image_url: '', images: [], discount: 0 };
     }
     renderEditorUI();
 };
@@ -75,12 +96,18 @@ let currentStep = 1;
 (window as any).saveProductFinal = async () => {
     if(!currentEditingProduct.price || currentEditingProduct.price <= 0) return showToast("Narxni kiriting!");
     
-    showToast("Saqlanmoqda...");
+    const btn = document.getElementById('btnFinalSave') as HTMLButtonElement;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-sync fa-spin"></i> SAQLANMOQDA...';
+
+    // Xatolikni oldini olish uchun id ni payload dan olib tashlaymiz
+    const { id, created_at, ...payload } = currentEditingProduct;
+    
     let res;
-    if(currentEditingProduct.id) {
-        res = await supabase.from('products').update(currentEditingProduct).eq('id', currentEditingProduct.id);
+    if(id) {
+        res = await supabase.from('products').update(payload).eq('id', id);
     } else {
-        res = await supabase.from('products').insert([currentEditingProduct]);
+        res = await supabase.from('products').insert([payload]);
     }
 
     if(!res.error) {
@@ -89,6 +116,8 @@ let currentStep = 1;
         loadAdminProducts();
     } else {
         showToast("Xato: " + res.error.message);
+        btn.disabled = false;
+        btn.innerHTML = 'SAQLASH <i class="fas fa-check-circle"></i>';
     }
 };
 
@@ -189,7 +218,10 @@ async function loadAdminProducts() {
                                 <td style="padding:12px 15px;">
                                     <div style="display:flex; align-items:center; gap:10px;">
                                         <img src="${p.image_url}" style="width:40px; height:40px; border-radius:10px; object-fit:cover;">
-                                        <div style="font-weight:900; color:var(--text);">${p.name}</div>
+                                        <div>
+                                            <div style="font-weight:900; color:var(--text);">${p.name}</div>
+                                            ${p.discount ? `<span style="font-size:0.55rem; background:var(--danger); color:white; padding:1px 4px; border-radius:4px; font-weight:900;">-${p.discount}%</span>` : ''}
+                                        </div>
                                     </div>
                                 </td>
                                 <td style="padding:15px; font-weight:800; color:${p.stock < 10 ? 'var(--danger)' : 'var(--text)'}">${p.stock} ${p.unit}</td>
@@ -216,7 +248,7 @@ function renderEditorUI() {
     if(!placeholder) return;
 
     placeholder.innerHTML = `
-        <div style="padding-bottom:100px; animation: slideUp 0.3s ease-out;">
+        <div style="padding-bottom:120px; animation: slideUp 0.3s ease-out;">
             <!-- HEADER -->
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:25px; position:sticky; top:0; background:white; z-index:100; padding:15px 20px; border-bottom:1px solid #f1f5f9;">
                 <div style="display:flex; align-items:center; gap:15px;">
@@ -225,7 +257,7 @@ function renderEditorUI() {
                 </div>
                 <div style="display:flex; gap:8px;">
                     ${[1,2,3].map(i => `
-                        <div style="width:10px; height:10px; border-radius:50%; background:${currentStep >= i ? 'var(--primary)' : '#e2e8f0'}; transition:0.3s;"></div>
+                        <div style="width:12px; height:12px; border-radius:50%; background:${currentStep >= i ? 'var(--primary)' : '#e2e8f0'}; border:${currentStep === i ? '3px solid #dcfce7' : 'none'}; transition:0.3s;"></div>
                     `).join('')}
                 </div>
             </div>
@@ -236,6 +268,7 @@ function renderEditorUI() {
                     <!-- STEP 1: BASIC INFO -->
                     <div id="step1" style="display:${currentStep === 1 ? 'block' : 'none'}; animation: fadeIn 0.3s;">
                         <h4 style="font-weight:900; color:var(--primary); margin-bottom:20px; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px;">1. ASOSIY MA'LUMOTLAR</h4>
+                        
                         <label style="font-size:0.65rem; font-weight:900; color:var(--gray);">MAHSULOT NOMI</label>
                         <input type="text" value="${currentEditingProduct.name}" oninput="window.updateDraft('name', this.value)" placeholder="Masalan: Pepsi 1.5L" style="height:60px; border-radius:18px; margin-bottom:15px;">
                         
@@ -256,30 +289,48 @@ function renderEditorUI() {
                             </div>
                         </div>
 
+                        <div style="background:#fef2f2; padding:15px; border-radius:20px; margin-bottom:20px; border:1.5px solid #fee2e2;">
+                            <label style="font-size:0.65rem; font-weight:900; color:var(--danger);">CHEGIRMA (%) - Ixtiyoriy</label>
+                            <input type="number" value="${currentEditingProduct.discount || 0}" oninput="window.updateDraft('discount', this.value)" placeholder="0%" style="height:54px; border-radius:14px; background:white; font-size:1.1rem; font-weight:900; color:var(--danger); margin-top:5px;">
+                        </div>
+
                         <label style="font-size:0.65rem; font-weight:900; color:var(--gray);">TAVSIF</label>
-                        <textarea oninput="window.updateDraft('description', this.value)" placeholder="Mahsulot haqida..." style="height:120px; border-radius:18px; margin-bottom:25px;">${currentEditingProduct.description || ''}</textarea>
+                        <textarea oninput="window.updateDraft('description', this.value)" placeholder="Mahsulot haqida..." style="height:110px; border-radius:18px; margin-bottom:25px;">${currentEditingProduct.description || ''}</textarea>
                         
                         <button class="btn btn-primary" style="width:100%; height:65px; border-radius:22px;" onclick="window.setStep(2)">
-                            DAVOM ETISH <i class="fas fa-arrow-right"></i>
+                            RASMLARGA O'TISH <i class="fas fa-arrow-right"></i>
                         </button>
                     </div>
 
-                    <!-- STEP 2: MEDIA -->
+                    <!-- STEP 2: MULTI-MEDIA -->
                     <div id="step2" style="display:${currentStep === 2 ? 'block' : 'none'}; animation: fadeIn 0.3s;">
-                        <h4 style="font-weight:900; color:var(--primary); margin-bottom:20px; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px;">2. MAHSULOT RASMI</h4>
-                        <div style="text-align:center; margin-bottom:25px;">
-                            <div style="position:relative; width:220px; height:220px; margin:0 auto; border-radius:35px; background:#f8fafc; border:2px dashed #cbd5e1; overflow:hidden; display:flex; align-items:center; justify-content:center;">
-                                ${currentEditingProduct.image_url ? `<img src="${currentEditingProduct.image_url}" style="width:100%; height:100%; object-fit:cover;">` : `<i class="fas fa-cloud-arrow-up fa-3x" style="color:#cbd5e1;"></i>`}
-                                <label style="position:absolute; inset:0; cursor:pointer; background:transparent;">
-                                    <input type="file" style="display:none;" onchange="window.uploadProductImage(this)">
-                                </label>
-                            </div>
-                            <p style="font-size:0.7rem; color:var(--gray); margin-top:15px; font-weight:700;">Rasm ustiga bosing va yuklang</p>
+                        <h4 style="font-weight:900; color:var(--primary); margin-bottom:20px; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px;">2. MAHSULOT RASMLARI</h4>
+                        
+                        <label style="font-size:0.65rem; font-weight:900; color:var(--gray);">ASOSIY RASM</label>
+                        <div style="position:relative; width:100%; height:200px; border-radius:25px; background:#f8fafc; border:2px dashed #cbd5e1; overflow:hidden; display:flex; align-items:center; justify-content:center; margin:8px 0 25px;">
+                            ${currentEditingProduct.image_url ? `<img src="${currentEditingProduct.image_url}" style="width:100%; height:100%; object-fit:cover;">` : `<i class="fas fa-image fa-3x" style="color:#cbd5e1;"></i>`}
+                            <label style="position:absolute; inset:0; cursor:pointer; background:transparent;">
+                                <input type="file" style="display:none;" onchange="window.uploadProductImage(this, false)">
+                            </label>
+                        </div>
+
+                        <label style="font-size:0.65rem; font-weight:900; color:var(--gray);">QO'SHIMCHA RASMLAR (GALEREYA)</label>
+                        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-top:10px; margin-bottom:25px;">
+                            ${(currentEditingProduct.images || []).map((img: string, idx: number) => `
+                                <div style="position:relative; aspect-ratio:1/1; border-radius:15px; overflow:hidden; background:#f1f5f9; border:1px solid #e2e8f0;">
+                                    <img src="${img}" style="width:100%; height:100%; object-fit:cover;">
+                                    <button onclick="window.removeGalleryImage(${idx})" style="position:absolute; top:4px; right:4px; width:22px; height:22px; border-radius:6px; background:rgba(239,68,68,0.8); color:white; border:none; font-size:0.6rem;"><i class="fas fa-times"></i></button>
+                                </div>
+                            `).join('')}
+                            <label style="aspect-ratio:1/1; border-radius:15px; border:2px dashed #cbd5e1; display:flex; align-items:center; justify-content:center; cursor:pointer; background:#f8fafc;">
+                                <i class="fas fa-plus color:#cbd5e1;"></i>
+                                <input type="file" style="display:none;" onchange="window.uploadProductImage(this, true)">
+                            </label>
                         </div>
 
                         <div style="display:grid; grid-template-columns: 1fr 2fr; gap:15px;">
                             <button class="btn" style="height:65px; border-radius:22px; background:#f1f5f9; color:var(--gray); border:none;" onclick="window.setStep(1)">ORQAGA</button>
-                            <button class="btn btn-primary" style="height:65px; border-radius:22px;" onclick="window.setStep(3)">DAVOM ETISH <i class="fas fa-arrow-right"></i></button>
+                            <button class="btn btn-primary" style="height:65px; border-radius:22px;" onclick="window.setStep(3)">OMBORGA O'TISH <i class="fas fa-arrow-right"></i></button>
                         </div>
                     </div>
 
@@ -287,19 +338,22 @@ function renderEditorUI() {
                     <div id="step3" style="display:${currentStep === 3 ? 'block' : 'none'}; animation: fadeIn 0.3s;">
                         <h4 style="font-weight:900; color:var(--primary); margin-bottom:20px; font-size:0.8rem; text-transform:uppercase; letter-spacing:1px;">3. NARX VA OMBOR</h4>
                         
-                        <div style="background:#f0fdf4; padding:20px; border-radius:25px; margin-bottom:20px; border:1px solid #dcfce7;">
-                            <label style="font-size:0.65rem; font-weight:900; color:#16a34a;">NARXI (UZS)</label>
+                        <div style="background:#f0fdf4; padding:20px; border-radius:25px; margin-bottom:20px; border:1.5px solid #dcfce7;">
+                            <label style="font-size:0.65rem; font-weight:900; color:#16a34a;">BAZA NARX (UZS)</label>
                             <input type="number" value="${currentEditingProduct.price}" oninput="window.updateDraft('price', this.value)" style="height:60px; border-radius:18px; font-size:1.5rem; color:#16a34a; background:white; margin-top:8px;">
+                            <div id="pricePreview" style="font-size:0.75rem; margin-top:10px; font-weight:800; color:var(--gray);">
+                                ${currentEditingProduct.discount ? `Yakuniy: <b style="color:var(--primary)">${Math.round(currentEditingProduct.price * (1 - currentEditingProduct.discount/100)).toLocaleString()} UZS</b>` : ''}
+                            </div>
                         </div>
 
-                        <div style="background:#eff6ff; padding:20px; border-radius:25px; margin-bottom:25px; border:1px solid #dbeafe;">
+                        <div style="background:#eff6ff; padding:20px; border-radius:25px; margin-bottom:25px; border:1.5px solid #dbeafe;">
                             <label style="font-size:0.65rem; font-weight:900; color:#2563eb;">OMBORDA QANCHA (SONI)?</label>
                             <input type="number" value="${currentEditingProduct.stock}" oninput="window.updateDraft('stock', this.value)" style="height:60px; border-radius:18px; font-size:1.5rem; color:#2563eb; background:white; margin-top:8px;">
                         </div>
 
                         <div style="display:grid; grid-template-columns: 1fr 2fr; gap:15px;">
                             <button class="btn" style="height:65px; border-radius:22px; background:#f1f5f9; color:var(--gray); border:none;" onclick="window.setStep(2)">ORQAGA</button>
-                            <button class="btn btn-primary" style="height:65px; border-radius:22px; background:var(--gradient);" onclick="window.saveProductFinal()">
+                            <button id="btnFinalSave" class="btn btn-primary" style="height:65px; border-radius:22px; background:var(--gradient);" onclick="window.saveProductFinal()">
                                 SAQLASH <i class="fas fa-check-circle"></i>
                             </button>
                         </div>
