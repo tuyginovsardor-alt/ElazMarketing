@@ -10,21 +10,25 @@ export async function renderProductDetails(p: any) {
     const placeholder = document.getElementById('checkoutPlaceholder');
     if(!placeholder) return;
 
-    // "Qotib qolish" oldini olish uchun darhol loading render qilamiz
     placeholder.innerHTML = `
         <div style="height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; background:white;">
             <div style="width:60px; height:60px; border-radius:20px; background:var(--primary-light); display:flex; align-items:center; justify-content:center; animation: pulse 1.5s infinite;">
                 <i class="fas fa-shopping-bag fa-2x" style="color:var(--primary);"></i>
             </div>
-            <p style="margin-top:20px; font-weight:900; font-size:0.75rem; color:var(--gray); letter-spacing:1.5px;">MAHSULOT YUKLANMOQDA...</p>
+            <p style="margin-top:20px; font-weight:900; font-size:0.75rem; color:var(--gray); letter-spacing:1.5px;">YUKLANMOQDA...</p>
         </div>
     `;
     openOverlay('checkoutOverlay');
 
     currentP = p;
+    // Asosiy rasm va galereyani birlashtiramiz
     productImages = [p.image_url, ...(p.images || [])].filter(url => !!url);
     currentImgIndex = 0;
     currentQty = p.unit === 'kg' ? 0.5 : 1.0;
+
+    const discountPercent = p.discount || 0;
+    const basePrice = p.price || 0;
+    const finalPrice = Math.round(basePrice * (1 - discountPercent / 100));
 
     // Ma'lumotlarni parallel yuklash
     const [likesRes, reviewsRes] = await Promise.all([
@@ -47,9 +51,6 @@ export async function renderProductDetails(p: any) {
                     <div style="background:white; padding:8px 15px; border-radius:12px; font-weight:900; font-size:0.8rem; box-shadow:var(--shadow-sm); display:flex; align-items:center; gap:6px;">
                         <i class="fas fa-star" style="color:#eab308;"></i> ${avgRating}
                     </div>
-                    <div style="background:white; padding:8px 15px; border-radius:12px; font-weight:900; font-size:0.8rem; box-shadow:var(--shadow-sm); display:flex; align-items:center; gap:6px;">
-                        <i class="fas fa-heart" style="color:var(--danger);"></i> ${likesCount}
-                    </div>
                 </div>
             </div>
 
@@ -58,8 +59,10 @@ export async function renderProductDetails(p: any) {
                 <div id="carouselTrack" style="display:flex; height:100%; transition: transform 0.5s cubic-bezier(0.2, 0, 0, 1);">
                     ${productImages.map(img => `<img src="${img}" style="width:100%; height:100%; object-fit:cover; flex-shrink:0;">`).join('')}
                 </div>
+                ${discountPercent > 0 ? `<div style="position:absolute; top:80px; left:20px; background:var(--danger); color:white; padding:6px 12px; border-radius:12px; font-weight:900; font-size:0.8rem; z-index:20;">-${discountPercent}%</div>` : ''}
+                
                 ${productImages.length > 1 ? `
-                    <div style="position:absolute; bottom:45px; left:0; width:100%; display:flex; justify-content:center; gap:8px;">
+                    <div style="position:absolute; bottom:45px; left:0; width:100%; display:flex; justify-content:center; gap:8px; z-index:20;">
                         ${productImages.map((_, i) => `<div class="carousel-dot" id="dot_${i}" style="width:${i === 0 ? '20px' : '8px'}; height:8px; border-radius:10px; background:${i === 0 ? 'var(--primary)' : '#cbd5e1'}; transition:0.3s;"></div>`).join('')}
                     </div>
                 ` : ''}
@@ -70,10 +73,11 @@ export async function renderProductDetails(p: any) {
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
                     <div style="flex:1;">
                         <h1 style="font-weight:900; font-size:1.6rem; color:var(--text); line-height:1.2;">${p.name}</h1>
-                        <div style="margin-top:10px;"><span style="font-size:0.65rem; font-weight:900; color:var(--primary); background:var(--primary-light); padding:5px 14px; border-radius:10px; text-transform:uppercase; letter-spacing:0.5px;">${p.category}</span></div>
+                        <div style="margin-top:10px;"><span style="font-size:0.65rem; font-weight:900; color:var(--primary); background:var(--primary-light); padding:5px 14px; border-radius:10px; text-transform:uppercase; letter-spacing:0.5px;">${p.category.toUpperCase()}</span></div>
                     </div>
                     <div style="text-align:right;">
-                        <div style="font-weight:900; font-size:1.5rem; color:var(--text);">${p.price.toLocaleString()}</div>
+                        ${discountPercent > 0 ? `<div style="font-size:0.8rem; color:var(--gray); text-decoration:line-through; font-weight:700;">${basePrice.toLocaleString()}</div>` : ''}
+                        <div style="font-weight:900; font-size:1.5rem; color:${discountPercent > 0 ? 'var(--danger)' : 'var(--text)'};">${finalPrice.toLocaleString()}</div>
                         <div style="font-size:0.7rem; color:var(--gray); font-weight:800;">1 ${p.unit}</div>
                     </div>
                 </div>
@@ -86,57 +90,52 @@ export async function renderProductDetails(p: any) {
                     
                     <div style="display:flex; align-items:center; gap:15px; margin-bottom:15px;">
                         <button onclick="window.changeQtyDelta(-1)" style="width:55px; height:55px; border-radius:18px; background:white; border:2px solid #e2e8f0; font-size:1.3rem;"><i class="fas fa-minus"></i></button>
-                        <input type="number" id="detailQtyInput" value="${currentQty}" step="0.1" style="flex:1; height:55px; text-align:center; font-weight:900; font-size:1.5rem; background:white; border:2px solid #e2e8f0; border-radius:18px; margin:0;" oninput="window.syncTotalDisplay()">
+                        <input type="number" id="detailQtyInput" value="${currentQty}" step="${p.unit === 'kg' ? '0.1' : '1'}" style="flex:1; height:55px; text-align:center; font-weight:900; font-size:1.5rem; background:white; border:2px solid #e2e8f0; border-radius:18px; margin:0;" oninput="window.syncTotalDisplay()">
                         <button onclick="window.changeQtyDelta(1)" style="width:55px; height:55px; border-radius:18px; background:var(--primary); color:white; border:none; font-size:1.3rem;"><i class="fas fa-plus"></i></button>
                     </div>
 
                     <div style="display:flex; flex-wrap:wrap; gap:8px;">
                         ${p.unit === 'kg' ? `
-                            <div onclick="window.setFixedQty(0.1)" class="qty-btn">+0.1</div>
-                            <div onclick="window.setFixedQty(0.5)" class="qty-btn">+0.5</div>
-                            <div onclick="window.setFixedQty(1.0)" class="qty-btn">+1.0</div>
+                            <div onclick="window.setFixedQty(0.1)" class="qty-btn" style="cursor:pointer; background:white; border:1px solid #e2e8f0; padding:6px 12px; border-radius:10px; font-size:0.75rem; font-weight:800;">+0.1</div>
+                            <div onclick="window.setFixedQty(0.5)" class="qty-btn" style="cursor:pointer; background:white; border:1px solid #e2e8f0; padding:6px 12px; border-radius:10px; font-size:0.75rem; font-weight:800;">+0.5</div>
+                            <div onclick="window.setFixedQty(1.0)" class="qty-btn" style="cursor:pointer; background:white; border:1px solid #e2e8f0; padding:6px 12px; border-radius:10px; font-size:0.75rem; font-weight:800;">+1.0</div>
                         ` : `
-                            <div onclick="window.setFixedQty(1)" class="qty-btn">+1</div>
-                            <div onclick="window.setFixedQty(5)" class="qty-btn">+5</div>
-                            <div onclick="window.setFixedQty(10)" class="qty-btn">+10</div>
+                            <div onclick="window.setFixedQty(1)" class="qty-btn" style="cursor:pointer; background:white; border:1px solid #e2e8f0; padding:6px 12px; border-radius:10px; font-size:0.75rem; font-weight:800;">+1</div>
+                            <div onclick="window.setFixedQty(5)" class="qty-btn" style="cursor:pointer; background:white; border:1px solid #e2e8f0; padding:6px 12px; border-radius:10px; font-size:0.75rem; font-weight:800;">+5</div>
+                            <div onclick="window.setFixedQty(10)" class="qty-btn" style="cursor:pointer; background:white; border:1px solid #e2e8f0; padding:6px 12px; border-radius:10px; font-size:0.75rem; font-weight:800;">+10</div>
                         `}
                     </div>
                 </div>
 
                 <div style="margin-top:35px;">
                     <h4 style="font-weight:900; font-size:0.95rem; color:var(--text); margin-bottom:12px;">MAHSULOT HAQIDA</h4>
-                    <p style="font-size:0.85rem; color:var(--gray); line-height:1.7; font-weight:600;">${p.description || "Yuqori sifatli mahsulot. Bag'dod tumanidan siz uchun maxsus tanlab keltirilgan."}</p>
+                    <p style="font-size:0.85rem; color:var(--gray); line-height:1.7; font-weight:600;">${p.description || "Ushbu mahsulot sifatli va hamyonbop bo'lib, mijozlarimiz orasida juda ommabopdir."}</p>
                 </div>
 
                 <!-- SIMILAR -->
                 <div id="similarProductsGrid" style="margin-top:40px;"></div>
 
-                <!-- REVIEWS SECTION -->
+                <!-- REVIEWS -->
                 <div style="margin-top:45px; border-top:2px solid #f8fafc; padding-top:30px;">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                         <h4 style="font-weight:900; font-size:1rem;">Mijozlar fikri (${reviews.length})</h4>
-                        <button onclick="window.openReviewDialog(${p.id})" style="background:var(--primary-light); border:none; color:var(--primary); font-weight:900; font-size:0.75rem; cursor:pointer; padding:8px 15px; border-radius:12px;">
-                            FIKR QOLDIRISH <i class="fas fa-pen-nib" style="margin-left:5px;"></i>
-                        </button>
+                        <button onclick="window.openReviewDialog(${p.id})" style="background:var(--primary-light); border:none; color:var(--primary); font-weight:900; font-size:0.75rem; cursor:pointer; padding:8px 15px; border-radius:12px;">FIKR QOLDIRISH</button>
                     </div>
                     <div id="p_reviews_list" style="display:flex; flex-direction:column; gap:15px;">
                          ${reviews.map(r => `
                             <div style="background:#f8fafc; padding:18px; border-radius:24px; border:1px solid #f1f5f9;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                                     <div style="display:flex; align-items:center; gap:10px;">
-                                        <div style="width:32px; height:32px; border-radius:10px; background:white; overflow:hidden; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:center;">
-                                            ${(r as any).profiles?.avatar_url ? `<img src="${(r as any).profiles.avatar_url}" style="width:100%; height:100%; object-fit:cover;">` : `<i class="fas fa-user" style="font-size:0.8rem; color:#cbd5e1;"></i>`}
-                                        </div>
                                         <b style="font-size:0.8rem;">${(r as any).profiles?.first_name || 'Mijoz'}</b>
                                     </div>
-                                    <div style="color:#eab308; font-size:0.65rem; background:white; padding:4px 8px; border-radius:8px; border:1px solid #f1f5f9;">
+                                    <div style="color:#eab308; font-size:0.65rem;">
                                         ${Array.from({length: r.rating}).map(() => `<i class="fas fa-star"></i>`).join('')}
                                     </div>
                                 </div>
-                                <p style="font-size:0.8rem; color:var(--gray); font-weight:600; line-height:1.5;">${r.comment}</p>
+                                <p style="font-size:0.8rem; color:var(--gray); font-weight:600;">${r.comment}</p>
                             </div>
                         `).join('')}
-                        ${!reviews.length ? '<p style="text-align:center; color:var(--gray); font-size:0.8rem; padding:20px; font-weight:700;">Hali fikrlar yo\'q. Birinchi bo\'ling!</p>' : ''}
+                        ${!reviews.length ? '<p style="text-align:center; color:var(--gray); font-size:0.8rem; padding:20px; font-weight:700;">Hali fikrlar yo\'q.</p>' : ''}
                     </div>
                 </div>
             </div>
@@ -144,8 +143,8 @@ export async function renderProductDetails(p: any) {
             <!-- ACTION BAR -->
             <div style="position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:450px; background:rgba(255,255,255,0.9); backdrop-filter:blur(20px); border-top:1px solid #f1f5f9; padding:20px 25px calc(25px + env(safe-area-inset-bottom, 0px)); z-index:1000; display:flex; justify-content:space-between; align-items:center; gap:20px;">
                 <div style="flex:1;">
-                    <div style="font-size:0.65rem; font-weight:800; color:var(--gray); text-transform:uppercase; letter-spacing:0.5px;">Jami summa</div>
-                    <div id="stickyTotalDisplay" style="font-weight:900; font-size:1.3rem; color:var(--text);">${(p.price * currentQty).toLocaleString()} UZS</div>
+                    <div style="font-size:0.65rem; font-weight:800; color:var(--gray); text-transform:uppercase;">Jami summa</div>
+                    <div id="stickyTotalDisplay" style="font-weight:900; font-size:1.3rem; color:var(--text);">${(finalPrice * currentQty).toLocaleString()} UZS</div>
                 </div>
                 <button class="btn btn-primary" style="flex:1.5; height:65px; border-radius:22px; font-size:1rem; box-shadow: 0 10px 25px rgba(34,197,94,0.2);" onclick="window.handleFinalAddToCart(${p.id})">
                     SAVATGA QO'SHISH <i class="fas fa-shopping-basket" style="margin-left:8px;"></i>
@@ -163,7 +162,7 @@ function initSimpleCarousel() {
     const dots = document.querySelectorAll('.carousel-dot');
     let startX = 0;
     
-    if(track) {
+    if(track && productImages.length > 1) {
         track.addEventListener('touchstart', (e) => startX = e.touches[0].clientX);
         track.addEventListener('touchend', (e) => {
             const endX = e.changedTouches[0].clientX;
@@ -188,14 +187,14 @@ async function loadSimilarProducts(category: string, excludeId: number) {
     if(!grid || !prods?.length) return;
 
     grid.innerHTML = `
-        <h4 style="font-weight:900; font-size:0.9rem; margin-bottom:15px; letter-spacing:0.5px;">O'XSHASH MAHSULOTLAR</h4>
+        <h4 style="font-weight:900; font-size:0.9rem; margin-bottom:15px;">O'XSHASH MAHSULOTLAR</h4>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
             ${prods.map(s => `
                 <div onclick="window.openProductDetailsById(${s.id})" style="background:#f8fafc; border-radius:22px; padding:10px; display:flex; align-items:center; gap:10px; border:1px solid #f1f5f9; cursor:pointer;">
                     <img src="${s.image_url}" style="width:45px; height:45px; border-radius:10px; object-fit:cover; background:white;">
                     <div style="overflow:hidden;">
                         <div style="font-weight:800; font-size:0.75rem; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">${s.name}</div>
-                        <div style="font-weight:900; font-size:0.8rem; color:var(--primary); margin-top:2px;">${s.price.toLocaleString()}</div>
+                        <div style="font-weight:900; font-size:0.8rem; color:var(--primary);">${(s.discount ? Math.round(s.price * (1-s.discount/100)) : s.price).toLocaleString()}</div>
                     </div>
                 </div>
             `).join('')}
@@ -207,7 +206,12 @@ async function loadSimilarProducts(category: string, excludeId: number) {
     const input = document.getElementById('detailQtyInput') as HTMLInputElement;
     const totalEl = document.getElementById('stickyTotalDisplay');
     if(input) currentQty = parseFloat(input.value) || 0;
-    if(totalEl && currentP) totalEl.innerText = (currentQty * currentP.price).toLocaleString() + " UZS";
+    
+    if(totalEl && currentP) {
+        const discountPercent = currentP.discount || 0;
+        const finalPrice = Math.round(currentP.price * (1 - discountPercent / 100));
+        totalEl.innerText = (currentQty * finalPrice).toLocaleString() + " UZS";
+    }
 };
 
 (window as any).changeQtyDelta = (delta: number) => {
@@ -236,17 +240,14 @@ async function loadSimilarProducts(category: string, excludeId: number) {
     if(!user) return showToast("Fikr qoldirish uchun kiring!");
     const comment = prompt("Mahsulot haqida fikringizni yozing:");
     if(!comment) return;
-    const ratingStr = prompt("1 dan 5 gacha baholang (Faqat raqam):") || "5";
+    const ratingStr = prompt("1 dan 5 gacha baholang:") || "5";
     const rating = parseInt(ratingStr);
     
-    showToast("Fikr saqlanmoqda...");
+    showToast("Saqlanmoqda...");
     const { error } = await supabase.from('reviews').insert({ product_id: pId, user_id: user.id, rating, comment });
     if(!error) { 
-        showToast("Rahmat! Fikringiz qabul qilindi."); 
-        // Re-render
+        showToast("Rahmat!"); 
         renderProductDetails(currentP);
-    } else {
-        showToast("Xato: " + error.message);
     }
 };
 
