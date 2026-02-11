@@ -13,6 +13,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export let user: any = null;
 export let profile: any = null;
+export let adminBackupProfile: any = null; // Admin o'ziga qaytishi uchun
 
 // --- NOTIFICATION & SOUND UTILS ---
 export function playNotificationSound() {
@@ -66,12 +67,61 @@ export function closeOverlay(id: string) {
 }
 (window as any).closeOverlay = closeOverlay;
 
+// --- IMPERSONATION LOGIC ---
+export const impersonateUser = (targetProfile: any) => {
+    if (!adminBackupProfile) {
+        adminBackupProfile = { ...profile }; // Admin ma'lumotlarini saqlash
+    }
+    profile = targetProfile;
+    showToast(`${targetProfile.first_name} hisobiga kirildi 🛡️`);
+    updateImpersonationBanner();
+    navTo('home');
+};
+(window as any).impersonateUser = impersonateUser;
+
+export const stopImpersonation = () => {
+    if (adminBackupProfile) {
+        profile = { ...adminBackupProfile };
+        adminBackupProfile = null;
+        showToast("Admin rejimiga qaytildi ✨");
+        updateImpersonationBanner();
+        (window as any).enterAdminPanel();
+    }
+};
+(window as any).stopImpersonation = stopImpersonation;
+
+function updateImpersonationBanner() {
+    let banner = document.getElementById('impersonationBanner');
+    if (adminBackupProfile) {
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'impersonationBanner';
+            banner.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; z-index: 10000;
+                background: #3b82f6; color: white; padding: 10px 20px;
+                display: flex; justify-content: space-between; align-items: center;
+                font-size: 0.75rem; font-weight: 800; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            `;
+            document.body.prepend(banner);
+        }
+        banner.innerHTML = `
+            <span><i class="fas fa-user-secret mr-2"></i> REJIM: ${profile.first_name.toUpperCase()} (${profile.role.toUpperCase()})</span>
+            <button onclick="window.stopImpersonation()" style="background:white; color:#3b82f6; border:none; padding:5px 12px; border-radius:8px; font-weight:900; font-size:0.65rem; cursor:pointer;">QAYTISH</button>
+        `;
+    } else if (banner) {
+        banner.remove();
+    }
+}
+
 // --- PROFILE LOADING ---
 export async function loadProfileData() {
     try {
         const { data: { session } } = await supabase.auth.getSession();
         if(!session?.user) return null;
         user = session.user;
+
+        // Agar impersonatsiya bo'lsa, bazadan qayta yuklamaymiz
+        if (adminBackupProfile) return profile;
 
         let { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
         
@@ -85,10 +135,7 @@ export async function loadProfileData() {
             data = inserted;
         }
 
-        // --- AVTOMATIK TASDIQLASH (ESKI KURYERLAR UCHUN) ---
-        // Agar roli kuryer bo'lsa-yu, is_approved hali false bo'lsa, uni true qilib qo'yamiz (bir marta)
         if (data.role === 'courier' && data.is_approved === false) {
-            console.log("Eski kuryer aniqlandi, avtomatik tasdiqlanmoqda...");
             const { data: updated } = await supabase.from('profiles').update({ is_approved: true }).eq('id', user.id).select().single();
             if (updated) data = updated;
         }
@@ -106,7 +153,7 @@ export async function loadProfileData() {
 }
 
 function setupClientOrderMonitoring() {
-    if (!user) return;
+    if (!user || adminBackupProfile) return; // Impersonatsiya vaqtida push jo'natmaymiz
     supabase.channel('client_orders')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `user_id=eq.${user.id}` }, (payload) => {
             const oldStatus = payload.old.status;
@@ -126,7 +173,8 @@ function setupClientOrderMonitoring() {
 
 // --- NAVIGATION ---
 export const navTo = async (view: string) => {
-    if (view === 'profile') await loadProfileData();
+    // Impersonatsiya vaqtida profil yuklamaymiz (u allaqachon qo'lda o'rnatilgan)
+    if (view === 'profile' && !adminBackupProfile) await loadProfileData();
 
     if(view === 'orders' && profile?.role === 'courier') {
         const { renderCourierDashboard } = await import("./courierDashboard.tsx");

@@ -52,14 +52,14 @@ async function loadUsers(searchTerm = '', roleFilter = 'all') {
     container.innerHTML = `
         <div class="card" style="padding:0; border-radius:25px; overflow:hidden; border:1.5px solid #f1f5f9; background:white;">
             <div style="overflow-x:auto;">
-                <table style="width:100%; border-collapse:collapse; min-width:600px;">
+                <table style="width:100%; border-collapse:collapse; min-width:700px;">
                     <thead style="background:#f8fafc; border-bottom:1.5px solid #f1f5f9;">
                         <tr>
                             <th style="padding:18px; text-align:left; font-size:0.65rem; font-weight:900; color:var(--gray); text-transform:uppercase;">Foydalanuvchi</th>
                             <th style="padding:18px; text-align:left; font-size:0.65rem; font-weight:900; color:var(--gray); text-transform:uppercase;">Role</th>
                             <th style="padding:18px; text-align:left; font-size:0.65rem; font-weight:900; color:var(--gray); text-transform:uppercase;">Balans</th>
                             <th style="padding:18px; text-align:left; font-size:0.65rem; font-weight:900; color:var(--gray); text-transform:uppercase;">Hudud</th>
-                            <th style="padding:18px; text-align:center; font-size:0.65rem; font-weight:900; color:var(--gray); text-transform:uppercase;">Amal</th>
+                            <th style="padding:18px; text-align:center; font-size:0.65rem; font-weight:900; color:var(--gray); text-transform:uppercase;">Amallar</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -92,9 +92,14 @@ async function loadUsers(searchTerm = '', roleFilter = 'all') {
                                     ${u.district || '—'}
                                 </td>
                                 <td style="padding:15px; text-align:center;">
-                                    <button class="btn" style="width:35px; height:35px; background:#fee2e2; color:var(--danger); border-radius:10px; border:none; cursor:pointer;" onclick="window.deleteUserAdmin('${u.id}')">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    <div style="display:flex; justify-content:center; gap:8px;">
+                                        <button class="btn" style="width:35px; height:35px; background:#eff6ff; color:#3b82f6; border-radius:10px; border:none; cursor:pointer;" onclick="window.impersonateUser(${JSON.stringify(u).replace(/"/g, '&quot;')})" title="Hisobiga kirish">
+                                            <i class="fas fa-right-to-bracket"></i>
+                                        </button>
+                                        <button class="btn" style="width:35px; height:35px; background:#fee2e2; color:var(--danger); border-radius:10px; border:none; cursor:pointer;" onclick="window.deleteUserAdmin('${u.id}')" title="O'chirish">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         `).join('')}
@@ -146,9 +151,6 @@ async function loadUsers(searchTerm = '', roleFilter = 'all') {
 
 (window as any).deleteUserAdmin = async (uid: string) => {
     if(!confirm("Diqqat! Foydalanuvchini o'chirib yubormoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi.")) return;
-    
-    // Eslatma: auth.users dan o'chirish uchun Service Role kerak. 
-    // Bu yerda faqat profiles dan o'chirish ko'rsatilgan.
     const { error } = await supabase.from('profiles').delete().eq('id', uid);
     if(!error) {
         showToast("Muvaffaqiyatli o'chirildi.");
