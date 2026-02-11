@@ -15,6 +15,55 @@ export let user: any = null;
 export let profile: any = null;
 export let adminBackupProfile: any = null;
 
+// --- GLOBAL ACTIONS (PROFIL FUNKSIYALARI UCHUN) ---
+
+(window as any).openProfileEdit = async () => {
+    const { openProfileEdit } = await import("./profileEdit.tsx");
+    openProfileEdit();
+};
+
+(window as any).openPayment = async () => {
+    const { openPaymentView } = await import("./payment.tsx");
+    openPaymentView();
+};
+
+(window as any).openCourierRegistration = async () => {
+    const { openCourierRegistrationForm } = await import("./courierRegistration.tsx");
+    openCourierRegistrationForm();
+};
+
+(window as any).openSupportCenter = async () => {
+    const { renderSupportView } = await import("./supportView.tsx");
+    renderSupportView();
+};
+
+(window as any).openProfileSecurity = async () => {
+    const { openProfileSecurity } = await import("./security.tsx");
+    openProfileSecurity();
+};
+
+(window as any).openLegal = async (type: any) => {
+    const { openLegal } = await import("./legal.tsx");
+    openLegal(type);
+};
+
+(window as any).enterAdminPanel = async () => {
+    const app = document.getElementById('appContainer');
+    const admin = document.getElementById('adminPanel');
+    if(app && admin) {
+        app.style.display = 'none';
+        admin.style.display = 'flex';
+        const { switchAdminTab } = await import("./admin.tsx");
+        switchAdminTab('dash');
+    }
+};
+
+(window as any).handleSignOut = async () => {
+    if(!confirm("Tizimdan chiqmoqchimisiz?")) return;
+    await supabase.auth.signOut();
+    window.location.reload();
+};
+
 // --- UTILS ---
 export function showToast(msg: string) {
     const t = document.getElementById('toast');
@@ -65,7 +114,6 @@ export async function addToCart(productId: number, quantity: number = 1) {
 export const navTo = async (view: string) => {
     if (!profile && user) await loadProfileData();
 
-    // Kuryer 'orders' bo'limiga kirsa Terminalni ochamiz, boshqa bo'limlarda MIJOZ kabi ko'ra oladi
     if (profile?.role === 'courier' && view === 'orders') {
         const { renderCourierDashboard } = await import("./courierDashboard.tsx");
         showView('orders'); 
