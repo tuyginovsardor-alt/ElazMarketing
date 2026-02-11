@@ -39,49 +39,62 @@
         #appContainer {
             max-width: 450px; margin: 0 auto; background: var(--white); height: 100vh;
             position: relative; box-shadow: 0 0 100px rgba(0,0,0,0.05);
-            display: flex; flex-direction: column; overflow: hidden; z-index: 10;
+            display: flex; flex-direction: column; overflow: hidden;
         }
 
-        .view-section { display: none; flex: 1; padding: 1.2rem; animation: premiumFade 0.5s cubic-bezier(0.4, 0, 0.2, 1); overflow-y: auto; scroll-behavior: smooth; }
+        .view-section { display: none; flex: 1; padding: 1.2rem; overflow-y: auto; overflow-x: hidden; scroll-behavior: smooth; animation: premiumFade 0.4s ease-out; }
         .view-section.active { display: flex; flex-direction: column; }
 
         @keyframes premiumFade { 
-            from { opacity: 0; transform: scale(0.98) translateY(10px); } 
-            to { opacity: 1; transform: scale(1) translateY(0); } 
+            from { opacity: 0; transform: translateY(10px); } 
+            to { opacity: 1; transform: translateY(0); } 
         }
 
-        .btn { height: 58px; border-radius: 22px; border: none; font-weight: 800; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .btn { height: 58px; border-radius: 22px; border: none; font-weight: 800; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: all 0.3s; }
         .btn:active { transform: scale(0.95); }
         .btn-primary { background: var(--gradient); color: white; box-shadow: 0 12px 25px rgba(34, 197, 94, 0.25); }
 
         .bottom-nav { 
-            background: rgba(255, 255, 255, 0.9); 
+            background: rgba(255, 255, 255, 0.95); 
             backdrop-filter: blur(15px);
             display: none; 
-            justify-content: space-around; 
-            padding: 15px 5px calc(25px + env(safe-area-inset-bottom, 10px)); 
-            border-top: 1px solid rgba(0,0,0,0.03); 
-            position: sticky; 
+            justify-content: space-between; 
+            align-items: center;
+            padding: 10px 10px calc(15px + env(safe-area-inset-bottom, 10px)); 
+            border-top: 1px solid #f1f5f9; 
+            position: absolute; 
             bottom: 0; 
             width: 100%; 
-            z-index: 100; 
+            z-index: 1000; 
         }
-        .nav-item { color: #94a3b8; font-size: 0.65rem; font-weight: 800; flex: 1; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.3s; }
-        .nav-item i { font-size: 1.6rem; margin-bottom: 5px; transition: 0.3s; }
+        .nav-item { 
+            color: #94a3b8; 
+            font-size: 0.65rem; 
+            font-weight: 800; 
+            flex: 1; 
+            cursor: pointer; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 4px;
+            transition: 0.3s; 
+            text-align: center;
+            min-width: 0;
+        }
+        .nav-item i { font-size: 1.4rem; transition: 0.3s; }
         .nav-item.active { color: var(--primary); }
-        .nav-item.active i { transform: translateY(-3px); text-shadow: 0 5px 10px rgba(34, 197, 94, 0.2); }
-
-        .premium-card {
-            background: white; border-radius: 38px; border: 1.5px solid #f1f5f9; 
-            padding: 0; margin-bottom: 15px; transition: 0.3s; position: relative;
-            box-shadow: var(--shadow-premium);
-        }
+        .nav-item.active i { transform: translateY(-2px); }
         
-        input { border: 2px solid #f1f5f9; border-radius: 20px; background: #f8fafc; padding: 16px 20px; font-weight: 700; }
-        input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 4px var(--primary-light); }
+        .nav-profile-img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 2px solid #cbd5e1; }
+        .nav-item.active .nav-profile-img { border-color: var(--primary); }
 
-        .overlay { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 450px; height: 100%; background: white; z-index: 6000; display: none; padding: 0; overflow-y: auto; animation: premiumSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes premiumSlideUp { from { transform: translate(-50%, 100%); } to { transform: translate(-50%, 0); } }
+        input, select, textarea { border: 2px solid #f1f5f9; border-radius: 20px; background: #f8fafc; padding: 16px 20px; font-weight: 700; width: 100%; outline: none; }
+        input:focus { border-color: var(--primary); background: white; }
+
+        .overlay { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 450px; height: 100%; background: white; z-index: 6000; display: none; overflow-y: auto; }
+        
+        .toast { position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%); background: var(--dark); color: white; padding: 12px 25px; border-radius: 15px; font-size: 0.85rem; font-weight: 800; z-index: 9999; display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.2); pointer-events: none; }
     </style>
 <script type="importmap">
 {
@@ -102,37 +115,57 @@
 </script>
 </head>
 <body>
-    <!-- App structure remains same but styles above improve it -->
     <div id="toast" class="toast"></div>
     <div id="appContainer">
         <section id="welcomeView" class="view-section" style="padding:0;"></section>
         <section id="authView" class="view-section"></section>
-        <header id="appHeader" style="display:none; padding:1.2rem 1.8rem; background:white; justify-content:space-between; align-items:center;">
-            <div style="font-weight:900; font-size:1.4rem; color:var(--text); display:flex; align-items:center; gap:12px;">
-                <div style="width:42px; height:42px; background:var(--gradient); border-radius:14px; display:flex; align-items:center; justify-content:center; color:white; box-shadow: 0 8px 15px rgba(34,197,94,0.2);"><i class="fas fa-shopping-bag"></i></div>
-                ELAZ <span style="color:var(--primary); font-weight:400; margin-left:-6px;">MARKET</span>
+        
+        <header id="appHeader" style="display:none; padding:1rem 1.5rem; background:white; justify-content:space-between; align-items:center; border-bottom:1px solid #f8fafc; shrink:0;">
+            <div style="font-weight:900; font-size:1.3rem; color:var(--text); display:flex; align-items:center; gap:10px;">
+                <div style="width:38px; height:38px; background:var(--gradient); border-radius:12px; display:flex; align-items:center; justify-content:center; color:white; box-shadow: 0 8px 15px rgba(34,197,94,0.2);"><i class="fas fa-shopping-bag"></i></div>
+                ELAZ <span style="color:var(--primary); font-weight:400; margin-left:-5px;">MARKET</span>
             </div>
             <div id="headerActions"></div>
         </header>
+
         <section id="homeView" class="view-section"></section>
         <section id="savedView" class="view-section"></section>
         <section id="cartView" class="view-section"></section>
         <section id="ordersView" class="view-section"></section>
         <section id="profileView" class="view-section"></section>
+
         <nav id="bottomNav" class="bottom-nav">
-            <div class="nav-item active" onclick="navTo('home')"><i class="fas fa-grid-2"></i>Market</div>
-            <div class="nav-item" onclick="navTo('saved')"><i class="far fa-heart"></i>Sevimlilar</div>
-            <div class="nav-item" onclick="navTo('cart')"><i class="fas fa-shopping-basket"></i>Savat</div>
-            <div class="nav-item" onclick="navTo('orders')"><i class="fas fa-receipt"></i>Tarix</div>
+            <div class="nav-item active" onclick="navTo('home')">
+                <i class="fas fa-th-large"></i>
+                <span>Market</span>
+            </div>
+            <div class="nav-item" onclick="navTo('saved')">
+                <i class="far fa-heart"></i>
+                <span>Sevimlilar</span>
+            </div>
+            <div class="nav-item" onclick="navTo('cart')">
+                <i class="fas fa-shopping-basket"></i>
+                <span>Savat</span>
+            </div>
+            <div class="nav-item" onclick="navTo('orders')">
+                <i class="fas fa-receipt"></i>
+                <span>Tarix</span>
+            </div>
             <div class="nav-item" id="navProfileItem" onclick="navTo('profile')">
-                <div id="navProfileIconContainer">
+                <div id="navProfileIconContainer" style="display:flex; align-items:center; justify-content:center;">
                     <i class="far fa-user-circle"></i>
                 </div>
-                Profil
+                <span>Profil</span>
             </div>
         </nav>
     </div>
+
     <div id="checkoutOverlay" class="overlay"><div id="checkoutPlaceholder"></div></div>
+    <div id="profileEditOverlay" class="overlay" style="padding: 20px;"><div id="profileEditPlaceholder"></div></div>
+    <div id="paymentOverlay" class="overlay" style="padding: 20px;"><div id="paymentPlaceholder"></div></div>
+    <div id="locationOverlay" class="overlay" style="padding: 20px;"><div id="locationFormContainer"></div></div>
+    <div id="adminPanel" style="display:none; position:fixed; inset:0; background:white; z-index:9000;"></div>
+
     <script src="index.tsx" type="module"></script>
 </body>
 </html>

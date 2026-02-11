@@ -18,94 +18,92 @@ export async function renderHomeView() {
     if(!container) return;
 
     container.innerHTML = `
-        <div style="display:flex; flex-direction:column; gap:25px; padding-bottom:140px;">
+        <div style="display:flex; flex-direction:column; gap:25px; padding-bottom:140px; width:100%; max-width:100%;">
             
-            <!-- PREMIUM SEARCH -->
-            <div style="position: sticky; top: -1px; background: white; z-index: 100; padding: 10px 0;">
-                <div style="position: relative;">
-                    <i class="fas fa-search" style="position: absolute; left: 20px; top: 50%; transform: translateY(-50%); color: var(--primary); font-size: 1.1rem;"></i>
+            <!-- SEARCH -->
+            <div style="position: sticky; top: -1px; background: white; z-index: 100; padding: 5px 0;">
+                <div style="position: relative; width: 100%;">
+                    <i class="fas fa-search" style="position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: var(--primary); font-size: 1rem;"></i>
                     <input type="text" id="mainSearchInput" value="${searchQuery}" placeholder="Mahsulotlarni qidirish..." 
-                           style="width: 100%; height: 62px; border-radius: 24px; padding: 0 60px; font-size: 1rem; border: 2px solid #f1f5f9; background: #f8fafc;" 
+                           style="width: 100%; height: 56px; border-radius: 20px; padding: 0 55px; font-size: 0.95rem; background: #f1f5f9; border:none;" 
                            oninput="window.handleSearch(this.value)">
                 </div>
             </div>
 
-            <!-- PROMO SLIDER -->
-            <div id="bannerCarousel" style="position:relative; width:100%; height:200px; overflow:hidden; border-radius:40px; background:#f1f5f9; display:none; box-shadow: var(--shadow-premium);">
-                <div id="bannerTrack" style="display:flex; height:100%; transition: transform 0.6s cubic-bezier(0.2, 0, 0, 1);"></div>
-                <div id="bannerDots" style="position:absolute; bottom:20px; width:100%; display:flex; justify-content:center; gap:8px;"></div>
+            <!-- BANNER -->
+            <div id="bannerCarousel" style="position:relative; width:100%; height:180px; overflow:hidden; border-radius:30px; background:#f1f5f9; display:none; flex-shrink:0;">
+                <div id="bannerTrack" style="display:flex; height:100%; transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1); width:100%;"></div>
+                <div id="bannerDots" style="position:absolute; bottom:15px; width:100%; display:flex; justify-content:center; gap:6px;"></div>
             </div>
 
             <!-- CATEGORIES -->
             <div>
-                <h3 style="font-weight:900; font-size:1.15rem; margin-bottom:15px; color:var(--text); letter-spacing:-0.5px;">Kategoriyalar</h3>
-                <div style="display:flex; overflow-x:auto; gap:14px; padding: 5px; scrollbar-width: none; -ms-overflow-style: none;">
+                <h3 style="font-weight:900; font-size:1.1rem; margin-bottom:12px; padding-left:5px;">Kategoriyalar</h3>
+                <div style="display:flex; overflow-x:auto; gap:12px; padding: 5px 0; scrollbar-width: none; -ms-overflow-style: none; width:100%;">
                     ${CATEGORIES.map(cat => `
                         <div onclick="window.filterByCategory('${cat.id}')" 
-                             style="flex: 0 0 auto; display:flex; align-items:center; gap:12px; padding:14px 24px; border-radius:22px; border: 2.5px solid ${activeCategory === cat.id ? 'var(--primary)' : '#f1f5f9'}; background: ${activeCategory === cat.id ? 'var(--primary-light)' : 'white'}; cursor:pointer; transition:0.3s;">
-                            <i class="fas ${cat.icon}" style="color:${activeCategory === cat.id ? 'var(--primary)' : 'var(--gray)'}; font-size:1.1rem;"></i>
-                            <span style="font-size:0.85rem; font-weight:800; color: ${activeCategory === cat.id ? 'var(--primary)' : 'var(--text)'};">${cat.label}</span>
+                             style="flex: 0 0 auto; display:flex; align-items:center; gap:10px; padding:12px 20px; border-radius:18px; border: 2px solid ${activeCategory === cat.id ? 'var(--primary)' : '#f1f5f9'}; background: ${activeCategory === cat.id ? 'var(--primary-light)' : 'white'}; cursor:pointer; transition:0.3s;">
+                            <i class="fas ${cat.icon}" style="color:${activeCategory === cat.id ? 'var(--primary)' : 'var(--gray)'}; font-size:1rem;"></i>
+                            <span style="font-size:0.8rem; font-weight:800; color: ${activeCategory === cat.id ? 'var(--primary)' : 'var(--text)'}; white-space:nowrap;">${cat.label}</span>
                         </div>
                     `).join('')}
                 </div>
             </div>
 
-            <!-- NEW PRODUCTS CAROUSEL -->
+            <!-- NEW PRODUCTS (HORIZONTAL) -->
             <div id="newArrivalsSection">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-                    <h3 style="font-weight:900; font-size:1.15rem;">Yangi mahsulotlar</h3>
-                    <div style="width:36px; height:36px; border-radius:12px; background:#f1f5f9; display:flex; align-items:center; justify-content:center; color:var(--primary);"><i class="fas fa-arrow-right"></i></div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding:0 5px;">
+                    <h3 style="font-weight:900; font-size:1.1rem;">Yangi mahsulotlar</h3>
+                    <div style="color:var(--primary); font-weight:800; font-size:0.75rem;">KO'PROQ</div>
                 </div>
-                <div id="newProductsCarousel" style="display:flex; overflow-x:auto; gap:18px; padding: 10px 5px; scrollbar-width: none; -ms-overflow-style: none;"></div>
+                <div id="newProductsCarousel" style="display:flex; overflow-x:auto; gap:15px; padding: 10px 5px; scrollbar-width: none; -ms-overflow-style: none; width:100%;"></div>
             </div>
 
             <!-- MAIN GRID -->
             <div>
-                <h3 style="font-weight:900; font-size:1.15rem; margin-bottom:15px;">Siz uchun tanladik</h3>
-                <div id="productsGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 18px;"></div>
+                <h3 style="font-weight:900; font-size:1.1rem; margin-bottom:15px; padding-left:5px;">Siz uchun tanladik</h3>
+                <div id="productsGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width:100%;"></div>
             </div>
         </div>
 
         <style>
+            #newProductsCarousel::-webkit-scrollbar { display: none; }
             .premium-card {
-                background: white; border-radius: 35px; border: 1.5px solid #f1f5f9; 
-                overflow: hidden; position: relative; cursor: pointer; 
-                box-shadow: 0 10px 25px rgba(0,0,0,0.03); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                background: white; border-radius: 30px; border: 1.5px solid #f1f5f9; 
+                overflow: hidden; position: relative; cursor: pointer; width: 100%;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.02); transition: 0.3s;
             }
-            .premium-card:active { transform: scale(0.94); }
+            .premium-card:active { transform: scale(0.96); }
             
-            .product-image-container {
+            .product-image-box {
                 position: relative; width: 100%; aspect-ratio: 1/1; 
-                background: #f8fafc; border-radius: 35px; overflow: hidden;
-                margin: 8px; width: calc(100% - 16px);
+                background: #f8fafc; border-radius: 25px; overflow: hidden;
+                margin: 6px; width: calc(100% - 12px);
             }
+            .product-image-box img { width: 100%; height: 100%; object-fit: cover; }
             
-            .premium-price-tag {
-                background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px);
-                padding: 6px 14px; border-radius: 16px; border: 1px solid white;
-                position: absolute; bottom: 12px; left: 12px; z-index: 5;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            .price-badge {
+                background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px);
+                padding: 5px 10px; border-radius: 12px; border: 1px solid white;
+                position: absolute; bottom: 8px; left: 8px; z-index: 5;
+                font-weight: 900; font-size: 0.8rem; color: var(--text);
             }
 
-            .premium-add-btn {
-                position: absolute; bottom: 12px; right: 12px; width: 52px; height: 52px; 
-                border-radius: 18px; background: var(--gradient); border: none; 
-                color: white; font-size: 1.3rem; cursor: pointer; 
-                box-shadow: 0 10px 20px rgba(34, 197, 94, 0.3); display: flex; 
+            .add-float-btn {
+                position: absolute; bottom: 8px; right: 8px; width: 44px; height: 44px; 
+                border-radius: 14px; background: var(--gradient); border: none; 
+                color: white; font-size: 1.1rem; cursor: pointer; 
+                box-shadow: 0 8px 15px rgba(34, 197, 94, 0.3); display: flex; 
                 align-items: center; justify-content: center; z-index: 5;
-                transition: 0.3s;
             }
-            .premium-add-btn:active { transform: rotate(90deg) scale(0.8); }
 
-            .fav-btn-premium {
-                position: absolute; top: 12px; right: 12px; width: 40px; height: 40px; 
-                border-radius: 14px; background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); 
-                border: none; color: #cbd5e1; font-size: 1.1rem; cursor: pointer; 
+            .fav-float-btn {
+                position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; 
+                border-radius: 10px; background: rgba(255,255,255,0.7); backdrop-filter: blur(5px); 
+                border: none; color: #cbd5e1; font-size: 0.9rem; cursor: pointer; 
                 display: flex; align-items: center; justify-content: center; z-index: 5;
             }
-            .fav-btn-premium.active { color: var(--danger); background: white; }
-            
-            @keyframes pulse-soft { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+            .fav-float-btn.active { color: var(--danger); background: white; }
         </style>
     `;
 
@@ -114,39 +112,34 @@ export async function renderHomeView() {
 }
 
 function renderProductCard(p: any, isFav: boolean, isCarousel: boolean) {
-    const widthStyle = isCarousel ? 'min-width: 170px; max-width: 170px;' : '';
+    const widthStyle = isCarousel ? 'min-width: 160px; max-width: 160px;' : 'width: 100%;';
     const discountPrice = p.discount ? Math.round(p.price * (1 - p.discount / 100)) : p.price;
 
     return `
         <div class="premium-card" style="${widthStyle}" onclick="window.openProductDetailsById(${p.id})">
-            <!-- IMAGE AREA -->
-            <div class="product-image-container">
-                <img src="${p.image_url}" loading="lazy" style="width:100%; height:100%; object-fit:cover;">
+            <div class="product-image-box">
+                <img src="${p.image_url}" loading="lazy">
                 
-                ${p.discount ? `<div style="position:absolute; top:12px; left:12px; background:var(--danger); color:white; padding:5px 12px; border-radius:12px; font-size:0.65rem; font-weight:900; box-shadow:0 8px 15px rgba(239, 68, 68, 0.3); animation:pulse-soft 2s infinite;">-${p.discount}%</div>` : ''}
+                ${p.discount ? `<div style="position:absolute; top:8px; left:8px; background:var(--danger); color:white; padding:4px 8px; border-radius:8px; font-size:0.6rem; font-weight:900;">-${p.discount}%</div>` : ''}
                 
                 <button onclick="event.stopPropagation(); window.handleToggleFav(${p.id}, this)" 
-                        class="fav-btn-premium ${isFav ? 'active' : ''}">
+                        class="fav-float-btn ${isFav ? 'active' : ''}">
                     <i class="${isFav ? 'fas' : 'far'} fa-heart"></i>
                 </button>
 
-                <div class="premium-price-tag">
-                    <div style="font-weight:900; color:var(--text); font-size:0.9rem;">${(discountPrice || p.price).toLocaleString()} <small style="font-size:0.55rem; opacity:0.6;">UZS</small></div>
+                <div class="price-badge">
+                    ${(discountPrice || p.price).toLocaleString()}
                 </div>
 
                 <button onclick="event.stopPropagation(); window.quickAddToCart(${p.id})" 
-                        class="premium-add-btn">
+                        class="add-float-btn">
                     <i class="fas fa-plus"></i>
                 </button>
             </div>
 
-            <!-- INFO AREA -->
-            <div style="padding: 10px 18px 20px;">
-                <h5 style="font-weight:800; font-size:0.9rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); margin-bottom:5px;">${p.name}</h5>
-                <div style="display:flex; align-items:center; gap:6px;">
-                    <span style="font-size:0.65rem; color:var(--gray); font-weight:800; background:#f1f5f9; padding:3px 8px; border-radius:6px;">1 ${p.unit}</span>
-                    ${p.discount ? `<span style="font-size:0.65rem; color:var(--gray); text-decoration:line-through; opacity:0.5;">${p.price.toLocaleString()}</span>` : ''}
-                </div>
+            <div style="padding: 5px 12px 15px;">
+                <h5 style="font-weight:800; font-size:0.85rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); margin-bottom:3px;">${p.name}</h5>
+                <span style="font-size:0.65rem; color:var(--gray); font-weight:800;">1 ${p.unit}</span>
             </div>
         </div>
     `;
@@ -166,7 +159,7 @@ async function loadProducts() {
     const favIds = favs?.map(f => f.product_id) || [];
 
     if(!prods?.length) {
-        grid.innerHTML = `<div style="grid-column: span 2; text-align:center; padding:5rem; color:var(--gray); font-weight:800; opacity:0.4;">Mahsulot topilmadi</div>`;
+        grid.innerHTML = `<div style="grid-column: span 2; text-align:center; padding:3rem; color:var(--gray); font-weight:800; opacity:0.4;">Mahsulot topilmadi</div>`;
         carousel.parentElement!.style.display = 'none';
         return;
     }
@@ -187,7 +180,7 @@ async function loadBanners() {
         banners = data;
         container.style.display = 'block';
         track.innerHTML = banners.map(b => `<img src="${b.image_url}" style="width:100%; height:100%; object-fit:cover; flex-shrink:0;">`).join('');
-        dots.innerHTML = banners.map((_, i) => `<div class="dot" style="width:${i === 0 ? '24px' : '10px'}; height:8px; border-radius:10px; background:${i === 0 ? 'white' : 'rgba(255,255,255,0.4)'}; transition:0.4s;" id="dot-${i}"></div>`).join('');
+        dots.innerHTML = banners.map((_, i) => `<div class="dot" style="width:${i === 0 ? '20px' : '8px'}; height:8px; border-radius:10px; background:${i === 0 ? 'white' : 'rgba(255,255,255,0.4)'}; transition:0.4s;" id="dot-${i}"></div>`).join('');
         startCarousel();
     }
 }
@@ -199,7 +192,7 @@ function startCarousel() {
     const updateDots = (idx: number) => {
         document.querySelectorAll('.dot').forEach((d, i) => {
             (d as HTMLElement).style.background = i === idx ? 'white' : 'rgba(255,255,255,0.4)';
-            (d as HTMLElement).style.width = i === idx ? '24px' : '10px';
+            (d as HTMLElement).style.width = i === idx ? '20px' : '8px';
         });
     };
     setInterval(() => {
@@ -219,11 +212,11 @@ function startCarousel() {
         await supabase.from('favorites').delete().eq('user_id', user.id).eq('product_id', id);
         btn.classList.remove('active');
         btn.querySelector('i')!.className = 'far fa-heart';
-        showToast("Sevimlilardan o'chirildi");
+        showToast("O'chirildi");
     } else {
         await supabase.from('favorites').insert({ user_id: user.id, product_id: id });
         btn.classList.add('active');
         btn.querySelector('i')!.className = 'fas fa-heart';
-        showToast("Sevimlilarga qo'shildi ❤️");
+        showToast("Saqlandi ❤️");
     }
 };
