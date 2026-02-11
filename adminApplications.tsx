@@ -64,11 +64,17 @@ export async function renderAdminApplications() {
     if(!confirm("Ushbu foydalanuvchini kuryer sifatida tasdiqlaysizmi?")) return;
     
     try {
-        const { error: roleErr } = await supabase.from('profiles').update({ role: 'courier' }).eq('id', userId);
+        // MUHIM: Ham role, ham is_approved o'zgarishi shart!
+        const { error: roleErr } = await supabase.from('profiles').update({ 
+            role: 'courier',
+            is_approved: true,
+            active_status: false 
+        }).eq('id', userId);
+        
         if(roleErr) throw roleErr;
 
         await supabase.from('courier_applications').delete().eq('id', appId);
-        showToast("Kuryer tasdiqlandi! ✅");
+        showToast("Kuryer muvaffaqiyatli tasdiqlandi! ✅");
         renderAdminApplications();
     } catch(e: any) {
         showToast("Xato: " + e.message);
