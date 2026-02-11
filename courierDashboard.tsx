@@ -13,11 +13,12 @@ export async function renderCourierDashboard(userObj: any, profileObj: any) {
     cUser = userObj;
     cProfile = profileObj;
 
-    // Real-time yangilanishlar
+    // Real-time: Hamma kurerlar uchun bir vaqtda yangilanish
     if (!ordersSubscription) {
         ordersSubscription = supabase
-            .channel('courier_orders_live')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+            .channel('terminal_live_feed')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+                console.log("Global order update received", payload);
                 if (currentTab !== 'profile') loadTerminalData();
             })
             .subscribe();
@@ -29,19 +30,24 @@ export async function renderCourierDashboard(userObj: any, profileObj: any) {
 
         container.innerHTML = `
             <div style="padding-bottom:120px; animation: fadeIn 0.4s ease-out; width:100%;">
-                <!-- TERMINAL HEADER -->
+                <!-- PREMIUM DARK HEADER -->
                 <div style="background:#0f172a; color:white; margin:-1.2rem -1.2rem 25px -1.2rem; padding:60px 25px 35px; border-radius:0 0 45px 45px; box-shadow:var(--shadow-lg);">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
                         <div>
                             <h1 style="font-weight:900; font-size:1.5rem; letter-spacing:-0.5px;">TERMINAL <span style="color:var(--primary);">PRO</span></h1>
                             <div style="display:flex; align-items:center; gap:8px; margin-top:5px;">
                                 <div style="width:10px; height:10px; border-radius:50%; background:${cProfile.active_status ? '#22c55e' : '#ef4444'}; box-shadow: 0 0 10px ${cProfile.active_status ? '#22c55e' : '#ef4444'};"></div>
-                                <span style="font-size:0.7rem; font-weight:800; opacity:0.8;">${cProfile.active_status ? 'ONLAYN' : 'OFLAYN'}</span>
+                                <span style="font-size:0.7rem; font-weight:800; opacity:0.8;">${cProfile.active_status ? 'ISHDA (ONLAYN)' : 'TAYYOR EMAS (OFLAYN)'}</span>
                             </div>
                         </div>
-                        <button onclick="window.toggleCourierStatus()" class="btn" style="height:48px; padding:0 22px; border-radius:16px; background:${cProfile.active_status ? 'rgba(239,68,68,0.2)' : 'var(--primary)'}; color:${cProfile.active_status ? '#f87171' : 'white'}; border:none; font-size:0.75rem; font-weight:900;">
-                            ${cProfile.active_status ? 'STOP' : 'START'}
-                        </button>
+                        <div style="display:flex; gap:10px;">
+                            <button onclick="window.loadTerminalData()" class="btn" style="width:48px; height:48px; border-radius:14px; background:rgba(255,255,255,0.05); color:white; border:none;">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                            <button onclick="window.toggleCourierStatus()" class="btn" style="height:48px; padding:0 22px; border-radius:16px; background:${cProfile.active_status ? 'rgba(239,68,68,0.2)' : 'var(--primary)'}; color:${cProfile.active_status ? '#f87171' : 'white'}; border:none; font-size:0.75rem; font-weight:900;">
+                                ${cProfile.active_status ? 'STOP' : 'START'}
+                            </button>
+                        </div>
                     </div>
 
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
@@ -70,18 +76,19 @@ export async function renderCourierDashboard(userObj: any, profileObj: any) {
         updateTabUI();
         loadTerminalData();
     } catch (e) {
-        container.innerHTML = '<div style="text-align:center; padding:5rem; font-weight:900;">Xatolik yuz berdi...</div>';
+        container.innerHTML = '<div style="text-align:center; padding:5rem; font-weight:900;">Terminal yuklashda xato...</div>';
     }
 }
 
 function getTransportIcon(type: string) {
-    if(type === 'walking' || type === 'Piyoda') return 'fa-walking';
-    if(type === 'bicycle' || type === 'Velosiped') return 'fa-bicycle';
-    if(type === 'car' || type === 'Mashina') return 'fa-car';
+    const t = type?.toLowerCase();
+    if(t === 'walking' || t === 'piyoda') return 'fa-walking';
+    if(t === 'bicycle' || t === 'velosiped') return 'fa-bicycle';
+    if(t === 'car' || t === 'mashina') return 'fa-car';
     return 'fa-motorcycle';
 }
 
-async function loadTerminalData() {
+export async function loadTerminalData() {
     const feed = document.getElementById('courierTerminalFeed');
     if(!feed || !cUser) return;
 
@@ -90,19 +97,28 @@ async function loadTerminalData() {
         return;
     }
 
+    if(!cProfile?.active_status && currentTab === 'new') {
+        feed.innerHTML = `<div style="text-align:center; padding:5rem 20px; opacity:0.5;"><i class="fas fa-toggle-off fa-4x" style="color:#cbd5e1;"></i><p style="font-weight:900; margin-top:15px; font-size:0.75rem;">YANGI ISHLARNI KO'RISH UCHUN START BOSING</p></div>`;
+        return;
+    }
+
     feed.innerHTML = '<div style="text-align:center; padding:5rem;"><i class="fas fa-circle-notch fa-spin fa-2x" style="color:var(--primary);"></i></div>';
 
+    // Shared query: hamma kurerlar uchun birdek ochiq buyurtmalar
     let query = supabase.from('orders').select('*, profiles!user_id(*)');
     
     if(currentTab === 'new') {
-        // Hamma uchun nusxa bo'lib ko'rinadigan, hali kurer olinmagan zakazlar
-        query = query.in('status', ['pending', 'confirmed']).is('courier_id', null).order('created_at', { ascending: false });
+        query = query
+            .in('status', ['pending', 'confirmed']) 
+            .is('courier_id', null)
+            .order('created_at', { ascending: false });
     } else {
-        // Faqat menga tegishli zakazlar
         query = query.eq('courier_id', cUser.id).eq('status', 'delivering');
     }
 
-    const { data: orders } = await query;
+    const { data: orders, error } = await query;
+    if(error) console.error("Query error:", error);
+
     const badge = document.getElementById('newBadge');
     if(currentTab === 'new' && badge) badge.style.display = orders?.length ? 'block' : 'none';
 
@@ -114,7 +130,12 @@ async function loadTerminalData() {
     feed.innerHTML = orders.map(o => {
         const customer = (o as any).profiles;
         const fullName = customer ? `${customer.first_name || ''} ${customer.last_name || ''}`.trim() : "Mijoz";
-        const itemsList = o.items ? o.items.split('|').map(item => item.split(':::')[1] || item) : [];
+        
+        // Mahsulotlarni chiroyli formatlash
+        const itemsList = o.items ? o.items.split('|').map(item => {
+            const parts = item.split(':::');
+            return parts[1] || parts[0]; // Mahsulot nomi va miqdori
+        }) : [];
 
         return `
             <div class="card" style="padding:22px; border-radius:35px; border:2px solid #f1f5f9; background:white; margin-bottom:20px; box-shadow:var(--shadow-sm); animation: slideUp 0.3s ease-out;">
@@ -132,7 +153,7 @@ async function loadTerminalData() {
                     </div>
                 </div>
 
-                <div style="background:#f8fafc; padding:18px; border-radius:24px; margin-bottom:18px;">
+                <div style="background:#f8fafc; padding:18px; border-radius:24px; margin-bottom:18px; border:1px solid #f1f5f9;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div style="font-weight:900; font-size:1rem;">${fullName}</div>
                         <a href="tel:${o.phone_number}" style="width:38px; height:38px; background:var(--primary); color:white; border-radius:12px; display:flex; align-items:center; justify-content:center; text-decoration:none;"><i class="fas fa-phone"></i></a>
@@ -141,18 +162,23 @@ async function loadTerminalData() {
                         <i class="fas fa-location-dot" style="color:var(--danger); margin-top:3px;"></i> 
                         <span>${o.address_text || "Xaritada belgilangan"}</span>
                     </div>
+                    
+                    <!-- MIJOZ IZOHI - ENG MUHIMI -->
                     ${o.comment ? `
-                        <div style="margin-top:12px; padding:12px; background:#fff7ed; border-radius:15px; border:1px solid #ffedd5;">
-                            <div style="font-size:0.55rem; font-weight:900; color:#ea580c; text-transform:uppercase; margin-bottom:4px;">Mijoz izohi:</div>
-                            <div style="font-size:0.8rem; font-weight:700; color:#9a3412;">"${o.comment}"</div>
+                        <div style="margin-top:15px; padding:15px; background:#fffbeb; border-radius:18px; border:1px solid #fef3c7;">
+                            <div style="font-size:0.55rem; font-weight:900; color:#b45309; text-transform:uppercase; margin-bottom:5px; display:flex; align-items:center; gap:5px;">
+                                <i class="fas fa-comment-dots"></i> Mijoz izohi:
+                            </div>
+                            <div style="font-size:0.85rem; font-weight:700; color:#92400e; line-height:1.4;">"${o.comment}"</div>
                         </div>
                     ` : ''}
                 </div>
 
+                <!-- MAHSULOTLAR RO'YXATI -->
                 <div style="margin-bottom:20px;">
-                    <div style="font-size:0.6rem; font-weight:900; color:var(--gray); margin-bottom:8px;">MAHSULOTLAR:</div>
+                    <div style="font-size:0.6rem; font-weight:900; color:var(--gray); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">Mahsulotlar:</div>
                     <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                        ${itemsList.map(name => `<span style="font-size:0.7rem; font-weight:800; background:#f1f5f9; padding:5px 12px; border-radius:10px;">${name}</span>`).join('')}
+                        ${itemsList.map(name => `<span style="font-size:0.7rem; font-weight:800; background:#f1f5f9; color:#334155; padding:6px 12px; border-radius:12px; border:1px solid #e2e8f0;">${name}</span>`).join('')}
                     </div>
                 </div>
 
@@ -170,16 +196,17 @@ async function loadTerminalData() {
 
                 <div style="display:flex; gap:12px;">
                     ${currentTab === 'new' ? `
-                        <button onclick="window.terminalAcceptOrder(${o.id})" class="btn btn-primary" style="flex:1; height:65px; border-radius:20px; background:#0f172a; font-size:1rem; box-shadow: 0 10px 20px rgba(15,23,42,0.15);">QABUL QILISH</button>
+                        <button onclick="window.terminalAcceptOrder(${o.id})" class="btn btn-primary" style="flex:1; height:65px; border-radius:22px; background:#0f172a; font-size:1rem; box-shadow: 0 10px 20px rgba(15,23,42,0.15); border:none;">QABUL QILISH</button>
                     ` : `
-                        <button onclick="window.terminalFinishOrder(${o.id})" class="btn btn-primary" style="flex:1; height:65px; border-radius:20px; font-size:1rem;">TOPSHIRILDI 🏁</button>
+                        <button onclick="window.terminalFinishOrder(${o.id})" class="btn btn-primary" style="flex:1; height:65px; border-radius:22px; font-size:1rem; border:none;">TOPSHIRILDI 🏁</button>
                     `}
-                    <button onclick="window.open('https://www.google.com/maps?q=${o.latitude},${o.longitude}', '_blank')" class="btn btn-outline" style="width:65px; height:65px; border-radius:20px; background:#eff6ff; color:#3b82f6; border-color:#dbeafe;"><i class="fas fa-location-arrow"></i></button>
+                    <button onclick="window.open('https://www.google.com/maps?q=${o.latitude},${o.longitude}', '_blank')" class="btn btn-outline" style="width:65px; height:65px; border-radius:22px; background:#eff6ff; color:#3b82f6; border-color:#dbeafe;"><i class="fas fa-location-arrow"></i></button>
                 </div>
             </div>
         `;
     }).join('');
 }
+(window as any).loadTerminalData = loadTerminalData;
 
 function renderCourierProfileSettings(feed: HTMLElement) {
     feed.innerHTML = `
@@ -206,7 +233,7 @@ function renderCourierProfileSettings(feed: HTMLElement) {
 (window as any).terminalAcceptOrder = async (oid: number) => {
     if(!cProfile?.active_status) return showToast("Avval START bosing! 🚦");
     
-    // ATOMIK YANGILASH: faqat courier_id bo'sh bo'lsagina olamiz
+    // ATOMIK YANGILASH: faqat courier_id hali bo'sh bo'lsagina olamiz
     const { error } = await supabase
         .from('orders')
         .update({ courier_id: cUser.id, status: 'delivering' })
@@ -215,7 +242,6 @@ function renderCourierProfileSettings(feed: HTMLElement) {
 
     if(!error) {
         showToast("Buyurtma muvaffaqiyatli olindi! 🚀");
-        // Fix TypeScript error: call switchCourierTab directly instead of using window property
         switchCourierTab('active');
     } else {
         showToast("Kechikdingiz, boshqa kurer olib qo'ydi! ⚠️");
