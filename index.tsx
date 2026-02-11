@@ -47,6 +47,39 @@ export function closeOverlay(id: string) {
 }
 (window as any).closeOverlay = closeOverlay;
 
+// --- CART ACTIONS ---
+// Added addToCart function to resolve missing export errors in other files
+export async function addToCart(productId: number, quantity: number = 1) {
+    if (!user) {
+        showToast("Savatga qo'shish uchun tizimga kiring");
+        return;
+    }
+    try {
+        const { data: existing } = await supabase
+            .from('cart_items')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('product_id', productId)
+            .maybeSingle();
+
+        if (existing) {
+            await supabase
+                .from('cart_items')
+                .update({ quantity: parseFloat((existing.quantity + quantity).toFixed(2)) })
+                .eq('id', existing.id);
+        } else {
+            await supabase
+                .from('cart_items')
+                .insert([{ user_id: user.id, product_id: productId, quantity: parseFloat(quantity.toFixed(2)) }]);
+        }
+        showToast("Savatga qo'shildi! 🛒");
+    } catch (e) {
+        console.error("Add to cart error:", e);
+        showToast("Xatolik yuz berdi");
+    }
+}
+(window as any).addToCart = addToCart;
+
 // --- IMPERSONATION ---
 export const impersonateUser = (targetProfile: any) => {
     if (!adminBackupProfile) adminBackupProfile = { ...profile };
@@ -126,16 +159,16 @@ export const navTo = async (view: string) => {
         await loadProfileData();
     }
 
-    // 2. Kuryer bo'lsa va Home'ga bormoqchi bo'lsa - Dashboard'ga burib yuboramiz
-    if (profile?.role === 'courier' && (view === 'home' || view === 'orders')) {
+    // 2. Kuryer bo'lsa har doim Dashboard'ga yo'naltirish
+    if (profile?.role === 'courier') {
         const { renderCourierDashboard } = await import("./courierDashboard.tsx");
         showView('orders'); 
-        renderCourierDashboard();
+        renderCourierDashboard(user, profile); // Ma'lumotlarni uzatamiz
         updateNavActive('orders');
         return;
     }
 
-    // 3. Standart navigatsiya
+    // 3. Mijoz yoki Admin uchun standart navigatsiya
     showView(view);
     updateNavActive(view);
     
@@ -216,15 +249,3 @@ window.onload = checkAuth;
         window.location.reload();
     }
 };
-
-export async function addToCart(productId: number, qty: number = 1) {
-    if(!user) return showToast("Tizimga kiring 🔑");
-    try {
-        const { data: existing } = await supabase.from('cart_items').select('*').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
-        if(existing) await supabase.from('cart_items').update({ quantity: existing.quantity + qty }).eq('id', existing.id);
-        else await supabase.from('cart_items').insert([{ user_id: user.id, product_id: productId, quantity: qty }]);
-        showToast("Savatga qo'shildi! 🛒");
-        if(document.getElementById('cartView')?.classList.contains('active')) renderCartView();
-    } catch (e) { showToast("Xatolik!"); }
-}
-(window as any).addToCart = addToCart;
