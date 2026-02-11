@@ -47,7 +47,6 @@ export function closeOverlay(id: string) {
 }
 (window as any).closeOverlay = closeOverlay;
 
-// --- CART ACTIONS ---
 export async function addToCart(productId: number, quantity: number = 1) {
     if (!user) return showToast("Savatga qo'shish uchun tizimga kiring");
     try {
@@ -66,7 +65,7 @@ export async function addToCart(productId: number, quantity: number = 1) {
 export const navTo = async (view: string) => {
     if (!profile && user) await loadProfileData();
 
-    // Agar kuryer bo'lsa va 'orders' bo'limiga kirsa - Terminalni ochamiz
+    // Kuryer 'orders' bo'limiga kirsa Terminalni ochamiz, boshqa bo'limlarda MIJOZ kabi ko'ra oladi
     if (profile?.role === 'courier' && view === 'orders') {
         const { renderCourierDashboard } = await import("./courierDashboard.tsx");
         showView('orders'); 
@@ -84,7 +83,7 @@ export const navTo = async (view: string) => {
         if(view === 'cart') renderCartView();
         if(view === 'orders') renderOrdersView();
         if(view === 'profile') renderProfileView(profile);
-    } catch (e) { console.error("View error:", e); }
+    } catch (e) { console.error("View rendering error:", e); }
 };
 (window as any).navTo = navTo;
 
@@ -116,8 +115,10 @@ export async function loadProfileData() {
         user = session.user;
         let { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
         profile = data;
-        const navIcon = document.getElementById('navProfileIconContainer');
-        if (navIcon) navIcon.innerHTML = profile?.avatar_url ? `<img src="${profile.avatar_url}" class="nav-profile-img">` : `<i class="far fa-user-circle" style="font-size: 1.6rem;"></i>`;
+        const navIconContainer = document.getElementById('navProfileIconContainer');
+        if (navIconContainer) {
+            navIconContainer.innerHTML = profile?.avatar_url ? `<img src="${profile.avatar_url}" class="nav-profile-img">` : `<i class="far fa-user-circle" style="font-size: 1.6rem;"></i>`;
+        }
         return profile;
     } catch (e) { return null; }
 }
@@ -134,11 +135,3 @@ export async function checkAuth() {
     }
 }
 window.onload = checkAuth;
-
-(window as any).handleSignOut = async () => { if(confirm("Chiqmoqchimisiz?")) { await supabase.auth.signOut(); window.location.reload(); } };
-(window as any).enterAdminPanel = async () => {
-    const { switchAdminTab } = await import("./admin.tsx");
-    document.getElementById('appContainer')!.style.display = 'none';
-    document.getElementById('adminPanel')!.style.display = 'flex';
-    switchAdminTab('dash');
-};
