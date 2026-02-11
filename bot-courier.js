@@ -2,7 +2,7 @@
 import { supabase, tg } from './bot-config.js';
 
 export async function handleCourier(chatId, text, profile) {
-    // 1. BO'SH BUYURTMALAR
+    // 1. BO'SH BUYURTMALAR (Hammaga birdek ko'rinadi)
     if (text === "📦 Bo'sh buyurtmalar") {
         const { data: orders } = await supabase
             .from('orders')
@@ -26,12 +26,15 @@ export async function handleCourier(chatId, text, profile) {
                 }).join('\n');
             }
 
+            const transportIcon = o.requested_transport === 'walking' ? '🚶' : o.requested_transport === 'bicycle' ? '🚲' : '🚗';
+
             const txt = `
 📦 <b>YANGI BUYURTMA #${o.id.toString().substring(0,8)}</b>
 ──────────────────
 👤 <b>Mijoz:</b> ${fullName}
 📞 <b>Tel:</b> <code>${o.phone_number}</code>
 📍 <b>Manzil:</b> ${o.address_text}
+⚡️ <b>Transport:</b> ${transportIcon} ${o.requested_transport.toUpperCase()}
 
 🛒 <b>Mahsulotlar:</b>
 ${itemsSummary || 'Ma\'lumot yo\'q'}
@@ -99,15 +102,18 @@ ${isCash ? `⚠️ <b>MIJOZDAN OLING: ${o.total_price.toLocaleString()} UZS</b>`
         return tg('sendMessage', { chat_id: chatId, text: "🔴 <b>SIZ OFLAYNSIZ.</b> Dam oling!" });
     }
 
-    // 4. PROFIL
+    // 4. PROFIL (Transportni ko'rish)
     if (text === "👤 Profil") {
         const txt = `
 👤 <b>KURER PROFILI</b>
 ──────────────────
 👤 <b>Ism:</b> ${profile.first_name}
+⚡️ <b>Transport:</b> ${profile.transport_type.toUpperCase()}
 💰 <b>Balans:</b> ${profile.balance.toLocaleString()} UZS
 ⭐ <b>Reyting:</b> ${profile.rating || 5.0}
-🛵 <b>Status:</b> ${profile.active_status ? '🟢 Ishda' : '🔴 Dam olishda'}`;
+🛵 <b>Status:</b> ${profile.active_status ? '🟢 Ishda' : '🔴 Dam olishda'}
+──────────────────
+<i>Transport turini sayt orqali tahrirlashingiz mumkin.</i>`;
         
         return tg('sendMessage', { chat_id: chatId, text: txt, parse_mode: 'HTML' });
     }

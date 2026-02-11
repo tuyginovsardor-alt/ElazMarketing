@@ -21,18 +21,22 @@ export function openCourierRegistrationForm() {
                 </div>
                 
                 <h4 style="font-weight:900; margin:0 0 15px; font-size:1rem; color:var(--text);">1. Transport turi</h4>
-                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:30px;">
-                    <div class="transport-opt" id="t_walking" onclick="selectTransport('walking')" style="border:2.5px solid var(--primary); padding:18px 10px; border-radius:22px; text-align:center; cursor:pointer; transition:0.3s; background:var(--primary-light);">
-                        <i class="fas fa-walking" style="font-size:1.6rem; color:var(--primary);"></i>
-                        <div style="font-size:0.75rem; font-weight:800; margin-top:8px;">Piyoda</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:30px;">
+                    <div class="transport-opt" id="t_walking" onclick="selectTransport('walking')" style="border:2px solid #f1f5f9; padding:15px; border-radius:20px; text-align:center; cursor:pointer; transition:0.3s;">
+                        <i class="fas fa-walking" style="font-size:1.4rem; color:var(--gray);"></i>
+                        <div style="font-size:0.7rem; font-weight:800; margin-top:5px;">Piyoda</div>
                     </div>
-                    <div class="transport-opt" id="t_bicycle" onclick="selectTransport('bicycle')" style="border:2.5px solid #f1f5f9; padding:18px 10px; border-radius:22px; text-align:center; cursor:pointer; transition:0.3s;">
-                        <i class="fas fa-bicycle" style="font-size:1.6rem; color:var(--gray);"></i>
-                        <div style="font-size:0.75rem; font-weight:800; margin-top:8px;">Velo</div>
+                    <div class="transport-opt" id="t_bicycle" onclick="selectTransport('bicycle')" style="border:2px solid #f1f5f9; padding:15px; border-radius:20px; text-align:center; cursor:pointer; transition:0.3s;">
+                        <i class="fas fa-bicycle" style="font-size:1.4rem; color:var(--gray);"></i>
+                        <div style="font-size:0.7rem; font-weight:800; margin-top:5px;">Velo</div>
                     </div>
-                    <div class="transport-opt" id="t_car" onclick="selectTransport('car')" style="border:2.5px solid #f1f5f9; padding:18px 10px; border-radius:22px; text-align:center; cursor:pointer; transition:0.3s;">
-                        <i class="fas fa-car" style="font-size:1.6rem; color:var(--gray);"></i>
-                        <div style="font-size:0.75rem; font-weight:800; margin-top:8px;">Mashina</div>
+                    <div class="transport-opt" id="t_car" onclick="selectTransport('car')" style="border:2px solid #f1f5f9; padding:15px; border-radius:20px; text-align:center; cursor:pointer; transition:0.3s;">
+                        <i class="fas fa-car" style="font-size:1.4rem; color:var(--gray);"></i>
+                        <div style="font-size:0.7rem; font-weight:800; margin-top:5px;">Mashina</div>
+                    </div>
+                    <div class="transport-opt" id="t_mixed" onclick="selectTransport('mixed')" style="border:2px solid var(--primary); padding:15px; border-radius:20px; text-align:center; cursor:pointer; transition:0.3s; background:var(--primary-light);">
+                        <i class="fas fa-shuffle" style="font-size:1.4rem; color:var(--primary);"></i>
+                        <div style="font-size:0.7rem; font-weight:800; margin-top:5px;">Aralash</div>
                     </div>
                 </div>
 
@@ -58,18 +62,22 @@ export function openCourierRegistrationForm() {
     openOverlay('checkoutOverlay');
 }
 
-let selectedTransport = 'walking';
+let selectedTransport = 'mixed';
 
 (window as any).selectTransport = (type: string) => {
     selectedTransport = type;
     document.querySelectorAll('.transport-opt').forEach(opt => {
         (opt as HTMLElement).style.borderColor = '#f1f5f9';
         (opt as HTMLElement).style.background = 'white';
+        const icon = (opt as HTMLElement).querySelector('i');
+        if(icon) icon.style.color = 'var(--gray)';
     });
     const target = document.getElementById(`t_${type}`);
     if(target) {
         target.style.borderColor = 'var(--primary)';
         target.style.background = 'var(--primary-light)';
+        const icon = target.querySelector('i');
+        if(icon) icon.style.color = 'var(--primary)';
     }
 };
 
@@ -83,38 +91,21 @@ let selectedTransport = 'walking';
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> YUBORILMOQDA...';
 
-    // Xatolikni oldini olish uchun ma'lumotlarni tayyorlaymiz
     const applicationData: any = {
         user_id: user.id,
         full_name: `${profile.first_name} ${profile.last_name || ''}`,
         phone: profile.phone,
         transport_type: selectedTransport,
-        status: 'pending'
+        status: 'pending',
+        work_zones: zones
     };
 
     try {
-        // Birinchi marta work_zones bilan yuborib ko'ramiz
-        const { error } = await supabase.from('courier_applications').insert({
-            ...applicationData,
-            work_zones: zones
-        });
-
-        if (error) {
-            // Agar kesh xatosi bo'lsa, work_zones'siz yuboramiz (faqat bir marta retry)
-            if (error.message.includes('work_zones') || error.message.includes('schema cache')) {
-                console.warn("Schema cache error detected, retrying without work_zones column...");
-                const { error: secondError } = await supabase.from('courier_applications').insert(applicationData);
-                if (secondError) throw secondError;
-            } else {
-                throw error;
-            }
-        }
-
-        showToast("Arizangiz muvaffaqiyatli yuborildi! ✅");
+        const { error } = await supabase.from('courier_applications').insert(applicationData);
+        if (error) throw error;
+        showToast("Arizangiz yuborildi! ✅");
         closeOverlay('checkoutOverlay');
-        
     } catch (e: any) {
-        console.error("Application Error:", e);
         showToast("Xatolik: " + e.message);
     } finally {
         btn.disabled = false;
