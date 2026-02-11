@@ -15,27 +15,7 @@ export let user: any = null;
 export let profile: any = null;
 export let adminBackupProfile: any = null;
 
-// --- NOTIFICATION & SOUND UTILS ---
-export function playNotificationSound() {
-    const audio = new Audio('https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3?filename=message-incoming-132126.mp3');
-    audio.play().catch(e => console.log("Sound muted"));
-}
-
-export async function requestPermissions() {
-    if ("Notification" in window) {
-        const permission = await Notification.requestPermission();
-        if (permission === "granted") console.log("Notifications enabled");
-    }
-}
-
-export function sendPush(title: string, body: string) {
-    if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(title, { body, icon: '/favicon.ico' });
-    }
-    showToast(body);
-}
-
-// --- GLOBAL UTILS ---
+// --- UTILS ---
 export function showToast(msg: string) {
     const t = document.getElementById('toast');
     if(t) {
@@ -67,7 +47,7 @@ export function closeOverlay(id: string) {
 }
 (window as any).closeOverlay = closeOverlay;
 
-// --- IMPERSONATION LOGIC ---
+// --- IMPERSONATION ---
 export const impersonateUser = (targetProfile: any) => {
     if (!adminBackupProfile) adminBackupProfile = { ...profile };
     profile = targetProfile;
@@ -90,7 +70,7 @@ export const stopImpersonation = () => {
 
 function updateImpersonationBanner() {
     let banner = document.getElementById('impersonationBanner');
-    if (adminBackupProfile) {
+    if (adminBackupProfile && profile) {
         if (!banner) {
             banner = document.createElement('div');
             banner.id = 'impersonationBanner';
@@ -103,13 +83,13 @@ function updateImpersonationBanner() {
             document.body.prepend(banner);
         }
         banner.innerHTML = `
-            <span><i class="fas fa-user-secret mr-2"></i> REJIM: ${profile.first_name.toUpperCase()}</span>
+            <span><i class="fas fa-user-secret mr-2"></i> REJIM: ${profile.first_name?.toUpperCase()}</span>
             <button onclick="window.stopImpersonation()" style="background:white; color:#3b82f6; border:none; padding:5px 12px; border-radius:8px; font-weight:900; font-size:0.65rem; cursor:pointer;">QAYTISH</button>
         `;
     } else if (banner) banner.remove();
 }
 
-// --- PROFILE LOADING ---
+// --- DATA LOADING ---
 export async function loadProfileData() {
     try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -129,7 +109,6 @@ export async function loadProfileData() {
             const { data: inserted } = await supabase.from('profiles').insert([newProfile]).select().single();
             data = inserted;
         }
-
         profile = data;
         
         const navIconContainer = document.getElementById('navProfileIconContainer');
@@ -140,28 +119,35 @@ export async function loadProfileData() {
     } catch (e) { return null; }
 }
 
-// --- NAVIGATION ---
+// --- NAVIGATION CORE ---
 export const navTo = async (view: string) => {
-    // Profil yuklanganiga ishonch hosil qilish
-    if (!profile && user) await loadProfileData();
+    // 1. Profil yuklanganligini tekshirish
+    if (!profile && user) {
+        await loadProfileData();
+    }
 
-    // KURER REDIRECT LOGIC
-    if (profile?.role === 'courier') {
+    // 2. Kuryer bo'lsa va Home'ga bormoqchi bo'lsa - Dashboard'ga burib yuboramiz
+    if (profile?.role === 'courier' && (view === 'home' || view === 'orders')) {
         const { renderCourierDashboard } = await import("./courierDashboard.tsx");
-        showView('orders'); // Kuryer uchun ordersView - bu uning terminali
+        showView('orders'); 
         renderCourierDashboard();
         updateNavActive('orders');
         return;
     }
 
+    // 3. Standart navigatsiya
     showView(view);
     updateNavActive(view);
     
-    if(view === 'home') renderHomeView();
-    if(view === 'saved') renderSavedView();
-    if(view === 'cart') renderCartView();
-    if(view === 'orders') renderOrdersView();
-    if(view === 'profile') renderProfileView(profile);
+    try {
+        if(view === 'home') renderHomeView();
+        if(view === 'saved') renderSavedView();
+        if(view === 'cart') renderCartView();
+        if(view === 'orders') renderOrdersView();
+        if(view === 'profile') renderProfileView(profile);
+    } catch (e) {
+        console.error("View rendering error:", e);
+    }
 };
 (window as any).navTo = navTo;
 
@@ -176,35 +162,35 @@ function updateNavActive(view: string) {
 }
 
 export function showView(viewId: string) {
-    const app = document.getElementById('appContainer');
-    const admin = document.getElementById('adminPanel');
-    
     document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
     const target = document.getElementById(viewId + 'View') || document.getElementById('homeView');
     if(target) target.classList.add('active');
     
     const header = document.getElementById('appHeader');
     const nav = document.getElementById('bottomNav');
-    const showNavHeader = ['home', 'cart', 'profile', 'orders', 'saved'].includes(viewId);
-    
-    if(header) header.style.display = showNavHeader ? 'flex' : 'none';
-    if(nav) nav.style.display = showNavHeader ? 'flex' : 'none';
+    const app = document.getElementById('appContainer');
+    const admin = document.getElementById('adminPanel');
 
-    if(app && admin && admin.style.display === 'flex' && showNavHeader) {
+    const isMainView = ['home', 'cart', 'profile', 'orders', 'saved'].includes(viewId);
+    
+    if(header) header.style.display = isMainView ? 'flex' : 'none';
+    if(nav) nav.style.display = isMainView ? 'flex' : 'none';
+
+    if(app && admin && admin.style.display === 'flex' && isMainView) {
         app.style.display = 'flex';
         admin.style.display = 'none';
     }
 }
 (window as any).showView = showView;
 
+// --- BOOTSTRAP ---
 export async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
         user = session.user;
-        await loadProfileData();
-        requestPermissions();
-        // Kuryer bo'lsa ordersga, bo'lmasa homega
-        navTo(profile?.role === 'courier' ? 'orders' : 'home');
+        const p = await loadProfileData();
+        // Role aniqlangandan keyin navigatsiya qilamiz
+        navTo(p?.role === 'courier' ? 'orders' : 'home');
     } else {
         showView('auth');
         renderAuthView('login');
@@ -212,31 +198,7 @@ export async function checkAuth() {
 }
 window.onload = checkAuth;
 
-// --- DYNAMIC IMPORTS ---
-(window as any).openProfileEdit = async () => {
-    const { openProfileEdit } = await import("./profileEdit.tsx");
-    openProfileEdit();
-};
-(window as any).openPayment = async () => {
-    const { openPaymentView } = await import("./payment.tsx");
-    openPaymentView();
-};
-(window as any).openCourierRegistration = async () => {
-    const { openCourierRegistrationForm } = await import("./courierRegistration.tsx");
-    openCourierRegistrationForm();
-};
-(window as any).openSupportCenter = async () => {
-    const { renderSupportView } = await import("./supportView.tsx");
-    renderSupportView();
-};
-(window as any).openProfileSecurity = async () => {
-    const { openProfileSecurity } = await import("./security.tsx");
-    openProfileSecurity();
-};
-(window as any).openLegal = async (type: any) => {
-    const { openLegal } = await import("./legal.tsx");
-    openLegal(type);
-};
+// --- GLOBAL ACTIONS ---
 (window as any).enterAdminPanel = async () => {
     const { switchAdminTab } = await import("./admin.tsx");
     const app = document.getElementById('appContainer');
@@ -247,6 +209,7 @@ window.onload = checkAuth;
         switchAdminTab('dash');
     }
 };
+
 (window as any).handleSignOut = async () => {
     if(confirm("Chiqmoqchimisiz?")) {
         await supabase.auth.signOut();

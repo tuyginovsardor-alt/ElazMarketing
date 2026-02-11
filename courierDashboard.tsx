@@ -1,5 +1,5 @@
 
-import { supabase, showToast, user, profile, showView, playNotificationSound, navTo } from "./index.tsx";
+import { supabase, showToast, user, profile, showView, navTo } from "./index.tsx";
 
 let currentTab = 'new'; 
 let cProfile: any = null;
