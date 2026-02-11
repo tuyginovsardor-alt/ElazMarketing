@@ -74,15 +74,25 @@ export async function loadProfileData() {
         user = session.user;
 
         let { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+        
         if (!data) {
             const newProfile = { 
                 id: user.id, email: user.email, 
                 first_name: user.user_metadata?.full_name || user.email?.split('@')[0],
-                role: 'user', balance: 0
+                role: 'user', balance: 0, is_approved: false
             };
             const { data: inserted } = await supabase.from('profiles').insert([newProfile]).select().single();
             data = inserted;
         }
+
+        // --- AVTOMATIK TASDIQLASH (ESKI KURYERLAR UCHUN) ---
+        // Agar roli kuryer bo'lsa-yu, is_approved hali false bo'lsa, uni true qilib qo'yamiz (bir marta)
+        if (data.role === 'courier' && data.is_approved === false) {
+            console.log("Eski kuryer aniqlandi, avtomatik tasdiqlanmoqda...");
+            const { data: updated } = await supabase.from('profiles').update({ is_approved: true }).eq('id', user.id).select().single();
+            if (updated) data = updated;
+        }
+
         profile = data;
         
         setupClientOrderMonitoring();
@@ -183,7 +193,7 @@ export async function checkAuth() {
 }
 window.onload = checkAuth;
 
-// --- PROFILE FEATURE INDEXING (Tugmalarni bog'lash) ---
+// --- PROFILE FEATURE INDEXING ---
 (window as any).openProfileEdit = async () => {
     const { openProfileEdit } = await import("./profileEdit.tsx");
     openProfileEdit();

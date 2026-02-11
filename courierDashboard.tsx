@@ -11,11 +11,12 @@ export async function renderCourierDashboard() {
 
     showView('orders');
     
+    // Eng so'nggi profil ma'lumotlarini olish (cache-dan qochish uchun)
     const { data: p } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
     if(!p) return;
     courierProfile = p;
 
-    // Tekshirish: Agar kuryer roli bo'lsa-yu, hali tasdiqlanmagan bo'lsa
+    // Tekshirish: Agar kuryer roli bo'lsa-yu, hali tasdiqlanmagan bo'lsa (lekin index.tsx uni to'g'irlashi kerak)
     if (courierProfile.role === 'courier' && courierProfile.is_approved === false) {
         container.innerHTML = `
             <div style="padding: 4rem 2rem; text-align: center; animation: fadeIn 0.4s;">
@@ -23,8 +24,9 @@ export async function renderCourierDashboard() {
                     <i class="fas fa-user-clock"></i>
                 </div>
                 <h2 style="font-weight:900; color:var(--text);">Tasdiqlanish kutilmoqda</h2>
-                <p style="color:var(--gray); margin-top:15px; font-weight:600; font-size:0.9rem;">Sizning kuryerlik arizangiz adminlar tomonidan ko'rib chiqilmoqda. Tasdiqlangach, bu terminal ishga tushadi.</p>
-                <button class="btn btn-outline" style="width:100%; margin-top:2rem; border-radius:18px;" onclick="navTo('profile')">PROFILGA QAYTISH</button>
+                <p style="color:var(--gray); margin-top:15px; font-weight:600; font-size:0.9rem;">Sizning kuryerlik profilingiz adminlar tomonidan ko'rib chiqilmoqda.</p>
+                <button class="btn btn-primary" style="width:100%; margin-top:2rem; border-radius:18px;" onclick="window.location.reload()">TEKSHIRISH</button>
+                <button class="btn btn-outline" style="width:100%; margin-top:10px; border-radius:18px;" onclick="navTo('profile')">PROFILGA QAYTISH</button>
             </div>
         `;
         return;
