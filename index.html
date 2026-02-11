@@ -5,6 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ELAZ MARKET - Bag'dod</title>
+    <meta name="theme-color" content="#22c55e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="https://ncbbjlduisavvxyscxbk.supabase.co/storage/v1/object/public/products/app_icon.png">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -53,7 +59,6 @@
 
         .toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 14px; z-index: 9999; font-weight: 700; display: none; box-shadow: var(--shadow-lg); font-size: 0.9rem; }
 
-        /* BOTTOM NAV REDMI VA IPHONE UCHUN BALANDROQ QILINDI */
         .bottom-nav { 
             background: rgba(255, 255, 255, 0.95); 
             backdrop-filter: blur(10px);
@@ -146,5 +151,16 @@
     <div id="adminPanel" class="admin-panel-ui"></div>
 
     <script src="index.tsx" type="module"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').then(reg => {
+                    console.log('SW Registered!', reg);
+                }).catch(err => {
+                    console.log('SW Registration Failed:', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>

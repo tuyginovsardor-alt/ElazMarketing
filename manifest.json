@@ -1,0 +1,22 @@
+
+{
+  "name": "ELAZ MARKET",
+  "short_name": "ELAZ",
+  "description": "Bag'dod tumani tezkor savdo platformasi",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#22c55e",
+  "icons": [
+    {
+      "src": "https://ncbbjlduisavvxyscxbk.supabase.co/storage/v1/object/public/products/app_icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://ncbbjlduisavvxyscxbk.supabase.co/storage/v1/object/public/products/app_icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

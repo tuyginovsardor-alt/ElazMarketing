@@ -13,9 +13,31 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export let user: any = null;
 export let profile: any = null;
-export let adminBackupProfile: any = null; // Admin profilini saqlab turish uchun
+export let adminBackupProfile: any = null;
 
-// --- GLOBAL ACTIONS (PROFIL & ADMIN FUNKSIYALARI) ---
+// --- GLOBAL ACTIONS ---
+
+(window as any).requestNotificationPermission = async () => {
+    if (!('Notification' in window)) return;
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+        showToast("Bildirishnomalar yoqildi! 🔔");
+    }
+};
+
+const sendOrderNotification = (order: any) => {
+    if (Notification.permission === 'granted') {
+        const n = new Notification("YANGI BUYURTMA! 🛍️", {
+            body: `Summa: ${order.total_price.toLocaleString()} UZS\nManzil: ${order.address_text || 'Belgilangan'}`,
+            icon: 'https://ncbbjlduisavvxyscxbk.supabase.co/storage/v1/object/public/products/app_icon.png'
+        });
+        n.onclick = () => { window.focus(); navTo('orders'); };
+        
+        // Ovozli xabar (ixtiyoriy)
+        const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3');
+        audio.play().catch(() => {});
+    }
+};
 
 (window as any).openProfileEdit = async () => {
     const { openProfileEdit } = await import("./profileEdit.tsx");
@@ -65,36 +87,25 @@ export let adminBackupProfile: any = null; // Admin profilini saqlab turish uchu
     if(admin) admin.style.display = 'none';
 };
 
-// --- IMPERSONATION (Mijoz nomidan kirish) ---
 (window as any).impersonateUser = (targetProfile: any) => {
-    if(!adminBackupProfile) adminBackupProfile = { ...profile }; // Adminni zaxiralash
+    if(!adminBackupProfile) adminBackupProfile = { ...profile };
     profile = { ...targetProfile };
-    
-    // Vizual ko'rsatkich qo'shish
     const existingBanner = document.getElementById('impersonationBanner');
     if(existingBanner) existingBanner.remove();
-    
     const banner = document.createElement('div');
     banner.id = 'impersonationBanner';
     banner.style.cssText = "position:fixed; top:0; left:0; width:100%; background:var(--danger); color:white; text-align:center; padding:10px; font-size:0.7rem; font-weight:900; z-index:10000; letter-spacing:1px;";
     banner.innerHTML = `MIJOZ REJIMIDA: ${targetProfile.first_name.toUpperCase()} <button onclick="window.stopImpersonating()" style="margin-left:15px; background:white; color:var(--danger); border:none; padding:4px 10px; border-radius:8px; font-weight:900; cursor:pointer;">ADMIN REJIMIGA QAYTISH</button>`;
     document.body.appendChild(banner);
-
     (window as any).exitAdminPanel();
     navTo('home');
-    showToast(`${targetProfile.first_name} akkauntiga kirdingiz`);
 };
 
 (window as any).stopImpersonating = () => {
-    if(adminBackupProfile) {
-        profile = { ...adminBackupProfile };
-        adminBackupProfile = null;
-    }
+    if(adminBackupProfile) { profile = { ...adminBackupProfile }; adminBackupProfile = null; }
     const banner = document.getElementById('impersonationBanner');
     if(banner) banner.remove();
-    
     navTo('profile');
-    showToast("Admin rejimiga qaytdingiz");
 };
 
 (window as any).handleSignOut = async () => {
@@ -103,7 +114,6 @@ export let adminBackupProfile: any = null; // Admin profilini saqlab turish uchu
     window.location.reload();
 };
 
-// --- UTILS ---
 export function showToast(msg: string) {
     const t = document.getElementById('toast');
     if(t) {
@@ -149,7 +159,7 @@ export async function addToCart(productId: number, quantity: number = 1) {
 }
 (window as any).addToCart = addToCart;
 
-// --- NAVIGATION CORE ---
+// --- NAVIGATION & REALTIME ---
 export const navTo = async (view: string) => {
     if (!profile && user) await loadProfileData();
 
@@ -188,7 +198,6 @@ export function showView(viewId: string) {
     document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
     const target = document.getElementById(viewId + 'View') || document.getElementById('homeView');
     if(target) target.classList.add('active');
-    
     const isMainView = ['home', 'cart', 'profile', 'orders', 'saved'].includes(viewId);
     document.getElementById('appHeader')!.style.display = isMainView ? 'flex' : 'none';
     document.getElementById('bottomNav')!.style.display = isMainView ? 'flex' : 'none';
@@ -202,6 +211,21 @@ export async function loadProfileData() {
         user = session.user;
         let { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
         profile = data;
+        
+        // --- REALTIME NOTIFICATIONS START ---
+        if (profile?.role === 'admin' || profile?.role === 'courier') {
+            supabase.channel('orders-monitor')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders' }, payload => {
+                sendOrderNotification(payload.new);
+            }).subscribe();
+            
+            // Ruxsat so'rash (agar hali so'ralmagan bo'lsa)
+            if (Notification.permission === 'default') {
+                setTimeout(() => (window as any).requestNotificationPermission(), 5000);
+            }
+        }
+        // --- REALTIME NOTIFICATIONS END ---
+
         const navIconContainer = document.getElementById('navProfileIconContainer');
         if (navIconContainer) {
             navIconContainer.innerHTML = profile?.avatar_url ? `<img src="${profile.avatar_url}" class="nav-profile-img">` : `<i class="far fa-user-circle" style="font-size: 1.6rem;"></i>`;
