@@ -17,10 +17,6 @@ export let profile: any = null;
 export let adminBackupProfile: any = null;
 
 // --- GLOBAL ACTIONS ---
-/**
- * Displays a toast message on the screen.
- * Exported for use in other components.
- */
 export const showToast = (msg: string) => {
     const t = document.getElementById('toast');
     if(t) {
@@ -37,27 +33,18 @@ export const showToast = (msg: string) => {
 };
 (window as any).showToast = showToast;
 
-/**
- * Opens an overlay element by ID.
- */
 export const openOverlay = (id: string) => {
     const el = document.getElementById(id);
     if(el) el.style.display = 'flex';
 };
 (window as any).openOverlay = openOverlay;
 
-/**
- * Closes an overlay element by ID.
- */
 export const closeOverlay = (id: string) => {
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
 };
 (window as any).closeOverlay = closeOverlay;
 
-/**
- * Adds a product to the cart or updates quantity if already exists.
- */
 export const addToCart = async (productId: number, qty: number = 1) => {
     if(!user) return showToast("Savatga qo'shish uchun tizimga kiring");
     try {
@@ -108,11 +95,11 @@ export async function loadProfileData() {
         let { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
         
         if (!data) {
-            // Agar profil hali mavjud bo'lmasa (birinchi marta kirayotgan bo'lsa)
             const { data: newProfile } = await supabase.from('profiles').insert({
                 id: user.id,
-                phone: user.phone,
-                first_name: 'Mijoz',
+                phone: user.phone || null,
+                email: user.email || null,
+                first_name: user.user_metadata?.full_name || 'Mijoz',
                 role: 'user',
                 balance: 0
             }).select().single();
@@ -137,7 +124,7 @@ export async function checkAuth() {
         }
     } else {
         showView('auth');
-        renderAuthView('login');
+        renderAuthView('phone');
     }
 }
 window.onload = checkAuth;
