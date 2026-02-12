@@ -1,3 +1,4 @@
+
 project_id = "txcmkfltrzzzqwytzatq"
 
 [api]
@@ -10,4 +11,7 @@ max_rows = 1000
 verify_jwt = false
 
 [functions.tspay-handler]
+verify_jwt = false
+
+[functions.otp-handler]
 verify_jwt = false
