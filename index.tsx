@@ -6,7 +6,15 @@ import { renderHomeView } from "./home.tsx";
 import { renderCartView } from "./cart.tsx";
 import { renderOrdersView } from "./ordersView.tsx";
 import { renderSavedView } from "./savedView.tsx";
+
+// Modullarni ishga tushirish (global window funksiyalari uchun)
 import "./productDetails.tsx"; 
+import "./profileEdit.tsx";
+import "./payment.tsx";
+import "./security.tsx";
+import "./courierRegistration.tsx";
+import "./supportView.tsx";
+import "./legal.tsx";
 
 const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || "";
 const SUPABASE_KEY = (import.meta as any).env?.VITE_SUPABASE_KEY || "";
@@ -14,7 +22,6 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export let user: any = null;
 export let profile: any = null;
-export let adminBackupProfile: any = null;
 
 // --- GLOBAL ACTIONS ---
 export const showToast = (msg: string) => {
@@ -63,12 +70,15 @@ export const addToCart = async (productId: number, qty: number = 1) => {
 
 export const navTo = async (view: string) => {
     if (!profile && user) await loadProfileData();
+    
+    // Kuryer uchun maxsus orders view (Courier Dashboard)
     if (profile?.role === 'courier' && view === 'orders') {
         const { renderCourierDashboard } = await import("./courierDashboard.tsx");
         showView('orders'); 
         renderCourierDashboard(user, profile);
         return;
     }
+
     showView(view);
     if(view === 'home') renderHomeView();
     if(view === 'saved') renderSavedView();
@@ -82,6 +92,12 @@ export function showView(viewId: string) {
     document.querySelectorAll('.view-section').forEach(s => s.classList.remove('active'));
     const target = document.getElementById(viewId + 'View') || document.getElementById('homeView');
     if(target) target.classList.add('active');
+    
+    // Navigatsiya holatini yangilash
+    document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+    const activeNav = Array.from(document.querySelectorAll('.nav-item')).find(n => (n as any).onclick?.toString().includes(`'${viewId}'`));
+    if(activeNav) activeNav.classList.add('active');
+
     const isMainView = ['home', 'cart', 'profile', 'orders', 'saved'].includes(viewId);
     document.getElementById('appHeader')!.style.display = isMainView ? 'flex' : 'none';
     document.getElementById('bottomNav')!.style.display = isMainView ? 'flex' : 'none';
@@ -127,4 +143,11 @@ export async function checkAuth() {
         renderAuthView('phone');
     }
 }
+
+(window as any).handleSignOut = async () => {
+    if(!confirm("Tizimdan chiqmoqchimisiz?")) return;
+    await supabase.auth.signOut();
+    window.location.reload();
+};
+
 window.onload = checkAuth;
