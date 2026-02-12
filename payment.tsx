@@ -76,6 +76,7 @@ export const openPaymentView = async () => {
     }
 };
 
+(window as any).openPayment = openPaymentView;
 (window as any).openPaymentView = openPaymentView;
 
 (window as any).selectTopUp = (amount: number) => {

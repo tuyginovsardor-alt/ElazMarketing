@@ -113,12 +113,6 @@ export function renderAuthView(mode: AuthMode = 'phone', extraData?: any) {
     } catch (err: any) { showToast(err.message); }
 };
 
-// Yordam markazini ochish funksiyasi (supportView.tsx dan olingan)
-(window as any).openSupportCenter = async () => {
-    const { renderSupportView } = await import("./supportView.tsx");
-    renderSupportView();
-};
-
 (window as any).executeAuth = async (mode: AuthMode, currentPhone?: string) => {
     const btn = document.getElementById('authSubmitBtn') as HTMLButtonElement;
     btn.disabled = true;
@@ -139,15 +133,20 @@ export function renderAuthView(mode: AuthMode = 'phone', extraData?: any) {
             const password = (document.getElementById('authPassword') as HTMLInputElement).value;
             if (!email || !password) throw new Error("Email va parolni kiriting!");
 
-            const { error: signError } = await supabase.auth.signInWithPassword({ email, password });
+            // Try login
+            const { data, error: signError } = await supabase.auth.signInWithPassword({ email, password });
+            
             if (signError) {
-                if (signError.message.includes("Invalid login credentials")) {
+                // If user doesn't exist, try signup
+                if (signError.message.toLowerCase().includes("invalid login credentials")) {
                     const { error: signUpErr } = await supabase.auth.signUp({ email, password });
                     if (signUpErr) throw signUpErr;
-                    showToast("Akkaunt yaratildi! Gmailni tasdiqlang va qayta kiring.");
+                    showToast("Akkaunt yaratildi! Gmailingizni tasdiqlang va qayta kiring.");
                     btn.disabled = false;
                     btn.innerText = "TASDIQLANDI, ENDI KIRING";
-                } else throw signError;
+                } else {
+                    throw signError;
+                }
             } else {
                 showToast("Xush kelibsiz! 🔓");
                 await checkAuth();
@@ -167,3 +166,5 @@ export function renderAuthView(mode: AuthMode = 'phone', extraData?: any) {
         btn.innerText = "QAYTA URINISH";
     }
 };
+
+(window as any).renderAuthView = renderAuthView;

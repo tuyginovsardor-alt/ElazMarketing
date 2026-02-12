@@ -61,6 +61,8 @@ export const openProfileEdit = () => {
     openOverlay('profileEditOverlay');
 };
 
+(window as any).openProfileEdit = openProfileEdit;
+
 (window as any).saveProfileChanges = async () => {
     const btn = document.getElementById('btnSaveProfile') as HTMLButtonElement;
     const first_name = (document.getElementById('editFName') as HTMLInputElement).value.trim();

@@ -47,6 +47,7 @@ export function openCourierRegistrationForm() {
     openOverlay('checkoutOverlay');
 }
 
+(window as any).openCourierRegistration = openCourierRegistrationForm;
 (window as any).openCourierRegistrationForm = openCourierRegistrationForm;
 
 let selectedRegTransport = 'walking';

@@ -99,8 +99,10 @@ export function showView(viewId: string) {
     if(activeNav) activeNav.classList.add('active');
 
     const isMainView = ['home', 'cart', 'profile', 'orders', 'saved'].includes(viewId);
-    document.getElementById('appHeader')!.style.display = isMainView ? 'flex' : 'none';
-    document.getElementById('bottomNav')!.style.display = isMainView ? 'flex' : 'none';
+    const header = document.getElementById('appHeader');
+    const bottomNav = document.getElementById('bottomNav');
+    if (header) header.style.display = isMainView ? 'flex' : 'none';
+    if (bottomNav) bottomNav.style.display = isMainView ? 'flex' : 'none';
 }
 
 export async function loadProfileData() {
@@ -143,6 +145,17 @@ export async function checkAuth() {
         renderAuthView('phone');
     }
 }
+
+(window as any).enterAdminPanel = async () => {
+    const { switchAdminTab } = await import("./admin.tsx");
+    const app = document.getElementById('appContainer');
+    const admin = document.getElementById('adminPanel');
+    if (app) app.style.display = 'none';
+    if (admin) {
+        admin.style.display = 'block';
+        switchAdminTab('dash');
+    }
+};
 
 (window as any).handleSignOut = async () => {
     if(!confirm("Tizimdan chiqmoqchimisiz?")) return;
