@@ -11,7 +11,8 @@
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="https://ncbbjlduisavvxyscxbk.supabase.co/storage/v1/object/public/products/app_icon.png">
     
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Ikonkalar uchun eng barqaror CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -34,10 +35,11 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+        /* Ekran balandligini dinamik hisoblash */
+        body { background: var(--bg); color: var(--text); height: 100dvh; overflow: hidden; }
 
         #appContainer {
-            max-width: 450px; margin: 0 auto; background: var(--white); height: 100vh;
+            max-width: 450px; margin: 0 auto; background: var(--white); height: 100dvh;
             position: relative; box-shadow: 0 0 100px rgba(0,0,0,0.05);
             display: flex; flex-direction: column; overflow: hidden;
         }
@@ -54,19 +56,24 @@
         .btn:active { transform: scale(0.95); }
         .btn-primary { background: var(--gradient); color: white; box-shadow: 0 12px 25px rgba(34, 197, 94, 0.25); }
 
+        /* MUHIM: Pastki menyu uzun telefonlar uchun to'g'rilandi */
         .bottom-nav { 
             background: rgba(255, 255, 255, 0.95); 
             backdrop-filter: blur(15px);
             display: none; 
             justify-content: space-between; 
             align-items: center;
-            padding: 10px 10px calc(15px + env(safe-area-inset-bottom, 10px)); 
+            /* Safe area qo'shildi */
+            padding: 10px 5px calc(10px + env(safe-area-inset-bottom, 15px)); 
             border-top: 1px solid #f1f5f9; 
             position: absolute; 
             bottom: 0; 
+            left: 0;
             width: 100%; 
             z-index: 1000; 
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.02);
         }
+        
         .nav-item { 
             color: #94a3b8; 
             font-size: 0.65rem; 
@@ -78,15 +85,24 @@
             align-items: center; 
             justify-content: center; 
             gap: 4px;
-            transition: 0.3s; 
+            transition: 0.2s; 
             text-align: center;
             min-width: 0;
+            -webkit-user-select: none;
         }
-        .nav-item i { font-size: 1.4rem; transition: 0.3s; }
+        .nav-item i { font-size: 1.35rem; transition: 0.2s; display: block; }
         .nav-item.active { color: var(--primary); }
         .nav-item.active i { transform: translateY(-2px); }
         
-        .nav-profile-img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; border: 2px solid #cbd5e1; }
+        /* Profil rasmi stili */
+        .nav-profile-img { 
+            width: 26px; 
+            height: 26px; 
+            border-radius: 50%; 
+            object-fit: cover; 
+            border: 2px solid #cbd5e1;
+            background: #f1f5f9;
+        }
         .nav-item.active .nav-profile-img { border-color: var(--primary); }
 
         input, select, textarea { border: 2px solid #f1f5f9; border-radius: 20px; background: #f8fafc; padding: 16px 20px; font-weight: 700; width: 100%; outline: none; }
@@ -101,8 +117,8 @@
   "imports": {
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.95.3",
     "react": "https://esm.sh/react@^19.2.4",
-    "react/": "https://esm.sh/react@^19.2.4/",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
     "path": "https://esm.sh/path@^0.12.7",
     "url": "https://esm.sh/url@^0.11.4",
     "vite": "https://esm.sh/vite@^7.3.1",
@@ -152,7 +168,7 @@
                 <span>Tarix</span>
             </div>
             <div class="nav-item" id="navProfileItem" onclick="navTo('profile')">
-                <div id="navProfileIconContainer" style="display:flex; align-items:center; justify-content:center;">
+                <div id="navProfileIconContainer" style="display:flex; align-items:center; justify-content:center; width: 28px; height: 28px; margin-bottom: 2px;">
                     <i class="far fa-user-circle"></i>
                 </div>
                 <span>Profil</span>

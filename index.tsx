@@ -84,11 +84,9 @@ export async function loadProfileData() {
     if (!session?.user) return null;
     user = session.user;
     
-    // Check by ID or Phone (virtual email cases)
     let { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
     
     if (!data && !error) {
-        // If profile exists by phone but ID is different (new auth user linked to existing phone)
         if(user.email && user.email.endsWith('@elaz.uz')) {
             const phone = user.email.split('@')[0];
             const { data: phoneProfile } = await supabase.from('profiles').select('*').eq('phone', phone).maybeSingle();
@@ -112,11 +110,10 @@ export async function loadProfileData() {
 
     if (data) {
         profile = data;
-        // Pastki menyudagi profil ikonkasini yangilash
         const iconContainer = document.getElementById('navProfileIconContainer');
         if (iconContainer) {
             if (profile.avatar_url) {
-                iconContainer.innerHTML = `<img src="${profile.avatar_url}" class="nav-profile-img" onerror="this.src='https://ncbbjlduisavvxyscxbk.supabase.co/storage/v1/object/public/products/default-avatar.png';">`;
+                iconContainer.innerHTML = `<img src="${profile.avatar_url}" class="nav-profile-img" onerror="this.innerHTML='<i class=\'far fa-user-circle\'></i>'; this.className='';">`;
             } else {
                 iconContainer.innerHTML = `<i class="far fa-user-circle"></i>`;
             }
@@ -143,33 +140,18 @@ export async function checkAuth() {
     }
 }
 
-// Added and exported the missing addToCart function to handle product additions to the user's cart
 export async function addToCart(productId: number, quantity: number = 1) {
     if (!user) {
         showToast("Xarid qilish uchun tizimga kiring");
         return;
     }
-
     try {
-        const { data: existing } = await supabase
-            .from('cart_items')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('product_id', productId)
-            .maybeSingle();
-
+        const { data: existing } = await supabase.from('cart_items').select('*').eq('user_id', user.id).eq('product_id', productId).maybeSingle();
         if (existing) {
             const newQty = parseFloat((existing.quantity + quantity).toFixed(2));
-            const { error } = await supabase
-                .from('cart_items')
-                .update({ quantity: newQty })
-                .eq('id', existing.id);
-            if (error) throw error;
+            await supabase.from('cart_items').update({ quantity: newQty }).eq('id', existing.id);
         } else {
-            const { error } = await supabase
-                .from('cart_items')
-                .insert({ user_id: user.id, product_id: productId, quantity });
-            if (error) throw error;
+            await supabase.from('cart_items').insert({ user_id: user.id, product_id: productId, quantity });
         }
         showToast("Savatga qo'shildi! 🛒");
     } catch (e: any) {
@@ -177,15 +159,62 @@ export async function addToCart(productId: number, quantity: number = 1) {
     }
 }
 
+// Profil paneli va tugmalarini indexlash (Exposure to window)
 (window as any).navTo = navTo;
-// Updated to use the local addToCart function directly, fixing the property missing error on dynamic import
 (window as any).addToCart = addToCart;
 (window as any).openOverlay = openOverlay;
 (window as any).closeOverlay = closeOverlay;
+
+(window as any).openProfileEdit = async () => {
+    const { openProfileEdit } = await import("./profileEdit.tsx");
+    openProfileEdit();
+};
+
+(window as any).openPayment = async () => {
+    const { openPaymentView } = await import("./payment.tsx");
+    openPaymentView();
+};
+
+(window as any).openCourierRegistration = async () => {
+    const { openCourierRegistrationForm } = await import("./courierRegistration.tsx");
+    openCourierRegistrationForm();
+};
+
+(window as any).openSupportCenter = async () => {
+    const { renderSupportView } = await import("./supportView.tsx");
+    renderSupportView();
+};
+
+(window as any).openProfileSecurity = async () => {
+    const { openProfileSecurity } = await import("./security.tsx");
+    openProfileSecurity();
+};
+
+(window as any).openLegal = async (type: any) => {
+    const { openLegal } = await import("./legal.tsx");
+    openLegal(type);
+};
+
+(window as any).enterAdminPanel = async () => {
+    const app = document.getElementById('appContainer');
+    const admin = document.getElementById('adminPanel');
+    if (app) app.style.display = 'none';
+    if (admin) {
+        admin.style.display = 'block';
+        const { switchAdminTab } = await import("./admin.tsx");
+        switchAdminTab('dash');
+    }
+};
+
+(window as any).generateBotLink = () => {
+    window.open('https://t.me/elaz_market_bot', '_blank');
+};
+
 (window as any).handleSignOut = async () => {
     await supabase.auth.signOut();
     window.location.reload();
 };
+
 (window as any).maskPhone = (input: HTMLInputElement) => {
     let val = input.value.replace(/\D/g, '');
     if (val.length > 9) val = val.substring(0, 9);
