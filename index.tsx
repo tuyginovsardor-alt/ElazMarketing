@@ -112,6 +112,15 @@ export async function loadProfileData() {
 
     if (data) {
         profile = data;
+        // Pastki menyudagi profil ikonkasini yangilash
+        const iconContainer = document.getElementById('navProfileIconContainer');
+        if (iconContainer) {
+            if (profile.avatar_url) {
+                iconContainer.innerHTML = `<img src="${profile.avatar_url}" class="nav-profile-img" onerror="this.src='https://ncbbjlduisavvxyscxbk.supabase.co/storage/v1/object/public/products/default-avatar.png';">`;
+            } else {
+                iconContainer.innerHTML = `<i class="far fa-user-circle"></i>`;
+            }
+        }
         return data;
     }
     return null;
