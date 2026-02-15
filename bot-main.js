@@ -6,52 +6,60 @@ import { handleUser } from './bot-user.js';
 import { handleCourier, handleCallbacks } from './bot-courier.js';
 
 const sessions = {};
-let lastId = 0;
-let currentActiveToken = "";
-let isMonitoring = false;
+let lastUpdateId = 0;
 
-// --- OTP WATCHER (Bazani tekshiruvchi qism) ---
+/**
+ * OTP WATCHER: Bu funksiya bazani kuzatib turadi.
+ * Agar profiles jadvalida otp_status = 'pending' bo'lgan qator chiqsa,
+ * foydalanuvchiga kodni yuboradi.
+ */
 async function startOtpWatcher() {
-    console.log("🔍 OTP Watcher started... Monitoring profiles for pending OTPs.");
+    console.log("🔍 [OTP WATCHER] Monitoring profiles for pending OTPs...");
+    
     setInterval(async () => {
         try {
-            // 'pending' holatidagi barcha yangi OTP so'rovlarini olamiz
             const { data: requests, error } = await supabase
                 .from('profiles')
                 .select('id, phone, telegram_id, otp_code, first_name')
                 .eq('otp_status', 'pending')
                 .limit(5);
 
-            if (error || !requests) return;
+            if (error) {
+                console.error("Watcher DB Error:", error.message);
+                return;
+            }
+
+            if (!requests || requests.length === 0) return;
 
             for (const req of requests) {
                 if (req.telegram_id) {
-                    // Telegram ID bor - kurer yoki foydalanuvchiga xabar yuboramiz
+                    // Telegram orqali kodni yuboramiz
+                    const msgText = `🔐 <b>ELAZ MARKET: TASDIQLASH KODI</b>\n\nAssalomu alaykum ${req.first_name || 'Foydalanuvchi'}!\n\nSizning kirish kodingiz: <code>${req.otp_code}</code>\n\nKodni saytga kiriting. Uni hech kimga bermang!`;
+                    
                     const res = await tg('sendMessage', {
                         chat_id: req.telegram_id,
-                        text: `🔐 <b>ELAZ MARKET: TASDIQLASH KODI</b>\n\nAssalomu alaykum ${req.first_name || 'Foydalanuvchi'}!\n\nSizning kirish kodingiz: <code>${req.otp_code}</code>\n\nKodni saytga kiriting. Uni hech kimga bermang!`,
+                        text: msgText,
                         parse_mode: 'HTML'
                     });
 
                     if (res.ok) {
-                        // Muvaffaqiyatli yuborilgach statusni yangilaymiz
                         await supabase.from('profiles').update({ otp_status: 'sent' }).eq('id', req.id);
-                        console.log(`[OTP SENT] To ${req.phone} (TG: ${req.telegram_id})`);
+                        console.log(`✅ [OTP SENT] Raqam: ${req.phone} -> TG_ID: ${req.telegram_id}`);
                     } else {
-                        // Bot bloklangan yoki boshqa xato
+                        // Agar bot bloklangan bo'lsa yoki boshqa xato
                         await supabase.from('profiles').update({ otp_status: 'failed' }).eq('id', req.id);
-                        console.error(`[OTP FAILED] Could not send to TG ID: ${req.telegram_id}`);
+                        console.error(`❌ [OTP BLOCKED] TG_ID: ${req.telegram_id} botni bloklagan bo'lishi mumkin.`);
                     }
                 } else {
-                    // Telegram ID yo'q - foydalanuvchi botga kirmagan!
+                    // Agar telegram_id ulanmagan bo'lsa
                     await supabase.from('profiles').update({ otp_status: 'failed' }).eq('id', req.id);
-                    console.warn(`[OTP WARNING] User ${req.phone} has no telegram_id linked.`);
+                    console.warn(`⚠️ [NO TG_ID] ${req.phone} raqam botga ulanmagan.`);
                 }
             }
         } catch (e) {
-            console.error("Watcher Error:", e);
+            console.error("Watcher Critical Error:", e.message);
         }
-    }, 2500); // Har 2.5 soniyada bazani tekshiradi
+    }, 2000); // Har 2 soniyada tekshiradi
 }
 
 async function router(update) {
@@ -62,16 +70,14 @@ async function router(update) {
     const chatId = msg.chat.id;
     const text = msg.text;
 
-    // KONTAKT ULASH (Bu juda muhim qism)
+    // KONTAKT ULASH (Foydalanuvchi botga kirib raqamini yuborganda)
     if (msg.contact) {
         const phone = '+' + msg.contact.phone_number.replace(/\D/g, '');
-        // Avval mavjud profilni qidiramiz
         const { data: existing } = await supabase.from('profiles').select('*').eq('phone', phone).maybeSingle();
         
         if (existing) {
             await supabase.from('profiles').update({ telegram_id: chatId }).eq('phone', phone);
         } else {
-            // Agar profil bo'lmasa, yangi ochamiz (otp_status null qoladi)
             await supabase.from('profiles').insert({ 
                 phone: phone, 
                 telegram_id: chatId, 
@@ -82,7 +88,7 @@ async function router(update) {
 
         return tg('sendMessage', { 
             chat_id: chatId, 
-            text: `✅ <b>RAQAM MUVAFFAQIYATLI ULANDI!</b>\n\nEndi saytda ro'yxatdan o'tayotganingizda tasdiqlash kodlari shu yerga keladi.\n\nFoydalanishni boshlash uchun saytga qayting.`,
+            text: `✅ <b>RAQAM MUAFFAQIYATLI ULANDI!</b>\n\nEndi saytda ro'yxatdan o'tayotganingizda tasdiqlash kodlari shu yerga keladi.`,
             parse_mode: 'HTML',
             reply_markup: KB.user
         });
@@ -92,7 +98,7 @@ async function router(update) {
     if (!sessions[chatId]) sessions[chatId] = { step: 'idle' };
     const session = sessions[chatId];
 
-    if (text === "/start" || text === "❌ Chiqish" || text === "❌ Bekor qilish") {
+    if (text === "/start" || text === "❌ Chiqish") {
         session.step = 'idle';
         const { data: profile } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
         if (profile) {
@@ -101,12 +107,45 @@ async function router(update) {
         }
         return tg('sendMessage', { 
             chat_id: chatId, 
-            text: "🏪 <b>ELAZ MARKET BOTIGA XUSH KELIBSIZ!</b>\n\nSaytda ro'yxatdan o'tish va kodlarni olish uchun pastdagi tugma orqali telefon raqamingizni yuboring:", 
+            text: "🏪 <b>ELAZ MARKET BOTIGA XUSH KELIBSIZ!</b>\n\nSaytda kodlarni olish uchun pastdagi tugma orqali raqamingizni ulang:", 
             parse_mode: 'HTML', 
             reply_markup: KB.welcome 
         });
     }
 
-    // ... rest of the router logic (handleAuth, handleUser, handleCourier)
+    // Boshqa handlerlar (Auth, User, Courier)
+    if (session.step.startsWith('login') || session.step.startsWith('reg')) {
+        return handleAuth(chatId, text, session, msg);
+    }
+
+    const { data: profile } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
+    if (!profile) return;
+
+    if (profile.role === 'courier') return handleCourier(chatId, text, profile);
+    return handleUser(chatId, text, profile);
 }
-// ... rest of the file
+
+async function start() {
+    console.log("🚀 [ELAZ ENGINE] Bot starting...");
+    await refreshBotToken();
+    
+    // OTP Watcher-ni alohida jarayon sifatida boshlaymiz
+    startOtpWatcher();
+
+    while (true) {
+        try {
+            const updates = await tg('getUpdates', { offset: lastUpdateId, timeout: 30 });
+            if (updates.ok && updates.result) {
+                for (const u of updates.result) {
+                    await router(u);
+                    lastUpdateId = u.update_id + 1;
+                }
+            }
+        } catch (e) {
+            console.error("Polling Error:", e.message);
+            await new Promise(r => setTimeout(r, 5000));
+        }
+    }
+}
+
+start();
