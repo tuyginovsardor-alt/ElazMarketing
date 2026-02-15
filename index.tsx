@@ -61,7 +61,6 @@ export function showView(viewId: string) {
         import("./savedView.tsx").then(m => m.renderSavedView());
     }
 
-    // Update bottom nav active state
     document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
     const activeNav = document.querySelector(`.nav-item[onclick*="'${viewId}'"]`);
     if(activeNav) activeNav.classList.add('active');
@@ -85,20 +84,30 @@ export async function loadProfileData() {
     if (!session?.user) return null;
     user = session.user;
     
-    // Google bilan kirganda profil bo'lmasligi mumkin, shuning uchun upsert qilamiz yoki check qilamiz
+    // Check by ID or Phone (virtual email cases)
     let { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
     
     if (!data && !error) {
-        // Yangi Google user uchun asosiy profil yaratish
-        const { data: newProfile, error: insError } = await supabase.from('profiles').insert({
-            id: user.id,
-            email: user.email,
-            first_name: user.user_metadata?.full_name || 'Mijoz',
-            role: 'user',
-            balance: 0
-        }).select().single();
-        
-        if (!insError) data = newProfile;
+        // If profile exists by phone but ID is different (new auth user linked to existing phone)
+        if(user.email && user.email.endsWith('@elaz.uz')) {
+            const phone = user.email.split('@')[0];
+            const { data: phoneProfile } = await supabase.from('profiles').select('*').eq('phone', phone).maybeSingle();
+            if(phoneProfile) {
+                await supabase.from('profiles').update({ id: user.id }).eq('phone', phone);
+                data = { ...phoneProfile, id: user.id };
+            }
+        }
+
+        if(!data) {
+            const { data: newProfile, error: insError } = await supabase.from('profiles').insert({
+                id: user.id,
+                email: user.email,
+                first_name: user.user_metadata?.full_name || user.user_metadata?.name || 'Mijoz',
+                role: 'user',
+                balance: 0
+            }).select().single();
+            if (!insError) data = newProfile;
+        }
     }
 
     if (data) {
@@ -108,28 +117,11 @@ export async function loadProfileData() {
     return null;
 }
 
-export async function addToCart(productId: number, quantity: number = 1) {
-    if (!user) return showToast("Tizimga kiring! 👋");
-    
-    const { error } = await supabase.from('cart_items').upsert({
-        user_id: user.id,
-        product_id: productId,
-        quantity: quantity
-    }, { onConflict: 'user_id,product_id' });
-    
-    if (error) {
-        showToast("Xato: " + error.message);
-    } else {
-        showToast("Savatga qo'shildi! 🛒");
-    }
-}
-
 export async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
         user = session.user;
         const p = await loadProfileData();
-        // Google orqali birinchi marta kirganda ham region bo'lmaydi, shuning uchun locationga yuboramiz
         if (p && !p.region) {
             const { openLocationSetup } = await import("./location.tsx");
             openLocationSetup();
@@ -142,8 +134,42 @@ export async function checkAuth() {
     }
 }
 
-// Global functions for HTML
+// Added and exported the missing addToCart function to handle product additions to the user's cart
+export async function addToCart(productId: number, quantity: number = 1) {
+    if (!user) {
+        showToast("Xarid qilish uchun tizimga kiring");
+        return;
+    }
+
+    try {
+        const { data: existing } = await supabase
+            .from('cart_items')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('product_id', productId)
+            .maybeSingle();
+
+        if (existing) {
+            const newQty = parseFloat((existing.quantity + quantity).toFixed(2));
+            const { error } = await supabase
+                .from('cart_items')
+                .update({ quantity: newQty })
+                .eq('id', existing.id);
+            if (error) throw error;
+        } else {
+            const { error } = await supabase
+                .from('cart_items')
+                .insert({ user_id: user.id, product_id: productId, quantity });
+            if (error) throw error;
+        }
+        showToast("Savatga qo'shildi! 🛒");
+    } catch (e: any) {
+        showToast("Xato: " + e.message);
+    }
+}
+
 (window as any).navTo = navTo;
+// Updated to use the local addToCart function directly, fixing the property missing error on dynamic import
 (window as any).addToCart = addToCart;
 (window as any).openOverlay = openOverlay;
 (window as any).closeOverlay = closeOverlay;
