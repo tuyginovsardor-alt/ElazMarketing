@@ -10,68 +10,102 @@ let lastId = 0;
 let currentActiveToken = "";
 let isMonitoring = false;
 
+// --- OTP WATCHER ---
+async function startOtpWatcher() {
+    console.log("🔍 OTP Watcher started...");
+    setInterval(async () => {
+        try {
+            // 'pending' holatidagi barcha yangi OTP so'rovlarini olamiz
+            const { data: requests, error } = await supabase
+                .from('profiles')
+                .select('id, phone, telegram_id, otp_code, first_name')
+                .eq('otp_status', 'pending')
+                .limit(5);
+
+            if (error) return;
+
+            for (const req of requests) {
+                if (req.telegram_id) {
+                    // Telegram ID bor - xabar yuboramiz
+                    const res = await tg('sendMessage', {
+                        chat_id: req.telegram_id,
+                        text: `🔐 <b>TASDIQLASH KODI</b>\n\nAssalomu alaykum ${req.first_name || 'Mijoz'}!\n\nSizning kirish kodingiz: <code>${req.otp_code}</code>\n\nKodni hech kimga bermang!`,
+                        parse_mode: 'HTML'
+                    });
+
+                    if (res.ok) {
+                        await supabase.from('profiles').update({ otp_status: 'sent' }).eq('id', req.id);
+                    } else {
+                        await supabase.from('profiles').update({ otp_status: 'failed' }).eq('id', req.id);
+                    }
+                } else {
+                    // Telegram ID yo'q - demak botga hali ulanmagan
+                    await supabase.from('profiles').update({ otp_status: 'failed' }).eq('id', req.id);
+                }
+            }
+        } catch (e) {
+            console.error("Watcher Error:", e);
+        }
+    }, 3000);
+}
+
 async function router(update) {
     if (update.callback_query) return handleCallbacks(update.callback_query);
     const msg = update.message;
-    if (!msg?.text && !msg?.contact) return;
+    if (!msg) return;
 
     const chatId = msg.chat.id;
     const text = msg.text;
 
-    if (!sessions[chatId]) sessions[chatId] = { step: 'idle' };
-    const session = sessions[chatId];
+    if (msg.contact) {
+        const phone = '+' + msg.contact.phone_number.replace(/\D/g, '');
+        const { data, error } = await supabase
+            .from('profiles')
+            .update({ telegram_id: chatId })
+            .eq('phone', phone)
+            .select();
 
-    // --- GLOBAL RESET ---
-    if (text === "/start" || text === "❌ Chiqish" || text === "❌ Bekor qilish") {
-        session.step = 'idle';
-        // Bazadan profilni rolini ham qo'shib olish
-        const { data: profile, error } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
-        
-        if (profile) {
-            console.log(`[BOT] Recognized user: ${profile.first_name}, Role: ${profile.role}`);
-            const kb = profile.role === 'courier' ? KB.courier : KB.user;
-            const welcomeMsg = profile.role === 'courier' ? 
-                `🛵 <b>KURER TERMINALI</b>\n\nXush kelibsiz, <b>${profile.first_name}</b>!\nBugun xizmatga tayyormisiz?` : 
-                `🛒 <b>ELAZ MARKET</b>\n\nXush kelibsiz, <b>${profile.first_name}</b>!`;
-            return tg('sendMessage', { chat_id: chatId, text: welcomeMsg, parse_mode: 'HTML', reply_markup: kb });
-        }
-        
         return tg('sendMessage', { 
             chat_id: chatId, 
-            text: "🏪 <b>ELAZ MARKET</b>\n\nBag'dod tumanidagi eng tezkor savdo platformasi botiga xush kelibsiz! Davom etish uchun tizimga kiring:", 
-            parse_mode: 'HTML', 
-            reply_markup: KB.welcome 
+            text: `✅ <b>Raqamingiz ulandi!</b>\n\nEndi saytda kirish kodi Telegramdan keladi.`,
+            parse_mode: 'HTML',
+            reply_markup: data?.length ? (data[0].role === 'courier' ? KB.courier : KB.user) : KB.welcome
         });
     }
 
-    // --- AUTH FLOW ---
+    if (!text) return;
+    if (!sessions[chatId]) sessions[chatId] = { step: 'idle' };
+    const session = sessions[chatId];
+
+    if (text === "/start" || text === "❌ Chiqish" || text === "❌ Bekor qilish") {
+        session.step = 'idle';
+        const { data: profile } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
+        if (profile) {
+            const welcomeMsg = profile.role === 'courier' ? `🛵 <b>KURER TERMINALI</b>` : `🛒 <b>ELAZ MARKET</b>`;
+            return tg('sendMessage', { chat_id: chatId, text: welcomeMsg, parse_mode: 'HTML', reply_markup: profile.role === 'courier' ? KB.courier : KB.user });
+        }
+        return tg('sendMessage', { chat_id: chatId, text: "🏪 <b>ELAZ MARKET</b>\n\nSaytga kirish kodi Telegramdan kelishi uchun pastdagi tugmani bosing:", parse_mode: 'HTML', reply_markup: KB.welcome });
+    }
+
     if (session.step !== 'idle' || text === "🔑 Kirish" || text === "📝 Ro'yxatdan o'tish") {
         return handleAuth(chatId, text, session, msg);
     }
 
-    // --- LOGGED IN ROUTING ---
     const { data: profile } = await supabase.from('profiles').select('*').eq('telegram_id', chatId).maybeSingle();
     if (profile) {
-        if (profile.role === 'courier') {
-            return handleCourier(chatId, text, profile);
-        } else {
-            return handleUser(chatId, text, profile);
-        }
-    } else {
-        // Agar profil topilmasa startga qaytarish
-        return tg('sendMessage', { chat_id: chatId, text: "Siz tizimga kirmagansiz. /start bosing.", reply_markup: KB.welcome });
+        profile.role === 'courier' ? handleCourier(chatId, text, profile) : handleUser(chatId, text, profile);
     }
 }
 
 async function start() {
-    console.log("🚀 ELAZ BOT ENGINE V10.5 (RECOGNITION FIX) STARTED...");
+    console.log("🚀 ELAZ BOT ENGINE V12.0 (TELEGRAM OTP) STARTED...");
+    startOtpWatcher();
     
     if(!isMonitoring) {
         isMonitoring = true;
         setInterval(async () => {
             const newToken = await refreshBotToken();
             if (newToken && newToken !== currentActiveToken) {
-                console.log("🔄 NEW TOKEN SYNCED...");
                 currentActiveToken = newToken;
                 lastId = 0; 
             }
@@ -87,16 +121,14 @@ async function start() {
 
         try {
             const res = await tg('getUpdates', { offset: lastId, timeout: 20 });
-            if (res && res.ok && res.result.length) {
+            if (res?.ok && res.result.length) {
                 for (const u of res.result) {
                     await router(u);
                     lastId = u.update_id + 1;
                 }
             }
-        } catch (e) {
-            await new Promise(r => setTimeout(r, 5000));
-        }
-        await new Promise(r => setTimeout(r, 200));
+        } catch (e) {}
+        await new Promise(r => setTimeout(r, 500));
     }
 }
 

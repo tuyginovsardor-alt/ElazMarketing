@@ -5,6 +5,7 @@ export const KB = {
     welcome: {
         keyboard: [
             [{ text: "🔑 Kirish" }, { text: "📝 Ro'yxatdan o'tish" }],
+            [{ text: "📱 Raqamni ulash (OTP uchun)", request_contact: true }],
             [{ text: "🌐 ONLINE PLATFORMA", web_app: { url: SITE_URL } }]
         ],
         resize_keyboard: true

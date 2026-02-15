@@ -1,8 +1,9 @@
 
-// Supabase Edge Function: Eskiz.uz SMS Hook Handler
+// Supabase Edge Function: Telegram OTP Hook Handler
 declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,76 +11,74 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // CORS uchun OPTIONS so'rovini boshqarish
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   try {
-    // Supabase Auth yuborgan ma'lumotlarni olish
-    const payload = await req.json()
-    console.log("Supabase dan kelgan Payload:", JSON.stringify(payload))
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
 
-    // Supabase odatda xabarni 'sms' obyekti ichida yuboradi
+    const payload = await req.json()
+    console.log("OTP Payload:", JSON.stringify(payload))
+
     const phone = payload.sms?.phone || payload.phone
-    let message = payload.sms?.message || payload.message
+    const message = payload.sms?.message || payload.message
 
     if (!phone || !message) {
       throw new Error("Telefon yoki xabar topilmadi")
     }
 
-    const ESKIZ_TOKEN = Deno.env.get('ESKIZ_TOKEN')
-    if (!ESKIZ_TOKEN) throw new Error("ESKIZ_TOKEN topilmadi")
+    // 1. Profiles jadvalidan ushbu raqamga bog'langan telegram_id ni topamiz
+    const cleanPhone = '+' + phone.replace(/\D/g, '')
+    const { data: profile, error: dbError } = await supabaseAdmin
+      .from('profiles')
+      .select('telegram_id, first_name')
+      .eq('phone', cleanPhone)
+      .maybeSingle()
 
-    // Raqamni faqat raqamlardan iborat qilish (Eskiz formati: 998901234567)
-    const cleanPhone = phone.replace(/\D/g, '')
+    if (dbError) throw dbError
 
-    /* 
-      MUHIM: Agar Eskiz hisobingiz test holatida bo'lsa, 
-      ixtiyoriy matn yuborib bo'lmaydi. Lekin bizga OTP kod kerak.
-      Agar xabar Eskiz test talablariga mos kelmasa, API 422 xato beradi.
-    */
-    
-    const formData = new FormData()
-    formData.append('mobile_phone', cleanPhone)
-    formData.append('message', message)
-    formData.append('from', '4546') // Eskiz test kodi
-
-    console.log(`Eskizga yuborilmoqda. Tel: ${cleanPhone}, Xabar: ${message}`)
-
-    const eskizResponse = await fetch('https://notify.eskiz.uz/api/message/sms/send', {
-      method: 'POST',
-      headers: { 
-        'Authorization': `Bearer ${ESKIZ_TOKEN.trim()}` 
-      },
-      body: formData
-    })
-
-    const result = await eskizResponse.json()
-    console.log("Eskiz API javobi:", result)
-
-    // Agar Eskiz xato qaytargan bo'lsa (masalan xabar matni noto'g'ri bo'lsa)
-    if (!eskizResponse.ok) {
-        console.error("Eskiz API xatosi:", result)
-        // Supabasega xatoni tushunarli formatda qaytaramiz
+    // 2. Agar telegram_id bo'lmasa, foydalanuvchiga botga o'tish haqida xato qaytaramiz
+    if (!profile || !profile.telegram_id) {
         return new Response(JSON.stringify({ 
-            error: result.message || "Eskiz API xatosi",
-            details: result 
+            error: "Foydalanuvchi topilmadi. Avval botimizga (@elaz_market_bot) kirib raqamingizni ulashing!",
+            code: "no_telegram_id"
         }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400
         })
     }
 
-    // SUPABASE UCHUN MUVAFFAQIYATLI JAVOB
-    // Supabase Custom SMS provider funksiyadan status: 200 va JSON kutadi
-    return new Response(JSON.stringify(result), {
+    // 3. Telegram orqali xabar yuborish
+    const BOT_TOKEN = Deno.env.get('BOT_TOKEN') // Supabase dashboardda buni sozlash kerak
+    const tgUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`
+
+    const tgRes = await fetch(tgUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            chat_id: profile.telegram_id,
+            text: `🔐 <b>TASDIQLASH KODI</b>\n\nAssalomu alaykum ${profile.first_name || 'Mijoz'}!\n\n${message}\n\nKod hech kimga bermang!`,
+            parse_mode: 'HTML'
+        })
+    })
+
+    const tgData = await tgRes.json()
+
+    if (!tgData.ok) {
+        throw new Error(tgData.description || "Telegramga xabar yuborishda xatolik")
+    }
+
+    return new Response(JSON.stringify({ status: 'success', provider: 'telegram' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
 
   } catch (error: any) {
-    console.error("[CRITICAL ERROR]", error.message)
+    console.error("[OTP ERROR]", error.message)
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,

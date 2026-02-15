@@ -29,10 +29,10 @@ export function renderAuthView(mode: AuthMode = 'phone', extraData?: any) {
 
             <div style="margin-bottom: 25px; text-align: center;">
                 <h2 style="font-size: 1.6rem; font-weight: 900; color: var(--text);">
-                    ${isVerify ? 'Kodni kiriting 📩' : 'Xush kelibsiz! 👋'}
+                    ${isVerify ? 'Telegram kodini kiriting 📩' : 'Xush kelibsiz! 👋'}
                 </h2>
                 <p style="color: var(--gray); margin-top: 8px; font-size: 0.9rem; font-weight: 600;">
-                    ${isVerify ? `${extraData?.phone}ga kod yubordik.` : 'Tizimga kirish usulini tanlang.'}
+                    ${isVerify ? `Bot orqali yuborilgan kodni kiriting.` : 'Tizimga kirish usulini tanlang.'}
                 </p>
             </div>
 
@@ -48,34 +48,18 @@ export function renderAuthView(mode: AuthMode = 'phone', extraData?: any) {
                         </div>
                     ` : ''}
 
-                    ${isEmail ? `
-                        <div class="input-group">
-                            <label style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--gray); margin-bottom: 6px; text-transform: uppercase;">Gmail manzilingiz</label>
-                            <input type="email" id="authEmail" placeholder="example@gmail.com" style="height: 60px;">
-                        </div>
-                        <div class="input-group">
-                            <label style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--gray); margin-bottom: 6px; text-transform: uppercase;">Parol</label>
-                            <input type="password" id="authPassword" placeholder="••••••••" style="height: 60px;">
-                        </div>
-                    ` : ''}
-
                     ${isVerify ? `
                         <div class="input-group" style="text-align: center;">
                             <input type="number" id="authOtp" placeholder="000000" maxlength="6" style="width: 100%; height: 75px; border-radius: 20px; border: 3px solid var(--primary); font-size: 2.2rem; font-weight: 900; text-align: center; letter-spacing: 8px;">
+                            <div id="otpStatusDisplay" style="margin-top:10px; font-size:0.75rem; font-weight:800; color:var(--gray);">Kodni yubormoqdamiz...</div>
                         </div>
                     ` : ''}
 
                     <button class="btn btn-primary" id="authSubmitBtn" style="margin-top: 10px; width: 100%; height: 65px; border-radius: 22px;" onclick="executeAuth('${mode}', '${extraData?.phone || ''}')">
-                        ${isVerify ? 'TASDIQLASH' : (isEmail ? 'KIRISH / RO\'YXATDAN O\'TISH' : 'DAVOM ETISH')}
+                        ${isVerify ? 'TASDIQLASH' : (isEmail ? 'DAVOM ETISH' : 'KODNI OLISH')}
                     </button>
 
                     ${!isVerify ? `
-                        <div style="display: flex; align-items: center; margin: 15px 0;">
-                            <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
-                            <span style="padding: 0 15px; font-size: 0.7rem; font-weight: 800; color: #94a3b8;">YOKI</span>
-                            <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
-                        </div>
-
                         <button onclick="window.signInWithGoogle()" style="width: 100%; height: 60px; border-radius: 20px; border: 2px solid #f1f5f9; background: white; display: flex; align-items: center; justify-content: center; gap: 12px; font-weight: 800;">
                             <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="22">
                             Google orqali kirish
@@ -85,85 +69,83 @@ export function renderAuthView(mode: AuthMode = 'phone', extraData?: any) {
 
                 <div style="text-align: center; margin-top: 25px; padding-bottom: 20px;">
                     <p style="font-weight: 700; color: var(--gray); font-size: 0.9rem;">
-                        ${isVerify ? 'Kodni olmadingizmi?' : 'Yordam kerakmi?'} 
-                        <span style="color: var(--primary); cursor: pointer; font-weight: 900; text-decoration: underline;" 
-                            onclick="${isVerify ? `renderAuthView('phone')` : `window.openSupportCenter()`}">
-                            ${isVerify ? 'Qayta yuborish' : 'Bog\'lanish'}
-                        </span>
+                        ${isVerify ? 'Kod kelmadimi? <span style="color:var(--primary); cursor:pointer;" onclick="renderAuthView(\'phone\')">Qayta urinish</span>' : 'Botimizga a\'zo bo\'ling: <a href="https://t.me/elaz_market_bot" target="_blank" style="color:var(--primary);">@elaz_market_bot</a>'}
                     </p>
                 </div>
             </div>
         </div>
     `;
+
+    if(isVerify) {
+        startPollingOtpStatus(extraData?.phone);
+    }
 }
 
-(window as any).maskPhone = (input: HTMLInputElement) => {
-    let x = input.value.replace(/\D/g, '').match(/(\d{0,2})(\d{0,3})(\d{0,2})(\d{0,2})/);
-    if (!x) return;
-    input.value = !x[2] ? x[1] : '(' + x[1] + ') ' + x[2] + (x[3] ? '-' + x[3] : '') + (x[4] ? '-' + x[4] : '');
-};
+let otpPollInterval: any = null;
+function startPollingOtpStatus(phone: string) {
+    if(otpPollInterval) clearInterval(otpPollInterval);
+    const statusEl = document.getElementById('otpStatusDisplay');
 
-(window as any).signInWithGoogle = async () => {
-    try {
-        const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: { redirectTo: window.location.origin }
-        });
-        if (error) throw error;
-    } catch (err: any) { showToast(err.message); }
-};
+    otpPollInterval = setInterval(async () => {
+        const { data, error } = await supabase.from('profiles').select('otp_status').eq('phone', phone).maybeSingle();
+        if(data && statusEl) {
+            if(data.otp_status === 'sent') {
+                statusEl.innerText = "✅ Kod Telegram botingizga yuborildi!";
+                statusEl.style.color = "var(--primary)";
+                clearInterval(otpPollInterval);
+            } else if(data.otp_status === 'failed') {
+                statusEl.innerHTML = "❌ Botga ulanmagansiz! <br> Avval <a href='https://t.me/elaz_market_bot' target='_blank'>Botga kirib</a> 'Raqamni ulash' tugmasini bosing.";
+                statusEl.style.color = "var(--danger)";
+                clearInterval(otpPollInterval);
+            }
+        }
+    }, 2000);
+}
 
 (window as any).executeAuth = async (mode: AuthMode, currentPhone?: string) => {
     const btn = document.getElementById('authSubmitBtn') as HTMLButtonElement;
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>...';
 
     try {
         if (mode === 'phone') {
             const rawPhone = (document.getElementById('authPhone') as HTMLInputElement).value.replace(/\D/g, '');
-            if (rawPhone.length < 9) throw new Error("Telefon raqami noto'g'ri!");
+            if (rawPhone.length < 9) throw new Error("Raqam xato!");
             const fullPhone = '+998' + rawPhone;
-            const { error } = await supabase.auth.signInWithOtp({ phone: fullPhone });
+            
+            const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+            
+            // Profilni qidiramiz yoki OTP kodni yangilaymiz
+            const { data: p } = await supabase.from('profiles').select('id').eq('phone', fullPhone).maybeSingle();
+            
+            const { error } = await supabase.from('profiles').upsert({
+                phone: fullPhone,
+                otp_code: otpCode,
+                otp_status: 'pending',
+                otp_updated_at: new Date().toISOString()
+            }, { onConflict: 'phone' });
+
             if (error) throw error;
-            showToast("SMS kod yuborildi! 📲");
             renderAuthView('verify', { phone: fullPhone });
         } 
-        else if (mode === 'email') {
-            const email = (document.getElementById('authEmail') as HTMLInputElement).value.trim();
-            const password = (document.getElementById('authPassword') as HTMLInputElement).value;
-            if (!email || !password) throw new Error("Email va parolni kiriting!");
-
-            // Try login
-            const { data, error: signError } = await supabase.auth.signInWithPassword({ email, password });
-            
-            if (signError) {
-                // If user doesn't exist, try signup
-                if (signError.message.toLowerCase().includes("invalid login credentials")) {
-                    const { error: signUpErr } = await supabase.auth.signUp({ email, password });
-                    if (signUpErr) throw signUpErr;
-                    showToast("Akkaunt yaratildi! Gmailingizni tasdiqlang va qayta kiring.");
-                    btn.disabled = false;
-                    btn.innerText = "TASDIQLANDI, ENDI KIRING";
-                } else {
-                    throw signError;
-                }
-            } else {
-                showToast("Xush kelibsiz! 🔓");
-                await checkAuth();
-            }
-        }
         else if (mode === 'verify') {
-            const token = (document.getElementById('authOtp') as HTMLInputElement).value;
-            if (token.length < 6) throw new Error("Kodni to'liq kiriting!");
-            const { error } = await supabase.auth.verifyOtp({ phone: currentPhone, token, type: 'sms' });
-            if (error) throw error;
-            showToast("Muvaffaqiyatli! 🎉");
+            const code = (document.getElementById('authOtp') as HTMLInputElement).value;
+            const { data: profile, error } = await supabase.from('profiles')
+                .select('*')
+                .eq('phone', currentPhone)
+                .eq('otp_code', code)
+                .maybeSingle();
+
+            if (!profile) throw new Error("Kod noto'g'ri!");
+
+            // Bu yerda foydalanuvchini auth tizimidan ham o'tkazish kerak. 
+            // Demo rejimida biz shunchaki profilni tasdiqlaymiz va load qilamiz.
+            // Haqiqiy tizimda Service Role orqali auth.users yaratiladi.
+            showToast("Xush kelibsiz! 🎉");
             await checkAuth();
         }
     } catch (err: any) {
         showToast(err.message);
         btn.disabled = false;
-        btn.innerText = "QAYTA URINISH";
     }
 };
 
