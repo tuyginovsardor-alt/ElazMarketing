@@ -148,7 +148,6 @@ function startPollingOtpStatus(phone: string) {
             const ident = (document.getElementById('loginIdentifier') as HTMLInputElement).value.trim();
             const pass = (document.getElementById('loginPass') as HTMLInputElement).value;
             
-            // Agar telefon raqami bo'lsa, uni virtual emailga aylantiramiz
             const email = ident.startsWith('(') || ident.startsWith('9') ? '+998' + ident.replace(/\D/g, '') + '@elaz.uz' : ident;
             
             const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
@@ -178,9 +177,18 @@ function startPollingOtpStatus(phone: string) {
             
             if (!p) throw new Error("Tasdiqlash kodi xato!");
 
-            // Real Auth user yaratish
             const email = extraData.phone + '@elaz.uz';
-            const { data: auth, error: signUpErr } = await supabase.auth.signUp({ email, password: extraData.pass });
+            // Telefonni metadata-ga ham indexlab qo'yamiz
+            const { data: auth, error: signUpErr } = await supabase.auth.signUp({ 
+                email, 
+                password: extraData.pass,
+                options: {
+                    data: {
+                        phone: extraData.phone,
+                        full_name: extraData.name
+                    }
+                }
+            });
             if (signUpErr) throw signUpErr;
 
             if (auth.user) {
