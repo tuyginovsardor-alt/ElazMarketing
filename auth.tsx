@@ -164,14 +164,17 @@ function startPollingOtpStatus(phone: string) {
 
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
             
-            // Xatolikni aniqlash uchun kiritildi
+            // Upsert orqali vaqtinchalik profil yaratamiz (SQL-da default id bo'lishi shart)
             const { error } = await supabase.from('profiles').upsert({
-                phone, first_name: name, otp_code: otpCode, otp_status: 'pending'
+                phone, 
+                first_name: name, 
+                otp_code: otpCode, 
+                otp_status: 'pending'
             }, { onConflict: 'phone' });
 
             if (error) {
-                if(error.message.includes('unique')) {
-                    throw new Error("Bazada sozlash ishlari bor (Unique constraint missing). Admin bilan bog'laning.");
+                if(error.message.includes('null value in column "id"')) {
+                    throw new Error("Tizimda SQL xatoligi: ID ustuniga default qiymat berilmagan. Iltimos, SQL Editor'da 'ALTER COLUMN id SET DEFAULT gen_random_uuid()' kodini yurgizing.");
                 }
                 throw error;
             }
@@ -195,10 +198,30 @@ function startPollingOtpStatus(phone: string) {
                     }
                 }
             });
+            
             if (signUpErr) throw signUpErr;
 
             if (auth.user) {
-                await supabase.from('profiles').update({ id: auth.user.id, otp_status: 'verified', role: 'user' }).eq('phone', extraData.phone);
+                // Endi vaqtinchalik yaratilgan profilni haqiqiy Auth ID bilan yangilaymiz
+                // Agar eski row bo'lsa uni o'chirib, yangisini yozish yoki ID-ni update qilish
+                const { error: updErr } = await supabase.from('profiles').update({ 
+                    id: auth.user.id, 
+                    otp_status: 'verified', 
+                    role: 'user' 
+                }).eq('phone', extraData.phone);
+                
+                if(updErr) {
+                    // Agar ID PK bo'lsa va uni o'zgartirib bo'lmasa:
+                    await supabase.from('profiles').delete().eq('phone', extraData.phone);
+                    await supabase.from('profiles').insert({
+                        id: auth.user.id,
+                        phone: extraData.phone,
+                        first_name: extraData.name,
+                        email,
+                        role: 'user',
+                        balance: 0
+                    });
+                }
             }
             showToast("Xush kelibsiz! 🥳");
             await checkAuth();
