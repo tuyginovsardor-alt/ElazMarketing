@@ -148,7 +148,7 @@ function startPollingOtpStatus(phone: string) {
             const ident = (document.getElementById('loginIdentifier') as HTMLInputElement).value.trim();
             const pass = (document.getElementById('loginPass') as HTMLInputElement).value;
             
-            const email = ident.startsWith('(') || ident.startsWith('9') ? '+998' + ident.replace(/\D/g, '') + '@elaz.uz' : ident;
+            const email = ident.startsWith('(') || ident.startsWith('9') || ident.startsWith('+') ? '+998' + ident.replace(/\D/g, '') + '@elaz.uz' : ident;
             
             const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
             if (error) throw new Error("Email/Telefon yoki parol xato!");
@@ -163,11 +163,18 @@ function startPollingOtpStatus(phone: string) {
             if (name.length < 3 || phone.length < 12 || pass.length < 6) throw new Error("Ma'lumotlar yetarli emas!");
 
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+            
+            // Xatolikni aniqlash uchun kiritildi
             const { error } = await supabase.from('profiles').upsert({
                 phone, first_name: name, otp_code: otpCode, otp_status: 'pending'
             }, { onConflict: 'phone' });
 
-            if (error) throw error;
+            if (error) {
+                if(error.message.includes('unique')) {
+                    throw new Error("Bazada sozlash ishlari bor (Unique constraint missing). Admin bilan bog'laning.");
+                }
+                throw error;
+            }
             renderAuthView('verify_otp', { phone, name, pass });
         }
 
@@ -178,7 +185,6 @@ function startPollingOtpStatus(phone: string) {
             if (!p) throw new Error("Tasdiqlash kodi xato!");
 
             const email = extraData.phone + '@elaz.uz';
-            // Telefonni metadata-ga ham indexlab qo'yamiz
             const { data: auth, error: signUpErr } = await supabase.auth.signUp({ 
                 email, 
                 password: extraData.pass,
