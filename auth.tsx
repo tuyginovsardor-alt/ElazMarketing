@@ -66,27 +66,13 @@ export function renderAuthView(mode: AuthMode = 'login', extraData?: any) {
                             <input type="password" id="regPhonePass" placeholder="Parol yarating" style="height: 55px;">
                         ` : ''}
 
-                        <!-- REGISTER EMAIL PATH -->
-                        ${mode === 'register_email' ? `
-                            <div style="display:flex; gap:10px; margin-bottom:10px;">
-                                <button onclick="renderAuthView('register_phone')" style="flex:1; height:35px; border-radius:10px; border:1px solid #f1f5f9; background:white; color:var(--gray); font-weight:900; font-size:0.6rem;">TELEFON</button>
-                                <button onclick="renderAuthView('register_email')" style="flex:1; height:35px; border-radius:10px; border:none; background:var(--primary-light); color:var(--primary); font-weight:900; font-size:0.6rem;">GMAIL</button>
-                            </div>
-                            <input type="text" id="regEmailName" placeholder="Ismingiz" style="height: 55px;">
-                            <input type="email" id="regEmail" placeholder="example@gmail.com" style="height: 55px;">
-                            <input type="password" id="regEmailPass" placeholder="Murakkab parol" style="height: 55px;">
-                        ` : ''}
-
-                        <!-- FORGOT PASS -->
-                        ${mode === 'forgot_password' ? `
-                            <p style="font-size:0.8rem; color:var(--gray); text-align:center; font-weight:600;">Parolni tiklash havolasi Gmailingizga yuboriladi.</p>
-                            <input type="email" id="forgotEmail" placeholder="Gmail manzilingizni kiriting" style="height: 55px;">
-                        ` : ''}
-
                         <!-- VERIFY OTP -->
                         ${mode === 'verify_otp' ? `
                             <input type="number" id="authOtp" placeholder="000000" style="height: 75px; font-size: 2rem; text-align: center; font-weight: 900; letter-spacing: 10px; border-color: var(--primary);">
-                            <div id="otpStatusDisplay" style="text-align:center; font-size:0.75rem; font-weight:800; color:var(--gray);">Bazaga yozilmoqda...</div>
+                            <div id="otpStatusDisplay" style="text-align:center; font-size:0.75rem; font-weight:800; color:var(--gray); padding: 10px 0;">
+                                <i class="fas fa-spinner fa-spin"></i> Xabar kutilmoqda...
+                            </div>
+                            <p style="font-size: 0.65rem; color: var(--gray); text-align: center;">Kod kelmasa, Telegram botga kirganingizga ishonch hosil qiling.</p>
                         ` : ''}
 
                         <button class="btn btn-primary" id="authSubmitBtn" style="width: 100%; height: 58px; font-size:0.95rem;" onclick="executeAuthAction('${mode}', ${JSON.stringify(extraData)})">
@@ -105,10 +91,6 @@ export function renderAuthView(mode: AuthMode = 'login', extraData?: any) {
                                 Google orqali kirish
                             </button>
                         ` : ''}
-
-                        ${mode === 'forgot_password' || mode === 'verify_otp' ? `
-                            <button onclick="renderAuthView('login')" style="background:none; border:none; color:var(--primary); font-weight:800; font-size:0.8rem; cursor:pointer;">Orqaga qaytish</button>
-                        ` : ''}
                     </div>
                 </div>
             </div>
@@ -126,12 +108,10 @@ function startPollingOtpStatus(phone: string) {
         const { data } = await supabase.from('profiles').select('otp_status').eq('phone', phone).maybeSingle();
         if(data && statusEl) {
             if(data.otp_status === 'sent') {
-                statusEl.innerText = "✅ Kod Telegram botingizga yuborildi!";
-                statusEl.style.color = "var(--primary)";
+                statusEl.innerHTML = "<span style='color:var(--primary)'><i class='fas fa-check-circle'></i> Kod Telegram botingizga yuborildi!</span>";
                 clearInterval(interval);
-            } else if(data.otp_status === 'failed' || attempts > 30) {
-                statusEl.innerHTML = "❌ Botga ulanmagansiz! <br> Avval <a href='https://t.me/elaz_market_bot' target='_blank'>Botga kirib</a> raqamni ulang.";
-                statusEl.style.color = "var(--danger)";
+            } else if(data.otp_status === 'failed' || attempts > 60) {
+                statusEl.innerHTML = "<span style='color:var(--danger)'><i class='fas fa-exclamation-triangle'></i> Botga ulanmagansiz! <br> Avval <a href='https://t.me/elaz_market_bot' target='_blank' style='color:inherit; text-decoration:underline;'>Botga kirib</a> raqamni ulang.</span>";
                 clearInterval(interval);
             }
         }
@@ -140,6 +120,8 @@ function startPollingOtpStatus(phone: string) {
 
 (window as any).executeAuthAction = async (mode: AuthMode, extraData?: any) => {
     const btn = document.getElementById('authSubmitBtn') as HTMLButtonElement;
+    const originalText = btn.innerText;
+    
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
 
@@ -148,8 +130,12 @@ function startPollingOtpStatus(phone: string) {
             const ident = (document.getElementById('loginIdentifier') as HTMLInputElement).value.trim();
             const pass = (document.getElementById('loginPass') as HTMLInputElement).value;
             
-            const email = ident.startsWith('(') || ident.startsWith('9') || ident.startsWith('+') ? '+998' + ident.replace(/\D/g, '') + '@elaz.uz' : ident;
-            
+            let email = ident;
+            if(!ident.includes('@')) {
+                const cleanPhone = '+998' + ident.replace(/\D/g, '');
+                email = cleanPhone + '@elaz.uz';
+            }
+
             const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
             if (error) throw new Error("Email/Telefon yoki parol xato!");
             await checkAuth();
@@ -157,27 +143,31 @@ function startPollingOtpStatus(phone: string) {
 
         else if (mode === 'register_phone') {
             const name = (document.getElementById('regFName') as HTMLInputElement).value.trim();
-            const phone = '+998' + (document.getElementById('regPhone') as HTMLInputElement).value.replace(/\D/g, '');
+            const rawPhone = (document.getElementById('regPhone') as HTMLInputElement).value.replace(/\D/g, '');
+            const phone = '+998' + rawPhone;
             const pass = (document.getElementById('regPhonePass') as HTMLInputElement).value;
 
-            if (name.length < 3 || phone.length < 12 || pass.length < 6) throw new Error("Ma'lumotlar yetarli emas!");
+            if (name.length < 3 || rawPhone.length < 9 || pass.length < 6) {
+                throw new Error("Ma'lumotlarni to'liq to'ldiring!");
+            }
 
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
             
-            // Upsert orqali vaqtinchalik profil yaratamiz (SQL-da default id bo'lishi shart)
+            // Profilni vaqtincha ID-siz upsert qilamiz
             const { error } = await supabase.from('profiles').upsert({
                 phone, 
                 first_name: name, 
                 otp_code: otpCode, 
-                otp_status: 'pending'
+                otp_status: 'pending', 
+                role: 'user',
+                balance: 0
             }, { onConflict: 'phone' });
 
             if (error) {
-                if(error.message.includes('null value in column "id"')) {
-                    throw new Error("Tizimda SQL xatoligi: ID ustuniga default qiymat berilmagan. Iltimos, SQL Editor'da 'ALTER COLUMN id SET DEFAULT gen_random_uuid()' kodini yurgizing.");
-                }
-                throw error;
+                console.error("Upsert Error:", error);
+                throw new Error("Tizimda xatolik! SQL sozlanganligini tekshiring.");
             }
+            
             renderAuthView('verify_otp', { phone, name, pass });
         }
 
@@ -192,68 +182,29 @@ function startPollingOtpStatus(phone: string) {
                 email, 
                 password: extraData.pass,
                 options: {
-                    data: {
-                        phone: extraData.phone,
-                        full_name: extraData.name
-                    }
+                    data: { phone: extraData.phone, full_name: extraData.name }
                 }
             });
             
             if (signUpErr) throw signUpErr;
 
             if (auth.user) {
-                // Endi vaqtinchalik yaratilgan profilni haqiqiy Auth ID bilan yangilaymiz
-                // Agar eski row bo'lsa uni o'chirib, yangisini yozish yoki ID-ni update qilish
-                const { error: updErr } = await supabase.from('profiles').update({ 
-                    id: auth.user.id, 
-                    otp_status: 'verified', 
-                    role: 'user' 
+                // Endi vaqtinchalik profilni haqiqiy Auth ID bilan yangilaymiz
+                await supabase.from('profiles').update({
+                    id: auth.user.id,
+                    email: email,
+                    otp_status: 'verified'
                 }).eq('phone', extraData.phone);
-                
-                if(updErr) {
-                    // Agar ID PK bo'lsa va uni o'zgartirib bo'lmasa:
-                    await supabase.from('profiles').delete().eq('phone', extraData.phone);
-                    await supabase.from('profiles').insert({
-                        id: auth.user.id,
-                        phone: extraData.phone,
-                        first_name: extraData.name,
-                        email,
-                        role: 'user',
-                        balance: 0
-                    });
-                }
             }
+            
             showToast("Xush kelibsiz! 🥳");
             await checkAuth();
-        }
-
-        else if (mode === 'register_email') {
-            const name = (document.getElementById('regEmailName') as HTMLInputElement).value.trim();
-            const email = (document.getElementById('regEmail') as HTMLInputElement).value.trim();
-            const pass = (document.getElementById('regEmailPass') as HTMLInputElement).value;
-
-            const { data: auth, error } = await supabase.auth.signUp({ 
-                email, 
-                password: pass,
-                options: { data: { full_name: name } }
-            });
-            if (error) throw error;
-            showToast("Gmailingizga tasdiqlash xati yuborildi! 📧");
-            renderAuthView('login');
-        }
-
-        else if (mode === 'forgot_password') {
-            const email = (document.getElementById('forgotEmail') as HTMLInputElement).value.trim();
-            const { error } = await supabase.auth.resetPasswordForEmail(email);
-            if (error) throw error;
-            showToast("Havola yuborildi!");
-            renderAuthView('login');
         }
 
     } catch (err: any) {
         showToast(err.message);
         btn.disabled = false;
-        btn.innerText = "DAVOM ETISH";
+        btn.innerText = originalText;
     }
 };
 

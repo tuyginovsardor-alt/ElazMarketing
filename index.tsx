@@ -76,7 +76,9 @@ export function openOverlay(id: string) {
 
 export function closeOverlay(id: string) {
     const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
+    if (el) {
+        el.style.display = 'none';
+    }
 }
 
 export async function loadProfileData() {
@@ -84,18 +86,28 @@ export async function loadProfileData() {
     if (!session?.user) return null;
     user = session.user;
     
+    // 1. Avval ID bo'yicha qidiramiz
     let { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
     
+    // 2. Agar topilmasa, telefon orqali qidirib ko'ramiz (OTP bilan ochilgan bo'lsa)
     if (!data && !error) {
+        let phone = '';
         if(user.email && user.email.endsWith('@elaz.uz')) {
-            const phone = user.email.split('@')[0];
+            phone = user.email.split('@')[0];
+        } else if (user.user_metadata?.phone) {
+            phone = user.user_metadata.phone;
+        }
+
+        if (phone) {
             const { data: phoneProfile } = await supabase.from('profiles').select('*').eq('phone', phone).maybeSingle();
             if(phoneProfile) {
-                await supabase.from('profiles').update({ id: user.id }).eq('phone', phone);
-                data = { ...phoneProfile, id: user.id };
+                // Vaqtinchalik profilni haqiqiy Auth ID bilan bog'laymiz
+                await supabase.from('profiles').update({ id: user.id, email: user.email }).eq('phone', phone);
+                data = { ...phoneProfile, id: user.id, email: user.email };
             }
         }
 
+        // 3. Agar hali ham topilmasa, yangi profil yaratamiz
         if(!data) {
             const { data: newProfile, error: insError } = await supabase.from('profiles').insert({
                 id: user.id,
